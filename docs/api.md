@@ -3,9 +3,13 @@
 
 ## SYNOPSIS
 
-`GET /`&lt;date>/&lt;user>`/src/contrib`  
-`GET /`&lt;date>/&lt;user>`/bin/windows/contrib`  
-`GET /`&lt;date>/&lt;user>`/bin/macosx/el-capitan/contrib/`  
+`GET /`&lt;user>`/src/contrib`  
+`GET /`&lt;user>`/bin/windows/contrib`  
+`GET /`&lt;user>`/bin/macosx/el-capitan/contrib/`  
+
+`GET /`&lt;user>`/old/`&lt;date>`/src/contrib`  
+`GET /`&lt;user>`/old/`&lt;date>`/bin/windows/contrib`  
+`GET /`&lt;user>`/old/`&lt;date>`/bin/macosx/el-capitan/contrib/`  
 
 `POST /submit/`&lt;user>`/src`  
 `POST /submit/`&lt;user>`/windows`  
@@ -13,23 +17,26 @@
 
 ## DESCRIPTION
 
-**cranlike** is an R package server that provides a API for submitting
-and downloading R packages. It automatically generates CRAN-like pages
-from a database of packages.
+**cranlike** is a package server that provides a API for submitting
+and downloading R packages. It automatically generates the required
+pages and `PACKAGES.gz` index files from the package database.
 
-This allows R users to install packages from a particular date or author
-simply by setting the repo parameter in `install.packages()`.
+This allows R users to install packages from a particular author or
+organization or date using the repo parameter in `install.packages()`.
 
 ## API
 
-* `GET /` &lt;date>  
-  Get repository state from date (in `yyyy-mm-dd`) or `latest` for current state.
+* `GET /`  
+  List all available users / organizations.
 
-* `GET /` &lt;date> `/` &lt;user>  
-  Filter repository for packages published by a given author or 
-  organization. Use `any` for all packages.
+* `GET /` &lt;user> `/ {src, windows, macosx} /`  
+  Get CRAN-like repository for packages published by a given author
+  or organization. Use `any` for packages from all users.
 
-* `POST / submit /` &lt;user>  
+* `GET /` &lt;user>  `/ old /` &lt;date> `/ {src, windows, macosx} /`  
+  Get CRAN-like repository as it was on date (in `yyyy-mm-dd`).
+
+* `POST / submit /` &lt;user>  `/ {src, windows, macosx}`  
   Publish a new release in the repository for a given author or organzation.
   Source and binary packages are published in separate submissions.
 
