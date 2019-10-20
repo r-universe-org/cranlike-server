@@ -1,9 +1,7 @@
 var express = require('express');
 var router = express.Router();
-
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.send('Hello this is the submit router');
+router.post('/:user', function(req, res, next) {
+  res.send('Hello this is the submit router for:' + req.params.user);
 });
 
 module.exports = router;

@@ -1,19 +1,18 @@
 
-# cranlike(7) &mdash; dynamic R package server
+# cranlike(7) &mdash; dynamic R package archive server
 
 ## SYNOPSIS
 
-`GET /`&lt;user>`/src/contrib`  
-`GET /`&lt;user>`/bin/windows/contrib`  
-`GET /`&lt;user>`/bin/macosx/el-capitan/contrib/`  
+`GET /`&lt;*user*>`/src/contrib`  
+`GET /`&lt;*user*>`/bin/windows/contrib`  
+`GET /`&lt;*user*>`/bin/macosx/el-capitan/contrib/`  
 
-`GET /`&lt;user>`/old/`&lt;date>`/src/contrib`  
-`GET /`&lt;user>`/old/`&lt;date>`/bin/windows/contrib`  
-`GET /`&lt;user>`/old/`&lt;date>`/bin/macosx/el-capitan/contrib/`  
+`GET /`&lt;*user*>`/old/`&lt;*date*>`/src/contrib`  
+`GET /`&lt;*user*>`/old/`&lt;*date*>`/bin/windows/contrib`  
+`GET /`&lt;*user*>`/old/`&lt;*date*>`/bin/macosx/el-capitan/contrib/`  
 
-`POST /submit/`&lt;user>`/src`  
-`POST /submit/`&lt;user>`/windows`  
-`POST /submit/`&lt;user>`/macosx`  
+`GET,PUT,DELETE /`&lt;*user*>`/archive/`&lt;*package*>`/`&lt;*version*>  
+
 
 ## DESCRIPTION
 
@@ -27,20 +26,20 @@ organization or date using the repo parameter in `install.packages()`.
 ## API
 
 * `GET /`  
-  List all available users / organizations.
+  List available users / organizations.
 
-* `GET /` &lt;user> `/ {src, windows, macosx} /`  
-  Get CRAN-like repository for packages published by a given author
+* `GET /` &lt;*user*> `/ {src,bin} /`  
+  CRAN-like repository for packages published by a given author
   or organization. Use `any` for packages from all users.
 
-* `GET /` &lt;user>  `/ old /` &lt;date> `/ {src, windows, macosx} /`  
-  Get CRAN-like repository as it was on date (in `yyyy-mm-dd`).
+* `GET /` &lt;*user*>  `/ old /` &lt;*date*> `/ {src,bin} /`  
+  CRAN-like repository for user as it was on date (in `yyyy-mm-dd`).
 
-* `POST / submit /` &lt;user>  `/ {src, windows, macosx}`  
-  Publish a new release in the repository for a given author or organzation.
-  Source and binary packages are published in separate submissions.
+* `GET,PUT,DELETE /` &lt;*user*> `/ archive /` &lt;*package*> `/` &lt;*version*> `/`  
+  Core CRUD API to upload and download package files from / to the 
+  repository of the user or organzation.
 
 ## EXAMPLES
 
-install.packages('curl', repos = '[https://cran.dev/latest/jeroen](https://cran.dev/latest/jeroen)')  
-install.packages('magick', repos = '[https://cran.dev/2019-01-01/any](https://cran.dev/2019-01-01/any)')
+install.packages('curl', repos = '[https://cran.dev/jeroen](https://cran.dev/latest/jeroen)')  
+install.packages('R6', repos = '[https://cran.dev/any/old/2019-01-01](https://cran.dev/2019-01-01/any)')  
