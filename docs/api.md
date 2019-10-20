@@ -23,16 +23,17 @@ simply by setting the repo parameter in `install.packages()`.
 ## API
 
 * `GET /` &lt;date>  
-  Limit packages published before date in `yy-mm-dd` or `latest`.
+  Get repository state from date (in `yyyy-mm-dd`) or `latest` for current state.
 
 * `GET /` &lt;date> `/` &lt;user>  
-  CRAN-like package repository for given user/org or `any` for all users.
+  Filter repository for packages published by a given author or 
+  organization. Use `any` for all packages.
 
 * `POST / submit /` &lt;user>  
-  Publish a new release in the repository for a given user/org. Source 
-  and binary packages must be published in separate requests.
+  Publish a new release in the repository for a given author or organzation.
+  Source and binary packages are published in separate submissions.
 
 ## EXAMPLES
 
-install.packages('openssl', repos = '[https://cran.dev/latest/jeroen](https://cran.dev/latest/jeroen)')
+install.packages('curl', repos = '[https://cran.dev/latest/jeroen](https://cran.dev/latest/jeroen)')  
 install.packages('magick', repos = '[https://cran.dev/2019-01-01/any](https://cran.dev/2019-01-01/any)')
