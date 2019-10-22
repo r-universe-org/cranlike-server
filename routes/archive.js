@@ -57,11 +57,12 @@ router.get('/:user/:package/:version', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package
 	var version = req.params.version;
-	packages.distinct('_filename', {_user : user, Package : package, Version : version}).then(function(x){
-		console.log(x);
-		res.send(x);
-	}, function(err){
-		next(createError(400, err));
+	packages.find({_user : user, Package : package, Version : version}).toArray(function(err, docs){
+		if(err){
+			next(createError(400, err));
+		} else {
+			res.send(docs);
+		}
 	});
 });
 
@@ -87,24 +88,45 @@ router.post('/:user/:package/:version', upload.fields([{ name: 'file', maxCount:
 			} else {
 				console.log(data);
 				const hash = md5file.sync(filepath);
-				fs.createReadStream(filepath).
-				pipe(bucket.openUploadStreamWithId(hash, filename)).on('error', function(err) {
-					next(createError(400, err));
-				}).on('finish', function() {
-					data['_user'] = user;
-					data['_type'] = type;
-					data['_hash'] = hash;
-					data['_file'] = filename;
-					data['_published'] = new Date();		
-					packages.insertOne(data, function(err, r) {
-						if(err){
-							next(createError(400, err));
-						} else if(r.insertedCount != 1){
-							next(createError(400, "Inserted count not equal to 1: " + r.insertedCount));
-						} else {
-							res.send("Package upload successful: " + filename + '\n');
-							console.log('done!');
-						}
+				bucket.delete(hash).then(function(){
+					console.log("Replacing previous file " + hash);
+				}, function(err){
+					console.log("New file " + hash);
+				}).finally(function(){
+					fs.createReadStream(filepath).
+					pipe(bucket.openUploadStreamWithId(hash, filename)).on('error', function(err) {
+						next(createError(400, err));
+					}).on('finish', function() {
+						data['_user'] = user;
+						data['_type'] = type;
+						data['_hash'] = hash;
+						data['_file'] = filename;
+						data['_published'] = new Date();
+						var filter = {_user : user, _type : type, Package : package, Version : version};
+						packages.findOneAndReplace(filter, data, {upsert: true, returnOriginal: true}, function(err, result) {
+							var original = result.value;
+							if(err){
+								next(createError(400, err));
+							} else if(original){
+								// delete the file if there are no other references to the hash
+								var orighash = original['_hash'];
+								packages.findOne({_hash : orighash}).then(function(doc){
+									if(doc){
+										console.log("Found other references, not deleting file: " + orighash);
+									} else {
+										bucket.delete(hash).then(function(){
+											console.log("Deleted file " + orighash);
+										}, function(err){
+											console.log("Failed to delete " + orighash + ": " + err);
+										});
+									}
+								}).finally(function(){
+									res.send("Succesfully replaced " + filename + '\n');
+								});
+							} else {
+								res.send("Succesfully uploaded " + filename + '\n');
+							}
+						});
 					});
 				});
 			}
