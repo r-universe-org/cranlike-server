@@ -21,8 +21,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/archive', archiveRouter);
-app.use('/', manRouter);
+app.use('/man', manRouter);
+app.use('/', archiveRouter);
 app.use('/', reposRouter);
 
 // catch 404 and forward to error handler

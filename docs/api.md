@@ -1,5 +1,5 @@
 
-# cranlike(7) &mdash; dynamic R package archive server
+# cranlike(7) &mdash; dynamic R package server
 
 ## SYNOPSIS
 
@@ -16,12 +16,13 @@
 
 ## DESCRIPTION
 
-**cranlike** is a package server that provides a API for submitting
-and downloading R packages. It automatically generates the required
-pages and `PACKAGES.gz` index files from the package database.
+**cranlike** is a package server that provides a API for publishing
+and downloading R packages. Packages can be filtered by user and date.
 
-This allows R users to install packages from a particular author or
-organization or date using the repo parameter in `install.packages()`.
+In addition it automatically generates the required repository pages 
+and `PACKAGES.gz` index files from the package database. This allows 
+R users to install packages from a particular author or organization 
+using only the repo parameter in `install.packages()`.
 
 ## API
 
@@ -41,4 +42,4 @@ organization or date using the repo parameter in `install.packages()`.
 ## EXAMPLES
 
 install.packages('curl', repos = '[https://cran.dev/jeroen](https://cran.dev/latest/jeroen)')  
-install.packages('R6', repos = '[https://cran.dev/any/old/2019-01-01](https://cran.dev/2019-01-01/any)')  
+install.packages('R6', repos = '[https://cran.dev/any/old/2019-01-01](https://cran.dev/2019-01-01/any)')

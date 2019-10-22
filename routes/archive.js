@@ -35,6 +35,59 @@ router.get('/', function(req, res, next) {
 router.get('/:user', function(req, res, next) {
 	var user = req.params.user;
 	packages.distinct('Package', {_user : user}).then(function(x){
+		if(x.length){
+			res.send(['archive', 'bin', 'old', 'src']);
+		} else {
+			next(createError(404, "No such user"));
+		}
+	}, function(err){
+		next(createError(400, err));
+	});
+});
+
+router.get('/:user/src', function(req, res, next) {
+	var user = req.params.user;
+	packages.distinct('Package', {_user : user}).then(function(x){
+		if(x.length){
+			res.send(['contrib']);
+		} else {
+			next(createError(404, "No such user"));
+		}
+	}, function(err){
+		next(createError(400, err));
+	});
+});
+
+router.get('/:user/src/contrib', function(req, res, next) {
+	var user = req.params.user;
+	packages.find({_user: user, _type: 'src'}).toArray(function(err, docs){
+		if(err){
+			next(createError(400, err));
+		} else {
+			const map = docs.map(function(x){
+				return x.Package + "_" + x.Version + ".tar.gz";
+			});
+			res.send(map)
+		}
+	});
+});
+
+router.get('/:user/bin', function(req, res, next) {
+	var user = req.params.user;
+	packages.distinct('Package', {_user : user}).then(function(x){
+		if(x.length){
+			res.send(['windows', 'macosx']);
+		} else {
+			next(createError(404, "No such user"));
+		}
+	}, function(err){
+		next(createError(400, err));
+	});
+});
+
+router.get('/:user/archive', function(req, res, next) {
+	var user = req.params.user;
+	packages.distinct('Package', {_user : user}).then(function(x){
 		console.log(x);
 		res.send(x);
 	}, function(err){
@@ -42,7 +95,7 @@ router.get('/:user', function(req, res, next) {
 	});
 });
 
-router.get('/:user/:package', function(req, res, next) {
+router.get('/:user/archive/:package', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package
 	packages.distinct('Version', {_user : user, Package : package}).then(function(x){
@@ -53,7 +106,7 @@ router.get('/:user/:package', function(req, res, next) {
 	});
 });
 
-router.get('/:user/:package/:version', function(req, res, next) {
+router.get('/:user/archive/:package/:version', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package
 	var version = req.params.version;
@@ -66,7 +119,7 @@ router.get('/:user/:package/:version', function(req, res, next) {
 	});
 });
 
-router.post('/:user/:package/:version', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
+router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
 	console.log(req.files);
 	console.log(req.body);
 	var user = req.params.user;
