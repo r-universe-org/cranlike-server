@@ -23,19 +23,49 @@ mongodb.MongoClient.connect(uri, function(error, client) {
 });
 
 /* Routers */
-router.get('/:user/archive', function(req, res, next) {
-	res.send('List packages for:' + req.params.user);
+router.get('/', function(req, res, next) {
+	packages.distinct('_user').then(function(x){
+		console.log(x);
+		res.send(x);
+	}, function(err){
+		next(createError(400, err));
+	});
 });
 
-router.get('/:user/archive/:package', function(req, res, next) {
-	res.send('List versions for:' + req.params.user + "/" + req.params.package);
+router.get('/:user', function(req, res, next) {
+	var user = req.params.user;
+	packages.distinct('Package', {_user : user}).then(function(x){
+		console.log(x);
+		res.send(x);
+	}, function(err){
+		next(createError(400, err));
+	});
 });
 
-router.get('/:user/archive/:package/:version', function(req, res, next) {
-	res.send('List binaries for:' + req.params.user + "/" + req.params.package + "/" + req.params.version);
+router.get('/:user/:package', function(req, res, next) {
+	var user = req.params.user;
+	var package = req.params.package
+	packages.distinct('Version', {_user : user, Package : package}).then(function(x){
+		console.log(x);
+		res.send(x);
+	}, function(err){
+		next(createError(400, err));
+	});
 });
 
-router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
+router.get('/:user/:package/:version', function(req, res, next) {
+	var user = req.params.user;
+	var package = req.params.package
+	var version = req.params.version;
+	packages.distinct('_filename', {_user : user, Package : package, Version : version}).then(function(x){
+		console.log(x);
+		res.send(x);
+	}, function(err){
+		next(createError(400, err));
+	});
+});
+
+router.post('/:user/:package/:version', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
 	console.log(req.files);
 	console.log(req.body);
 	var user = req.params.user;
@@ -61,7 +91,11 @@ router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', m
 				pipe(bucket.openUploadStreamWithId(hash, filename)).on('error', function(err) {
 					next(createError(400, err));
 				}).on('finish', function() {
-					data['_id'] = hash
+					data['_user'] = user;
+					data['_type'] = type;
+					data['_hash'] = hash;
+					data['_file'] = filename;
+					data['_published'] = new Date();		
 					packages.insertOne(data, function(err, r) {
 						if(err){
 							next(createError(400, err));

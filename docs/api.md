@@ -11,7 +11,7 @@
 `GET /`&lt;*user*>`/old/`&lt;*date*>`/bin/windows/contrib`  
 `GET /`&lt;*user*>`/old/`&lt;*date*>`/bin/macosx/el-capitan/contrib/`  
 
-`GET,PUT,DELETE /`&lt;*user*>`/archive/`&lt;*package*>`/`&lt;*version*>  
+`GET,PUT,DELETE /archive/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>  
 
 
 ## DESCRIPTION
@@ -35,9 +35,8 @@ organization or date using the repo parameter in `install.packages()`.
 * `GET /` &lt;*user*>  `/ old /` &lt;*date*> `/ {src,bin} /`  
   CRAN-like repository for user as it was on date (in `yyyy-mm-dd`).
 
-* `GET,PUT,DELETE /` &lt;*user*> `/ archive /` &lt;*package*> `/` &lt;*version*> `/`  
-  Core CRUD API to upload and download package files from / to the 
-  repository of the user or organzation.
+* `GET,PUT,DELETE / archive /` &lt;*user*> `/` &lt;*package*> `/` &lt;*version*> `/`  
+  CRUD API to upload and download package files to the server.
 
 ## EXAMPLES
 

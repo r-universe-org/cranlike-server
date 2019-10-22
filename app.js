@@ -6,7 +6,7 @@ var logger = require('morgan');
 
 /* Routers */
 var manRouter = require('./routes/man');
-var crudRouter = require('./routes/crud');
+var archiveRouter = require('./routes/archive');
 var reposRouter = require('./routes/repos');
 
 /* Start App */
@@ -21,9 +21,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use('/archive', archiveRouter);
 app.use('/', manRouter);
 app.use('/', reposRouter);
-app.use('/', crudRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
