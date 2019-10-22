@@ -1,13 +1,15 @@
+/* Express template stuff */
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
-var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
+/* Routers */
 var manRouter = require('./routes/man');
-var submitRouter = require('./routes/submit');
-var userRouter = require('./routes/user');
+var crudRouter = require('./routes/crud');
+var reposRouter = require('./routes/repos');
 
+/* Start App */
 var app = express();
 
 // view engine setup
@@ -17,12 +19,11 @@ app.set('view engine', 'pug');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', manRouter);
-app.use('/', userRouter);
-app.use('/', submitRouter);
+app.use('/', reposRouter);
+app.use('/', crudRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
