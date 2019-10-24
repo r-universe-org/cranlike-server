@@ -5,10 +5,8 @@ const multer  = require('multer')
 const assert = require('assert');
 const mongodb = require('mongodb');
 const md5file = require('md5-file');
+const rdesc = require('rdesc-parser');
 const fs = require('fs');
-
-/* Local function */
-var get_package_data = require('../lib/get-package-data');
 
 /* Local variables */
 const upload = multer({ dest: '/tmp/' })
@@ -133,7 +131,7 @@ router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', m
 	} else {
 		var filepath = req.files.file[0].path;
 		var filename = req.files.file[0].originalname;
-		get_package_data(filepath, function(err, data) {
+		rdesc.parse_file(filepath, function(err, data) {
 			if(err){
 				next(createError(400, err));
 			} else if(data.Package != package || data.Version != version){
