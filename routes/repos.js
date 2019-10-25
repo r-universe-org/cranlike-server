@@ -45,18 +45,68 @@ function packages_index(query, format, res, next){
 	});
 }
 
+/* Source packages */
 router.get('/:user/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
 	packages_index({_user: req.params.user, _type: 'src'}, req.params.ext, res, next);
 });
 
+router.get('/:user/src/contrib/:pkg.tar.gz', function(req, res, next) {
+	var pkg = req.params.pkg.split("_");
+	var query = {_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]};
+	packages.findOne(query, {project: {MD5sum: 1}}, function(err, docs){
+		if(err){
+			next(createError(400, err))
+		} else if(!docs){
+			next(createError(404, 'Package not found'));
+		} else {
+			res.type('application/x-gzip');
+			bucket.openDownloadStream(docs.MD5sum).pipe(res);
+		}
+	});
+});
+
+/* Windows packages */
 router.get('/:user/bin/windows/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}};
 	packages_index(query, req.params.ext, res, next);
 });
 
+router.get('/:user/bin/windows/contrib/:built/:pkg.zip', function(req, res, next) {
+	var pkg = req.params.pkg.split("_");
+	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built},
+		Package: pkg[0], Version: pkg[1]};
+	packages.findOne(query, {project: {MD5sum: 1}}, function(err, docs){
+		if(err){
+			next(createError(400, err))
+		} else if(!docs){
+			next(createError(404, 'Package not found'));
+		} else {
+			res.type('application/zip');
+			bucket.openDownloadStream(docs.MD5sum).pipe(res);
+		}
+	});
+});
+
+/* MacOS packages */
 router.get('/:user/bin/macosx/el-capitan/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}};
  	packages_index(query, req.params.ext, res, next);
+});
+
+router.get('/:user/bin/macosx/el-capitan/contrib/:built/:pkg.tgz', function(req, res, next) {
+	var pkg = req.params.pkg.split("_");
+	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
+		Package: pkg[0], Version: pkg[1]};
+	packages.findOne(query, {project: {MD5sum: 1}}, function(err, docs){
+		if(err){
+			next(createError(400, err))
+		} else if(!docs){
+			next(createError(404, 'Package not found'));
+		} else {
+			res.type('application/x-gzip');
+			bucket.openDownloadStream(docs.MD5sum).pipe(res);
+		}
+	});
 });
 
 router.get('/:user/old', function(req, res, next) {
