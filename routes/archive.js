@@ -134,52 +134,65 @@ router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', m
 		rdesc.parse_file(filepath, function(err, data) {
 			if(err){
 				next(createError(400, err));
-			} else if(data.Package != package || data.Version != version){
+			} else if(data.Package != package || data.Version != version) {
 				next(createError(400, 'Package name or version does not match upload'));
-			} else {
-				console.log(data);
-				const hash = md5file.sync(filepath);
-				bucket.delete(hash).then(function(){
-					console.log("Replacing previous file " + hash);
-				}, function(err){
-					console.log("New file " + hash);
-				}).finally(function(){
-					fs.createReadStream(filepath).
-					pipe(bucket.openUploadStreamWithId(hash, filename)).on('error', function(err) {
-						next(createError(400, err));
-					}).on('finish', function() {
-						data['_user'] = user;
-						data['_type'] = type;
-						data['_hash'] = hash;
-						data['_file'] = filename;
-						data['_published'] = new Date();
-						var filter = {_user : user, _type : type, Package : package, Version : version};
-						packages.findOneAndReplace(filter, data, {upsert: true, returnOriginal: true}, function(err, result) {
-							var original = result.value;
-							if(err){
-								next(createError(400, err));
-							} else if(original){
-								// delete the file if there are no other references to the hash
-								var orighash = original['_hash'];
-								packages.findOne({_hash : orighash}).then(function(doc){
-									if(doc){
-										console.log("Found other references, not deleting file: " + orighash);
-									} else {
-										bucket.delete(hash).then(function(){
-											console.log("Deleted file " + orighash);
-										}, function(err){
-											console.log("Failed to delete " + orighash + ": " + err);
-										});
-									}
-								}).finally(function(){
-									res.send("Succesfully replaced " + filename + '\n');
-								});
-							} else {
-								res.send("Succesfully uploaded " + filename + '\n');
-							}
+			} else { 
+				if(type == 'src' && data.Built) {
+					next(createError(400, 'Source package has a "built" field (binary pkg?)'));
+				} else if((type == 'win' || type == 'mac') && !data.Built) {
+					next(createError(400, 'Binary package is does not have valid Built field'));
+				} else if(type == 'win' && data.Built.OStype != 'windows') {
+					next(createError(400, 'Windows Binary package has unexpected OStype:' + data.Built.OStype));
+				} else if(type == 'mac' && data.Built.OStype != 'unix') {
+					next(createError(400, 'MacOS Binary package has unexpected OStype:' + data.Built.OStype));
+				} else if(type == 'mac' && data.Built.Platform && !data.Built.Platform.match('apple')) {
+					//Built.Platform is missing for binary pkgs without copiled code
+					next(createError(400, 'MacOS Binary package has unexpected Platform:' + data.Built.Platform));
+				} else {
+					const MD5sum = md5file.sync(filepath);
+					data._rversion = Number.parseFloat(data.Built.R);
+					bucket.delete(MD5sum).then(function(){
+						console.log("Replacing previous file " + MD5sum);
+					}, function(err){
+						console.log("New file " + MD5sum);
+					}).finally(function(){
+						fs.createReadStream(filepath).
+						pipe(bucket.openUploadStreamWithId(MD5sum, filename)).on('error', function(err) {
+							next(createError(400, err));
+						}).on('finish', function() {
+							data['_user'] = user;
+							data['_type'] = type;
+							data['MD5sum'] = MD5sum;
+							data['_file'] = filename;
+							data['_published'] = new Date();
+							var filter = {_user : user, _type : type, Package : package, Version : version};
+							packages.findOneAndReplace(filter, data, {upsert: true, returnOriginal: true}, function(err, result) {
+								var original = result.value;
+								if(err){
+									next(createError(400, err));
+								} else if(original){
+									// delete the file if there are no other references to the hash
+									var orighash = original['MD5sum'];
+									packages.findOne({MD5sum : orighash}).then(function(doc){
+										if(doc){
+											console.log("Found other references, not deleting file: " + orighash);
+										} else {
+											bucket.delete(orighash).then(function(){
+												console.log("Deleted file " + orighash);
+											}, function(err){
+												console.log("Failed to delete " + orighash + ": " + err);
+											});
+										}
+									}).finally(function(){
+										res.send("Succesfully replaced " + filename + '\n');
+									});
+								} else {
+									res.send("Succesfully uploaded " + filename + '\n');
+								}
+							});
 						});
 					});
-				});
+				}
 			}
 		});
 	}

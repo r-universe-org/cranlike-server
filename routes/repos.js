@@ -2,11 +2,11 @@ const express = require('express');
 const createError = require('http-errors');
 const router = express.Router();
 const pkgfields = {_id: 0, Package:1, Version:1, Depends:1, Imports:1, LinkingTo:1, 
-	Suggests:1, License:1, NeedsCompilation:1, _user:1, _hash:1};
+	Suggests:1, License:1, NeedsCompilation:1, _user:1, MD5sum:1};
 
 function write_packages(data){
 	return data.map(function(x){
-		x.MD5sum = x['_hash'];
+		x.MD5sum = x['MD5sum'];
 		let keys = Object.keys(x);
 		return keys.map(function(key){
 			console.log(x[key])
