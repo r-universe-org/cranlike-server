@@ -150,7 +150,6 @@ router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', m
 					next(createError(400, 'MacOS Binary package has unexpected Platform:' + data.Built.Platform));
 				} else {
 					const MD5sum = md5file.sync(filepath);
-					data._rversion = Number.parseFloat(data.Built.R);
 					bucket.delete(MD5sum).then(function(){
 						console.log("Replacing previous file " + MD5sum);
 					}, function(err){

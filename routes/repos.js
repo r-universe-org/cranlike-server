@@ -2,7 +2,7 @@ const express = require('express');
 const createError = require('http-errors');
 const router = express.Router();
 const pkgfields = {_id: 0, Package:1, Version:1, Depends:1, Imports:1, LinkingTo:1, 
-	Suggests:1, License:1, NeedsCompilation:1, _user:1, MD5sum:1};
+	Suggests:1, License:1, NeedsCompilation:1, MD5sum:1};
 
 function write_packages(data){
 	return data.map(function(x){
@@ -13,7 +13,7 @@ function write_packages(data){
 			let val = x[key];
 			if(Array.isArray(val))
 				val = val.join(", ");
-			return key + ": " + val;
+			return key + ": " + val.replace('\n', ' ');
 		}).join("\n");
 	}).join("\n\n");
 }
@@ -28,8 +28,6 @@ function packages_index(query, format, res, next){
 				res.type('text/plain');
 				res.set('Cache-Control', 'no-cache');
 				res.send(text);
-			} else if(format == 'gz') {
-				//send as gzipped?
 			} else {
 				next(createError(400, "Unsupported format: " + format));
 			}
@@ -41,12 +39,14 @@ router.get('/:user/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
 	packages_index({_user: req.params.user, _type: 'src'}, req.params.ext, res, next);
 });
 
-router.get('/:user/bin/windows/contrib/PACKAGES', function(req, res, next) {
-	packages_index({_user: req.params.user, _type: 'win'}, req.params.ext, res, next);
+router.get('/:user/bin/windows/contrib/:rversion/PACKAGES', function(req, res, next) {
+	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.rversion}};
+	packages_index(query, req.params.ext, res, next);
 });
 
-router.get('/:user/bin/macosx/el-capitan/contrib/PACKAGES', function(req, res, next) {
- 	packages_index({_user: req.params.user, _type: 'mac'}, req.params.ext, res, next);
+router.get('/:user/bin/macosx/el-capitan/contrib/:rversion/PACKAGES', function(req, res, next) {
+	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.rversion}};
+ 	packages_index(query, req.params.ext, res, next);
 });
 
 router.get('/:user/old', function(req, res, next) {
