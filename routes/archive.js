@@ -23,7 +23,6 @@ mongodb.MongoClient.connect(uri, function(error, client) {
 /* Routers */
 router.get('/', function(req, res, next) {
 	packages.distinct('_user').then(function(x){
-		console.log(x);
 		res.send(x);
 	}, function(err){
 		next(createError(400, err));
@@ -86,7 +85,6 @@ router.get('/:user/bin', function(req, res, next) {
 router.get('/:user/archive', function(req, res, next) {
 	var user = req.params.user;
 	packages.distinct('Package', {_user : user}).then(function(x){
-		console.log(x);
 		res.send(x);
 	}, function(err){
 		next(createError(400, err));
@@ -97,7 +95,6 @@ router.get('/:user/archive/:package', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package
 	packages.distinct('Version', {_user : user, Package : package}).then(function(x){
-		console.log(x);
 		res.send(x);
 	}, function(err){
 		next(createError(400, err));
@@ -118,8 +115,6 @@ router.get('/:user/archive/:package/:version', function(req, res, next) {
 });
 
 router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
-	console.log(req.files);
-	console.log(req.body);
 	var user = req.params.user;
 	var package = req.params.package;
 	var version = req.params.version;
