@@ -47,16 +47,13 @@ router.get('/:user/src', function(req, res, next) {
 
 router.get('/:user/src/contrib', function(req, res, next) {
 	var user = req.params.user;
-	packages.find({_user: user, _type: 'src'}).toArray(function(err, docs){
-		if(err){
-			next(createError(400, err));
-		} else {
-			const map = docs.map(function(x){
-				return x.Package + "_" + x.Version + ".tar.gz";
-			});
-			res.send(map)
-		}
-	});
+	packages.find({_user: user, _type: 'src'})
+	.project({_id:0, Package:1, Version:1})
+    .transformStream({transform: function(x){
+    	x.file = x.Package + "_" + x.Version + ".tar.gz";
+    	return JSON.stringify(x) + '\n';
+    }})
+    .pipe(res.type('json'))
 });
 
 router.get('/:user/bin', function(req, res, next) {

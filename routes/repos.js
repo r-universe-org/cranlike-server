@@ -10,44 +10,31 @@ const pkgfields = {_id: 0, Package: 1, Version: 1, Depends: 1, Suggests: 1, Lice
 	OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1};
 
 /* Helpers */
+function doc_to_dcf(x){
+	let keys = Object.keys(x);
+	return keys.map(function(key){
+		let val = x[key];
+		if(Array.isArray(val))
+			val = val.join(", ");
+		return key + ": " + val.replace(/\s/gi, ' ');
+	}).join("\n");
+}
+
 function write_packages(data){
-	return data.map(function(x){
-		x.MD5sum = x['MD5sum'];
-		let keys = Object.keys(x);
-		return keys.map(function(key){
-			let val = x[key];
-			if(Array.isArray(val))
-				val = val.join(", ");
-			return key + ": " + val.replace(/\s/gi, ' ');
-		}).join("\n");
-	}).join("\n\n");
+	return data.map(doc_to_dcf).join("\n\n");
 }
 
 function packages_index(query, format, res, next){
-	packages.find(query).project(pkgfields).toArray(function(err, docs){
-		if(err){
-			next(createError(400, err));
-		} else {
-			const text = write_packages(docs);
-			if(!format){
-				res.type('text/plain');
-				res.set('Cache-Control', 'no-cache');
-				res.send(text);
-			} else if(format == 'gz') {
-				zlib.gzip(text, function(err, buffer){
-					if(err){
-						next(createError(400, "Failed to create gzip"));
-					} else {
-						res.type('application/x-gzip');
-						res.set('Cache-Control', 'no-cache');
-						res.send(buffer);
-					}
-				});
-			} else {
-				next(createError(404, "Unsupported format: " + format));
-			}
-		}
-	});
+	var input = packages.find(query).project(pkgfields).transformStream({transform: function(x){
+    	return doc_to_dcf(x) + '\n\n';
+    }});
+	if(!format){
+		input.pipe(res.type('text/plain').set('Cache-Control', 'no-cache'));
+	} else if(format == 'gz'){
+		input.pipe(zlib.createGzip()).pipe(res.type('application/x-gzip').set('Cache-Control', 'no-cache'));
+	} else {
+		next(createError(400, 'unknown format: ' + format));
+	}
 }
 
 /* Source packages */
