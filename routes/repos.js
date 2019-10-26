@@ -53,11 +53,13 @@ router.get('/:user/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
 router.get('/:user/src/contrib/:pkg.tar.gz', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
 	var query = {_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]};
-	packages.findOne(query, {project: {MD5sum: 1}}, function(err, docs){
+	packages.findOne(query, {project: {MD5sum:1, Redirect:1}}, function(err, docs){
 		if(err){
 			next(createError(400, err))
 		} else if(!docs){
 			next(createError(404, 'Package not found'));
+		} else if(docs.Redirect) {
+			res.status(301).redirect(docs.Redirect)
 		} else {
 			res.type('application/x-gzip');
 			bucket.openDownloadStream(docs.MD5sum).pipe(res);
