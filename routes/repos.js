@@ -13,7 +13,7 @@ function write_packages(data){
 			let val = x[key];
 			if(Array.isArray(val))
 				val = val.join(", ");
-			return key + ": " + val.replace('\n', ' ');
+			return key + ": " + val.replace(/\s/gi, ' ');
 		}).join("\n");
 	}).join("\n\n");
 }
