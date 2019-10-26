@@ -4,10 +4,22 @@ var express = require('express');
 var path = require('path');
 var logger = require('morgan');
 
+/* Database */
+const assert = require('assert');
+const mongodb = require('mongodb');
+
 /* Routers */
 var manRouter = require('./routes/man');
 var archiveRouter = require('./routes/archive');
 var reposRouter = require('./routes/repos');
+
+/* Connect to DB */
+mongodb.MongoClient.connect('mongodb://localhost:27017', function(error, client) {
+	assert.ifError(error);
+	const db = client.db('cranlike');
+	global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
+	global.packages = db.collection('packages');
+});
 
 /* Start App */
 var app = express();

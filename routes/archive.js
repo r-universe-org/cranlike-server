@@ -2,8 +2,6 @@
 const express = require('express');
 const createError = require('http-errors');
 const multer  = require('multer')
-const assert = require('assert');
-const mongodb = require('mongodb');
 const md5file = require('md5-file');
 const rdesc = require('rdesc-parser');
 const fs = require('fs');
@@ -11,14 +9,6 @@ const fs = require('fs');
 /* Local variables */
 const upload = multer({ dest: '/tmp/' })
 const router = express.Router();
-const uri = 'mongodb://localhost:27017';
-
-mongodb.MongoClient.connect(uri, function(error, client) {
-	assert.ifError(error);
-	const db = client.db('cranlike');
-	global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
-	global.packages = db.collection('packages');
-});
 
 /* Routers */
 router.get('/', function(req, res, next) {
