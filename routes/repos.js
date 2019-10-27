@@ -17,21 +17,23 @@ function doc_to_dcf(x){
 		if(Array.isArray(val))
 			val = val.join(", ");
 		return key + ": " + val.replace(/\s/gi, ' ');
-	}).join("\n");
+	}).join("\n") + "\n\n";
 }
 
-function write_packages(data){
-	return data.map(doc_to_dcf).join("\n\n");
+function doc_to_ndjson(x){
+	return JSON.stringify(x) + '\n';
 }
 
 function packages_index(query, format, res, next){
-	var input = packages.find(query).project(pkgfields).transformStream({transform: function(x){
-    	return doc_to_dcf(x) + '\n\n';
-    }});
+	var transform = (!format || format == 'gz') ? doc_to_dcf : doc_to_ndjson;
+	var input = packages.find(query).project(pkgfields).transformStream({transform: transform});
+	res.set('Cache-Control', 'no-cache');
 	if(!format){
-		input.pipe(res.type('text/plain').set('Cache-Control', 'no-cache'));
+		input.pipe(res.type('text/plain'));
 	} else if(format == 'gz'){
-		input.pipe(zlib.createGzip()).pipe(res.type('application/x-gzip').set('Cache-Control', 'no-cache'));
+		input.pipe(zlib.createGzip()).pipe(res.type('application/x-gzip'));
+	} else if(format == 'json'){
+		input.pipe(res.type('application/json'));
 	} else {
 		next(createError(400, 'unknown format: ' + format));
 	}
