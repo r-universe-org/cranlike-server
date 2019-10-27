@@ -146,7 +146,11 @@ router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', m
 							data['MD5sum'] = MD5sum;
 							data['_file'] = filename;
 							data['_published'] = new Date();
-							var filter = {_user : user, _type : type, Package : package, Version : version};
+
+							/* Currently replace the pervious version. Alternatively only replace the same version */
+							//var filter = {_user : user, _type : type, Package : package, Version : version};
+							/* Note if we keep old versions, the index functions need to filter only the latest version for each pkg */
+							var filter = {_user : user, _type : type, Package : package};
 							packages.findOneAndReplace(filter, data, {upsert: true, returnOriginal: true}, function(err, result) {
 								var original = result.value;
 								if(err){
