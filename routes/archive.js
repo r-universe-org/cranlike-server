@@ -147,9 +147,12 @@ router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', m
 							data['_file'] = filename;
 							data['_published'] = new Date();
 
-							/* Currently replace the pervious version. Alternatively only replace the same version */
+							/* Currently replace the pervious version of the pkg */
+							/* If we keep old versions, the index functions need to filter only the newest submission for each pkg */
+							/* This would replace only upload with the same version */
 							//var filter = {_user : user, _type : type, Package : package, Version : version};
-							/* Note if we keep old versions, the index functions need to filter only the latest version for each pkg */
+
+							/* Replace any other version of the package */
 							var filter = {_user : user, _type : type, Package : package};
 							packages.findOneAndReplace(filter, data, {upsert: true, returnOriginal: true}, function(err, result) {
 								var original = result.value;
