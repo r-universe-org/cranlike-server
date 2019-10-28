@@ -10,44 +10,37 @@ const fs = require('fs');
 const upload = multer({ dest: '/tmp/' })
 const router = express.Router();
 
+function error_cb(status, next) {
+	return function(err) {
+		next(createError(status, err));
+	}
+}
+
 /* Routers */
 router.get('/', function(req, res, next) {
 	packages.distinct('_user').then(function(x){
 		res.send(x);
-	}, function(err){
-		next(createError(400, err));
-	});
+	}).catch(error_cb(400, next));
 });
 
 router.get('/:user', function(req, res, next) {
-	var user = req.params.user;
-	packages.distinct('Package', {_user : user}).then(function(x){
-		if(x.length){
-			res.send(['archive', 'bin', 'old', 'src']);
-		} else {
-			next(createError(404, "No such user"));
-		}
-	}, function(err){
-		next(createError(400, err));
-	});
+	packages.distinct('Package', {_user : req.params.user}).then(function(x){
+		if(x.length == 0)
+			throw "No such user: " + req.params.user;	
+		res.send(['archive', 'bin', 'src']);
+	}).catch(error_cb(404, next));
 });
 
 router.get('/:user/src', function(req, res, next) {
-	var user = req.params.user;
-	packages.distinct('Package', {_user : user}).then(function(x){
-		if(x.length){
-			res.send(['contrib']);
-		} else {
-			next(createError(404, "No such user"));
-		}
-	}, function(err){
-		next(createError(400, err));
-	});
+	packages.distinct('Package', {_user : req.params.user}).then(function(x){
+		if(x.length == 0)
+			throw "No such user: " + req.params.user;		
+		res.send(['contrib']);
+	}).catch(error_cb(404, next));
 });
 
 router.get('/:user/src/contrib', function(req, res, next) {
-	var user = req.params.user;
-	packages.find({_user: user, _type: 'src'})
+	packages.find({_user: req.params.user, _type: 'src'})
 	.project({_id:0, Package:1, Version:1})
     .transformStream({transform: function(x){
     	x.file = x.Package + "_" + x.Version + ".tar.gz";
@@ -57,25 +50,18 @@ router.get('/:user/src/contrib', function(req, res, next) {
 });
 
 router.get('/:user/bin', function(req, res, next) {
-	var user = req.params.user;
-	packages.distinct('Package', {_user : user}).then(function(x){
-		if(x.length){
-			res.send(['windows', 'macosx']);
-		} else {
-			next(createError(404, "No such user"));
-		}
-	}, function(err){
-		next(createError(400, err));
-	});
+	packages.distinct('Package', {_user : req.params.user}).then(function(x){
+		if(x.length == 0)
+			throw "No such user: " + req.params.user;
+		res.send(['windows', 'macosx']);
+	}).catch(error_cb(400, next));
 });
 
 router.get('/:user/archive', function(req, res, next) {
 	var user = req.params.user;
 	packages.distinct('Package', {_user : user}).then(function(x){
 		res.send(x);
-	}, function(err){
-		next(createError(400, err));
-	});
+	}).catch(error_cb(400, next));
 });
 
 router.get('/:user/archive/:package', function(req, res, next) {
@@ -83,22 +69,51 @@ router.get('/:user/archive/:package', function(req, res, next) {
 	var package = req.params.package
 	packages.distinct('Version', {_user : user, Package : package}).then(function(x){
 		res.send(x);
-	}, function(err){
-		next(createError(400, err));
-	});
+	}).catch(error_cb(400, next));
 });
 
 router.get('/:user/archive/:package/:version', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package
 	var version = req.params.version;
-	packages.find({_user : user, Package : package, Version : version}).toArray(function(err, docs){
-		if(err){
-			next(createError(400, err));
+	packages.find({_user : user, Package : package, Version : version}).toArray.then(function(docs){
+		res.send(docs);
+	}).catch(error_cb(400, next));
+});
+
+//Remove file from bucket if there are no more references to it
+function delete_file(MD5sum){
+	return packages.findOne({MD5sum : MD5sum}).then(function(doc){
+		if(doc){
+			console.log("Found other references, not deleting file: " + MD5sum);
 		} else {
-			res.send(docs);
+			bucket.delete(MD5sum).then(function(){
+				console.log("Deleted file " + MD5sum);
+			}, function(err){
+				console.log("Failed to delete " + MD5sum + ": " + err);
+			});
 		}
 	});
+}
+
+router.delete('/:user/archive/:package/:version?/:type?', function(req, res, next){
+	var user = req.params.user;
+	var package = req.params.package;
+	var query = {_user: req.params.user, Package: req.params.package};
+	if(req.params.version)
+		query.Version = req.params.version
+	if(req.params.type)
+		query._type = req.params.type;
+	packages.find(query).project({_id:1, MD5sum:1,}).toArray().then(function(docs){
+		var promises = docs.map(function(doc){
+			return packages.deleteOne({_id: doc['_id']}).then(function(){
+				return delete_file(doc.MD5sum);
+			});
+		});
+		Promise.all(promises).then(function(){
+			res.send(docs);
+		});
+	}).catch(error_cb(400, next));
 });
 
 router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
@@ -154,30 +169,16 @@ router.post('/:user/archive/:package/:version', upload.fields([{ name: 'file', m
 
 							/* Replace any other version of the package */
 							var filter = {_user : user, _type : type, Package : package};
-							packages.findOneAndReplace(filter, data, {upsert: true, returnOriginal: true}, function(err, result) {
+							packages.findOneAndReplace(filter, data, {upsert: true, returnOriginal: true}).then(function(result) {
 								var original = result.value;
-								if(err){
-									next(createError(400, err));
-								} else if(original){
-									// delete the file if there are no other references to the hash
-									var orighash = original['MD5sum'];
-									packages.findOne({MD5sum : orighash}).then(function(doc){
-										if(doc){
-											console.log("Found other references, not deleting file: " + orighash);
-										} else {
-											bucket.delete(orighash).then(function(){
-												console.log("Deleted file " + orighash);
-											}, function(err){
-												console.log("Failed to delete " + orighash + ": " + err);
-											});
-										}
-									}).finally(function(){
+								if(original){
+									delete_file(original['MD5sum']).finally(function(){
 										res.send("Succesfully replaced " + filename + '\n');
 									});
 								} else {
 									res.send("Succesfully uploaded " + filename + '\n');
 								}
-							});
+							}).catch(error_cb(400, next));
 						});
 					});
 				}
