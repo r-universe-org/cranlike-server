@@ -3,26 +3,29 @@
 
 ## SYNOPSIS
 
-`GET /`&lt;*user*>`/src/contrib`  
-`GET /`&lt;*user*>`/bin/windows/contrib`  
-`GET /`&lt;*user*>`/bin/macosx/el-capitan/contrib/`  
+`GET,POST,DELETE`  
+&nbsp; `/api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  
 
-`GET /`&lt;*user*>`/old/`&lt;*date*>`/src/contrib`  
-`GET /`&lt;*user*>`/old/`&lt;*date*>`/bin/windows/contrib`  
-`GET /`&lt;*user*>`/old/`&lt;*date*>`/bin/macosx/el-capitan/contrib/`  
-
-`GET,PUT,DELETE /archive/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>  
+`GET`  
+&nbsp; `/repos/`&lt;*user*>`/src/contrib`  
+&nbsp; `/repos/`&lt;*user*>`/bin/windows/contrib`  
+&nbsp; `/repos/`&lt;*user*>`/bin/macosx/el-capitan/contrib/`  
 
 
 ## DESCRIPTION
 
-**cranlike** is a package server that provides a API for publishing
-and downloading R packages. Packages can be filtered by user and date.
+**cranlike** is a package server providing a simple API for storing
+R packages and hosting cran-like repositories. 
 
-In addition it automatically generates the required repository pages 
-and `PACKAGES.gz` index files from the package database. This allows 
-R users to install packages from a particular author or organization 
-using only the repo parameter in `install.packages()`.
+Packages are published in the repository of a particular user or 
+organization, and the server automatically generates the required 
+repository index files from the database. 
+This allows R users to install packages from a particular author or 
+organization using only the repo parameter in `install.packages()`.
+
+The implementation is designed to be fast and extensible, with the
+potential expose additional filters or services, and scale up to
+large repositories.
 
 ## API
 
@@ -41,5 +44,4 @@ using only the repo parameter in `install.packages()`.
 
 ## EXAMPLES
 
-install.packages('curl', repos = '[https://cran.dev/jeroen](https://cran.dev/latest/jeroen)')  
-install.packages('R6', repos = '[https://cran.dev/any/old/2019-01-01](https://cran.dev/2019-01-01/any)')
+install.packages('curl', repos = "https://mycorp.org/repos/jeroen")  

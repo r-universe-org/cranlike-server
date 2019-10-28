@@ -33,34 +33,91 @@ function doc_to_ndjson(x){
 	return JSON.stringify(x) + '\n';
 }
 
+function doc_to_filename(x){
+	const ext = {
+		src: ".tar.gz",
+		win: ".zip",
+		mac: ".tgz"
+	};
+	return x.Package + "_" + x.Version + ext[x['_type']] + '\n';
+}
+
 function packages_index(query, format, res, next){
-	var transform = (!format || format == 'gz') ? doc_to_dcf : doc_to_ndjson;
-	var input = packages.find(query).project(pkgfields).transformStream({transform: transform});
+	var input = packages.find(query).project(pkgfields);
 	res.set('Cache-Control', 'no-cache');
 	if(!format){
-		input.pipe(res.type('text/plain'));
+		input
+			.transformStream({transform: doc_to_dcf})
+			.pipe(res.type('text/plain'));
 	} else if(format == 'gz'){
-		input.pipe(zlib.createGzip()).pipe(res.type('application/x-gzip'));
+		input
+			.transformStream({transform: doc_to_dcf})
+			.pipe(zlib.createGzip())
+			.pipe(res.type('application/x-gzip'));
 	} else if(format == 'json'){
-		input.pipe(res.type('application/json'));
+		input
+			.transformStream({transform: doc_to_ndjson})
+			.pipe(res.type('application/json'));
 	} else {
 		next(createError(400, 'unknown format: ' + format));
 	}
 }
 
-/* Repository index files */
+function html_index(query, res){
+	packages
+		.find(query)
+		.project({_id:0, Package:1, Version:1, _type:1})
+		.transformStream({transform: doc_to_filename})
+		.pipe(res.type('text/plain'));
+}
+
+function count_by_built(type){
+	return packages.aggregate([
+		{$match: {_type : type}},
+		{$group:{_id: "$Built.R", count: { $sum: 1 }}}
+	])
+	.project({_id: 0, R: "$_id", count: 1})
+	.transformStream({transform: doc_to_ndjson})	
+}
+
+/* CRAN-like index for source packages */
 router.get('/:user/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
 	packages_index({_user: req.params.user, _type: 'src'}, req.params.ext, res, next);
 });
 
+router.get('/:user/src/contrib/', function(req, res, next) {
+	packages_index({_user: req.params.user, _type: 'src'}, 'json', res, next);
+});
+
+/* CRAN-like index for Windows packages */
 router.get('/:user/bin/windows/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}};
 	packages_index(query, req.params.ext, res, next);
 });
 
+router.get('/:user/bin/windows/contrib/:built/', function(req, res, next) {
+	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}};
+	packages_index(query, 'json', res, next);
+});
+
+/* CRAN-like index for MacOS packages */
 router.get('/:user/bin/macosx/el-capitan/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}};
 	packages_index(query, req.params.ext, res, next);
+});
+
+router.get('/:user/bin/macosx/el-capitan/contrib/:built/', function(req, res, next) {
+	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}};
+	packages_index(query, 'json', res, next);
+});
+
+/* Index available R builds for binary pkgs */
+router.get('/:user/bin/windows/contrib', function(req, res, next) {
+	count_by_built('win').pipe(res);
+});
+
+router.get('/:user/bin/macosx/el-capitan/contrib', function(req, res, next) {
+	count_by_built('mac').pipe(res);
 });
 
 /* Download package files */

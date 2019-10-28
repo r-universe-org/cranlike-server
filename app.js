@@ -10,7 +10,7 @@ const mongodb = require('mongodb');
 
 /* Routers */
 var manRouter = require('./routes/man');
-var archiveRouter = require('./routes/archive');
+var apiRouter = require('./routes/api');
 var reposRouter = require('./routes/repos');
 
 /* Connect to DB */
@@ -33,9 +33,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use('/', manRouter);
 app.use('/man', manRouter);
-app.use('/', archiveRouter);
-app.use('/', reposRouter);
+app.use('/api', apiRouter);
+app.use('/repos', reposRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
