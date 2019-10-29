@@ -14,7 +14,9 @@ var apiRouter = require('./routes/api');
 var reposRouter = require('./routes/repos');
 
 /* Connect to DB */
-mongodb.MongoClient.connect('mongodb://localhost:27017', function(error, client) {
+const HOST = process.env.CRANLIKE_MONGODB_SERVER || 'localhost';
+const PORT = process.env.CRANLIKE_MONGODB_PORT || 27017;
+mongodb.MongoClient.connect('mongodb://' + HOST + ':' + PORT, function(error, client) {
 	assert.ifError(error);
 	const db = client.db('cranlike');
 	global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
