@@ -16,7 +16,11 @@ var reposRouter = require('./routes/repos');
 /* Connect to DB */
 const HOST = process.env.CRANLIKE_MONGODB_SERVER || 'localhost';
 const PORT = process.env.CRANLIKE_MONGODB_PORT || 27017;
-mongodb.MongoClient.connect('mongodb://' + HOST + ':' + PORT, function(error, client) {
+const USER = process.env.CRANLIKE_MONGODB_USERNAME || 'root';
+const PASS = process.env.CRANLIKE_MONGODB_PASSWORD;
+const AUTH = PASS ? (USER + ':' + PASS + "@") : "";
+const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
+mongodb.MongoClient.connect(URL, function(error, client) {
 	assert.ifError(error);
 	const db = client.db('cranlike');
 	global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
