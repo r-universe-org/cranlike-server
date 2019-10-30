@@ -1,6 +1,8 @@
 {
   "name": "cranlike",
   "version": "0.0.3",
+  "author" : "Jeroen Ooms <jeroen@berkeley.edu>",
+  "license": "MIT",
   "scripts": {
     "start": "node ./bin/www"
   },
