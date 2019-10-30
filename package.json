@@ -1,10 +1,15 @@
 {
   "name": "cranlike",
   "version": "0.0.3",
+  "description" : "High-performance R package server",
   "author" : "Jeroen Ooms <jeroen@berkeley.edu>",
   "license": "MIT",
   "scripts": {
     "start": "node ./bin/www"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jeroen/cranlike.app"
   },
   "dependencies": {
     "debug": "~2.6.9",
