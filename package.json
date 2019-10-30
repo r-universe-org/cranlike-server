@@ -1,8 +1,8 @@
 {
   "name": "cranlike",
-  "version": "0.0.3",
-  "description" : "High-performance R package server",
-  "author" : "Jeroen Ooms <jeroen@berkeley.edu>",
+  "version": "0.0.4",
+  "description": "High-performance R package server",
+  "author": "Jeroen Ooms <jeroen@berkeley.edu>",
   "license": "MIT",
   "scripts": {
     "start": "node ./bin/www"
@@ -12,11 +12,11 @@
     "url": "git://github.com/jeroen/cranlike.app"
   },
   "dependencies": {
-    "debug": "~2.6.9",
-    "express": "~4.16.1",
+    "debug": "^4.1.1",
+    "express": "^4.17.1",
     "fs": "0.0.1-security",
     "gunzip-maybe": "^1.4.1",
-    "http-errors": "~1.6.3",
+    "http-errors": "^1.7.3",
     "marked": "^0.7.0",
     "md5-file": "^4.0.0",
     "mongodb": "^3.3.3",
