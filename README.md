@@ -62,13 +62,15 @@ We don't store raw files on disk. To read raw data from the db in R you can use 
 
 ```r
 library(mongolite)
-packages <- mongo(db = 'cranlike', collection = 'packages')
+packages <- mongolite::mongo(db = 'cranlike', collection = 'packages',
+  url = "mongodb://root:example@localhost")
 packages$find()
 ```
 
 To inspect the table with the files:
 
 ```r
-bucket <- gridfs(db = 'cranlike', prefix = 'files')
+bucket <- mongolite::gridfs(db = 'cranlike', prefix = 'files',
+  url = "mongodb://root:example@localhost")
 bucket$find()
 ```
