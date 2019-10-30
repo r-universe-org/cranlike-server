@@ -1,3 +1,4 @@
 #!/bin/sh
 # npm install
-DEBUG=cranlike:* npm start
+trap 'kill $(jobs -p)' EXIT
+DEBUG=cranlike:* mongod & sleep 2 & npm start

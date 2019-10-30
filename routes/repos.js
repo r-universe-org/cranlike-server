@@ -71,14 +71,48 @@ function html_index(query, res){
 		.pipe(res.type('text/plain'));
 }
 
-function count_by_built(type){
+function count_by_user(){
 	return packages.aggregate([
-		{$match: {_type : type}},
+		{$group:{_id: "$_user", count: { $sum: 1 }}}
+	])
+	.project({_id: 0, user: "$_id", count: 1})
+	.transformStream({transform: doc_to_ndjson});
+}
+
+function count_by_type(user){
+	return packages.aggregate([
+		{$match: {_user: user}},
+		{$group:{_id: "$_type", count: { $sum: 1 }}}
+	])
+	.project({_id: 0, type: "$_id", count: 1})
+	.transformStream({transform: function(x){
+		const dirname = {
+			src : 'src/contrib',
+			win : 'bin/windows/contrib',
+			mac : 'bin/macosx/el-capitan/contrib/'
+		};
+		x.path = dirname[x.type];
+		return doc_to_ndjson(x);
+	}});
+}
+
+function count_by_built(user, type){
+	return packages.aggregate([
+		{$match: {_user: user, _type : type}},
 		{$group:{_id: "$Built.R", count: { $sum: 1 }}}
 	])
 	.project({_id: 0, R: "$_id", count: 1})
-	.transformStream({transform: doc_to_ndjson})	
+	.transformStream({transform: doc_to_ndjson});
 }
+
+/* Copied from api.js */
+router.get('/', function(req, res, next) {
+	count_by_user().pipe(res);
+});
+
+router.get('/:user', function(req, res, next) {
+	count_by_type(req.params.user).pipe(res);
+});
 
 /* CRAN-like index for source packages */
 router.get('/:user/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
@@ -113,11 +147,11 @@ router.get('/:user/bin/macosx/el-capitan/contrib/:built/', function(req, res, ne
 
 /* Index available R builds for binary pkgs */
 router.get('/:user/bin/windows/contrib', function(req, res, next) {
-	count_by_built('win').pipe(res);
+	count_by_built(req.params.user, 'win').pipe(res);
 });
 
 router.get('/:user/bin/macosx/el-capitan/contrib', function(req, res, next) {
-	count_by_built('mac').pipe(res);
+	count_by_built(req.params.user, 'mac').pipe(res);
 });
 
 /* Download package files */
