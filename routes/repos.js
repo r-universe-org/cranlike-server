@@ -57,7 +57,7 @@ function packages_index(query, format, res, next){
 	} else if(format == 'json'){
 		input
 			.transformStream({transform: doc_to_ndjson})
-			.pipe(res.type('application/json'));
+			.pipe(res.type('application/x-ndjson'));
 	} else {
 		next(createError(404, 'Unknown PACKAGES format: ' + format));
 	}
