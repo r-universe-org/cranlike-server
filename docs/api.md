@@ -29,18 +29,36 @@ large repositories.
 
 ## API
 
-* `GET /`  
+* `GET /man`  
   List available users / organizations.
 
-* `GET /` &lt;*user*> `/ {src,bin} /`  
+* `GET /repos/`&lt;*user*>`/`  
   CRAN-like repository for packages published by a given author
   or organization. Use `any` for packages from all users.
 
-* `GET /` &lt;*user*>  `/ old /` &lt;*date*> `/ {src,bin} /`  
-  CRAN-like repository for user as it was on date (in `yyyy-mm-dd`).
+* `GET /api/`  
+  List available users / organizations.
 
-* `GET,PUT,DELETE / archive /` &lt;*user*> `/` &lt;*package*> `/` &lt;*version*> `/`  
-  CRUD API to upload and download package files to the server.
+* `GET /api/`&lt;*user*>`/`  
+  List available packages from <*user*>.
+
+* `GET /api/`&lt;*user*>`/`&lt;*package*>`/`  
+  List available versions for <*package*> from <*user*>.
+
+* `GET /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`  
+  List available files for <*package*> <*version*> from <*user*>.
+
+* `POST /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`  
+  Upload a package file via multipart form-data in the `file` field. 
+  The <*type*> must be one of `{src, mac, win}`.
+
+* `PUT /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`&lt;*md5*>` `   
+  Upload a package as raw file post. The <*type*> must be one of `{src, mac, win}`,
+  and <*md5*> must be a string with the md5 hash of the file.
+
+* `DELETE /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`    
+  Delete one or more package files. Both <*version*> and <*type*> are optional,
+  if unspecified all matches are deleted.
 
 ## EXAMPLES
 

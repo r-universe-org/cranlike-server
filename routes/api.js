@@ -23,8 +23,6 @@ function delete_file(MD5sum){
 		} else {
 			return bucket.delete(MD5sum).then(function(){
 				console.log("Deleted file " + MD5sum);
-			}, function(err){
-				console.log("Failed to delete " + MD5sum + ": " + err);
 			});
 		}
 	});
@@ -63,13 +61,14 @@ router.get('/:user/:package', function(req, res, next) {
 	}).catch(error_cb(400, next));
 });
 
-router.get('/:user/:package/:version', function(req, res, next) {
+router.get('/:user/:package/:version/:type?', function(req, res, next) {
 	var user = req.params.user;
-	var package = req.params.package
+	var package = req.params.package;
 	var version = req.params.version;
-	packages.find({_user : user, Package : package, Version : version}).toArray().then(function(docs){
-		res.send(docs);
-	}).catch(error_cb(400, next));
+	var query = {_user : user, Package : package, Version : version};
+	if(req.params.type)
+		query._type = req.params.type;	
+	packages.find(query).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
 });
 
 router.delete('/:user/:package/:version?/:type?', function(req, res, next){
@@ -179,9 +178,7 @@ router.put('/:user/:package/:version/:type/:md5', function(req, res, next){
 				}
 			}).then(() => res.send(description));	
 		}).catch(function(e){
-			return delete_file(md5).then(function(){
-				throw e;
-			});
+			return delete_file(md5).then(()=>{throw e});
 		});
 	}).catch(error_cb(400, next));
 });
@@ -214,9 +211,7 @@ router.post('/:user/:package/:version/:type', upload.fields([{ name: 'file', max
 				}
 			}).then(() => res.send(description));	
 		}).catch(function(e){
-			return delete_file(md5).then(function(){
-				throw e;
-			});
+			return delete_file(md5).then(()=>{throw e});
 		});
 	}).catch(error_cb(400, next)).then(function(){
 		fs.unlink(filepath, () => console.log("Deleted tempfile: " + filepath));

@@ -105,6 +105,18 @@ function count_by_built(user, type){
 	.transformStream({transform: doc_to_ndjson});
 }
 
+function send_binary(query, content_type, res, next){
+	packages.findOne(query, {project: {MD5sum: 1, Redirect: 1}}).then(function(docs){
+		if(!docs){
+			next(createError(404, 'Package not found'));
+		} else if(docs.Redirect) {
+			res.status(301).redirect(docs.Redirect)
+		} else {
+			bucket.openDownloadStream(docs.MD5sum).pipe(res.type(content_type));
+		}
+	}).catch(error_cb(400, next));	
+}
+
 /* Copied from api.js */
 router.get('/', function(req, res, next) {
 	count_by_user().pipe(res);
@@ -158,45 +170,21 @@ router.get('/:user/bin/macosx/el-capitan/contrib', function(req, res, next) {
 router.get('/:user/src/contrib/:pkg.tar.gz', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
 	var query = {_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]};
-	packages.findOne(query, {project: {MD5sum:1, Redirect:1}}).then(function(docs){
-		if(!docs){
-			next(createError(404, 'Package not found'));
-		} else if(docs.Redirect) {
-			res.status(301).redirect(docs.Redirect)
-		} else {
-			bucket.openDownloadStream(docs.MD5sum).pipe(res.type('application/x-gzip'));
-		}
-	}).catch(error_cb(400, next));
+	send_binary(query, 'application/x-gzip', res, next);
 });
 
 router.get('/:user/bin/windows/contrib/:built/:pkg.zip', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
 	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built},
 		Package: pkg[0], Version: pkg[1]};
-	packages.findOne(query, {project: {MD5sum: 1}}).then(function(docs){
-		if(!docs){
-			next(createError(404, 'Package not found'));
-		} else if(docs.Redirect) {
-			res.status(301).redirect(docs.Redirect)
-		} else {
-			bucket.openDownloadStream(docs.MD5sum).pipe(res.type('application/zip'));
-		}
-	}).catch(error_cb(400, next));
+	send_binary(query, 'application/zip', res, next);
 });
 
 router.get('/:user/bin/macosx/el-capitan/contrib/:built/:pkg.tgz', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
 	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
 		Package: pkg[0], Version: pkg[1]};
-	packages.findOne(query, {project: {MD5sum: 1}}).then(function(docs){
-		if(!docs){
-			next(createError(404, 'Package not found'));
-		} else if(docs.Redirect) {
-			res.status(301).redirect(docs.Redirect)
-		} else {
-			bucket.openDownloadStream(docs.MD5sum).pipe(res.type('application/x-gzip'));
-		}
-	}).catch(error_cb(400, next));
+	send_binary(query, 'application/x-gzip', res, next);
 });
 
 module.exports = router;
