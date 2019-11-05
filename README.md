@@ -54,7 +54,7 @@ docker-compose up
 Alternatively if you locally have `mongodb` and `nodejs` installed you can use:
 
 ```
-./debug.sh
+./run-debug.sh
 ```
 
 ## Debugging the database
