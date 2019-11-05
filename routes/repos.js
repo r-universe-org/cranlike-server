@@ -59,7 +59,7 @@ function packages_index(query, format, res, next){
 			.transformStream({transform: doc_to_ndjson})
 			.pipe(res.type('application/json'));
 	} else {
-		next(createError(400, 'unknown format: ' + format));
+		next(createError(404, 'Unknown PACKAGES format: ' + format));
 	}
 }
 
