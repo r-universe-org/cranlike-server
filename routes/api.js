@@ -179,79 +179,48 @@ router.put('/:user/:package/:version/:type/:md5', function(req, res, next){
 				}
 			}).then(() => res.send(description));	
 		}).catch(function(e){
-			delete_file(md5);
-			throw e;
-		})
+			return delete_file(md5).then(function(){
+				throw e;
+			});
+		});
 	}).catch(error_cb(400, next));
 });
 
-router.post('/:user/:package/:version', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
+router.post('/:user/:package/:version/:type', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
+	if(!req.files.file || !req.files.file[0]){
+		return next(createError(400, "Missing parameter 'file' in upload"));
+	}	
 	var user = req.params.user;
 	var package = req.params.package;
 	var version = req.params.version;
-	var type = req.body.type;
-	if(['src', 'win', 'mac'].indexOf(type) < 0){
-		next(createError(400, "Parameter 'type' must be one of src, win, mac"));
-	} else if(!req.files.file || !req.files.file[0]){
-		next(createError(400, "Missing parameter 'file' in upload"));
-	} else {
-		var filepath = req.files.file[0].path;
-		var filename = req.files.file[0].originalname;
-		rdesc.parse_file(filepath, function(err, data) {
-			if(err){
-				next(createError(400, err));
-			} else if(data.Package != package || data.Version != version) {
-				next(createError(400, 'Package name or version does not match upload'));
-			} else { 
-				if(type == 'src' && data.Built) {
-					next(createError(400, 'Source package has a "built" field (binary pkg?)'));
-				} else if((type == 'win' || type == 'mac') && !data.Built) {
-					next(createError(400, 'Binary package is does not have valid Built field'));
-				} else if(type == 'win' && data.Built.OStype != 'windows') {
-					next(createError(400, 'Windows Binary package has unexpected OStype:' + data.Built.OStype));
-				} else if(type == 'mac' && data.Built.OStype != 'unix') {
-					next(createError(400, 'MacOS Binary package has unexpected OStype:' + data.Built.OStype));
-				} else if(type == 'mac' && data.Built.Platform && !data.Built.Platform.match('apple')) {
-					//Built.Platform is missing for binary pkgs without copiled code
-					next(createError(400, 'MacOS Binary package has unexpected Platform:' + data.Built.Platform));
-				} else {
-					const MD5sum = md5file.sync(filepath);
-					var stream = fs.createReadStream(filepath);
-					crandb_store_file(stream, MD5sum, filename).then(function(){
-						data['_user'] = user;
-						data['_type'] = type;
-						data['MD5sum'] = MD5sum;
-						data['_file'] = filename;
-						data['_published'] = new Date();
-						/* Currently replace the pervious version of the pkg */
-						/* If we keep old versions, the index functions need to filter only the newest submission for each pkg */
-						/* This would replace only upload with the same version */
-						//var filter = {_user : user, _type : type, Package : package, Version : version};
-
-						/* Replace any other version of the package */
-						var filter = {_user : user, _type : type, Package : package};
-						packages.findOneAndReplace(filter, data, {upsert: true, returnOriginal: true}).then(function(result) {
-							var original = result.value;
-							if(original){
-								return delete_file(original['MD5sum']).finally(function(){
-									res.send("Succesfully replaced " + filename + '\n');
-								});
-							} else {
-								res.send("Succesfully uploaded " + filename + '\n');
-							}
-						});				
-					}).finally(function(){
-						fs.unlink(filepath, function(){
-							console.log("Deleted tempfile: " + filepath);
-						});
-					}).catch(error_cb(400, next));
+	var type = req.params.type;
+	var query = {_user : user, _type : type, Package : package};
+	var filepath = req.files.file[0].path;
+	var filename = req.files.file[0].originalname;
+	var md5 = md5file.sync(filepath);
+	var stream = fs.createReadStream(filepath);
+	crandb_store_file(stream, md5, filename).then(function(){
+		return read_description(bucket.openDownloadStream(md5)).then(function(description){
+			description['_user'] = user;
+			description['_type'] = type;
+			description['_file'] = filename;
+			description['_published'] = new Date();
+			description['MD5sum'] = md5;
+			validate_description(description, package, version, type);
+			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
+				var original = result.value;
+				if(original){
+					return delete_file(original['MD5sum']);
 				}
-			}
+			}).then(() => res.send(description));	
+		}).catch(function(e){
+			return delete_file(md5).then(function(){
+				throw e;
+			});
 		});
-	}
+	}).catch(error_cb(400, next)).then(function(){
+		fs.unlink(filepath, () => console.log("Deleted tempfile: " + filepath));
+	});
 });
-
-
-
 
 module.exports = router;
