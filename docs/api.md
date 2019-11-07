@@ -50,11 +50,14 @@ large repositories.
 
 * `POST /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`  
   Upload a package file via multipart form-data in the `file` field. 
-  The <*type*> must be one of `{src, mac, win}`.
+  The <*type*> must be one of `{src,mac,win}`. Additionional form-fields
+  starting with `Builder-` are stored as builder properties.
+
 
 * `PUT /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`&lt;*md5*>` `   
-  Upload a package as raw file post. The <*type*> must be one of `{src, mac, win}`,
-  and <*md5*> must be a string with the md5 hash of the file.
+  Upload a package as raw file post. The <*type*> must be one of `{src,mac,win}`,
+  and <*md5*> must be a string with the md5 hash of the file. 
+  Additionional request headers starting with `Builder-` are stored as builder properties.
 
 * `DELETE /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`    
   Delete one or more package files. Both <*version*> and <*type*> are optional,
