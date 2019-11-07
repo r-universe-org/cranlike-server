@@ -157,7 +157,7 @@ function validate_description(data, package, version, type){
 
 function filter_keys(x, regex){
 	var out = {};
-	Object.keys(x).filter(key=>key.match(regex)).forEach(key=>out[key.toLowerCase()]=x[key]);
+	Object.keys(x).filter(key=>key.match(regex)).forEach(key=>out[key.replace(regex, "").toLowerCase()]=x[key]);
 	return out;
 }
 
