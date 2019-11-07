@@ -155,6 +155,12 @@ function validate_description(data, package, version, type){
 	}
 }
 
+function filter_keys(x, regex){
+	var out = {};
+	Object.keys(x).filter(key=>key.match(regex)).forEach(key=>out[key.toLowerCase()]=x[key]);
+	return out;
+}
+
 router.put('/:user/:package/:version/:type/:md5', function(req, res, next){
 	var user = req.params.user;
 	var package = req.params.package;
@@ -169,6 +175,7 @@ router.put('/:user/:package/:version/:type/:md5', function(req, res, next){
 			description['_type'] = type;
 			description['_file'] = filename;
 			description['_published'] = new Date();
+			description['_builder'] = filter_keys(req.headers, /^builder-/gi);
 			description['MD5sum'] = md5;
 			validate_description(description, package, version, type);
 			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
@@ -186,7 +193,7 @@ router.put('/:user/:package/:version/:type/:md5', function(req, res, next){
 router.post('/:user/:package/:version/:type', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
 	if(!req.files.file || !req.files.file[0]){
 		return next(createError(400, "Missing parameter 'file' in upload"));
-	}	
+	}
 	var user = req.params.user;
 	var package = req.params.package;
 	var version = req.params.version;
@@ -202,6 +209,7 @@ router.post('/:user/:package/:version/:type', upload.fields([{ name: 'file', max
 			description['_type'] = type;
 			description['_file'] = filename;
 			description['_published'] = new Date();
+			description['_builder'] = filter_keys(req.body, /^builder-/gi);
 			description['MD5sum'] = md5;
 			validate_description(description, package, version, type);
 			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
