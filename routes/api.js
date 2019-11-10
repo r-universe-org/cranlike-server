@@ -64,10 +64,11 @@ router.get('/:user/:package', function(req, res, next) {
 router.get('/:user/:package/:version/:type?', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package;
-	var version = req.params.version;
-	var query = {_user : user, Package : package, Version : version};
+	var query = {_user : user, Package : package};
+	if(req.params.version != "any")
+		query.Version = req.params.version;
 	if(req.params.type)
-		query._type = req.params.type;	
+		query._type = req.params.type;
 	packages.find(query).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
 });
 
