@@ -187,14 +187,17 @@ router.get('/:user/bin/macosx/el-capitan/contrib/:built/:pkg.tgz', function(req,
 	send_binary(query, 'application/x-gzip', res, next);
 });
 
-/* Aggregation stuff */
-router.get('/:user/checks', function(req, res, next) {
+/* Public aggregated data (subject to change) */
+router.get('/:user/stats/checks', function(req, res, next) {
 	packages.aggregate([{
 		$group : {
 			_id : { package:'$Package', version:'$Version', maintainer: '$Maintainer'},
 			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built' }}
-		},
-	}])
+		}},{
+		$project: {
+			_id: 0, package: '$_id.package', version:'$_id.version', maintainer:'$_id.maintainer', runs:1}
+		}
+	])
 	.transformStream({transform: doc_to_ndjson})
 	.pipe(res.type('text/plain'));
 });
