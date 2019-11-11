@@ -187,4 +187,17 @@ router.get('/:user/bin/macosx/el-capitan/contrib/:built/:pkg.tgz', function(req,
 	send_binary(query, 'application/x-gzip', res, next);
 });
 
+/* CRAN-like index for source packages */
+router.get('/:user/checks', function(req, res, next) {
+	packages.aggregate([{
+		$group : {
+			_id : { package:'$Package', version:'$Version', maintainer: '$Maintainer'},
+			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built' }}
+		},
+	}])
+	.transformStream({transform: doc_to_ndjson})
+	.pipe(res.type('text/plain'));
+});
+
+
 module.exports = router;

@@ -7,7 +7,7 @@ const rdesc = require('rdesc-parser');
 const fs = require('fs');
 
 /* Local variables */
-const upload = multer({ dest: '/tmp/' })
+const upload = multer({ dest: '/tmp/' });
 const router = express.Router();
 
 /* Error generator */
