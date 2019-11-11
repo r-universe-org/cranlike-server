@@ -187,7 +187,7 @@ router.get('/:user/bin/macosx/el-capitan/contrib/:built/:pkg.tgz', function(req,
 	send_binary(query, 'application/x-gzip', res, next);
 });
 
-/* CRAN-like index for source packages */
+/* Aggregation stuff */
 router.get('/:user/checks', function(req, res, next) {
 	packages.aggregate([{
 		$group : {
@@ -198,6 +198,5 @@ router.get('/:user/checks', function(req, res, next) {
 	.transformStream({transform: doc_to_ndjson})
 	.pipe(res.type('text/plain'));
 });
-
 
 module.exports = router;
