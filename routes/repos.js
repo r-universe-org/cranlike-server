@@ -192,7 +192,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
 	packages.aggregate([{
 		$group : {
 			_id : { package:'$Package', version:'$Version', maintainer: '$Maintainer'},
-			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built' }}
+			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
 		}},{
 		$project: {
 			_id: 0, package: '$_id.package', version:'$_id.version', maintainer:'$_id.maintainer', runs:1}
