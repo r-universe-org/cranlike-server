@@ -40,20 +40,13 @@ function delete_by_query(query){
 	});
 }
 
-/* Routers */
-router.get('/', function(req, res, next) {
-	packages.distinct('_user').then(function(x){
-		res.send(x);
-	}).catch(error_cb(400, next));
-});
-
-router.get('/:user', function(req, res, next) {
+router.get('/:user/packages', function(req, res, next) {
 	packages.distinct('Package', {_user : req.params.user}).then(function(x){
 		res.send(x);
 	}).catch(error_cb(400, next));
 });
 
-router.get('/:user/:package', function(req, res, next) {
+router.get('/:user/packages/:package', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package
 	packages.distinct('Version', {_user : user, Package : package}).then(function(x){
@@ -61,7 +54,7 @@ router.get('/:user/:package', function(req, res, next) {
 	}).catch(error_cb(400, next));
 });
 
-router.get('/:user/:package/:version/:type?', function(req, res, next) {
+router.get('/:user/packages/:package/:version/:type?', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package;
 	var query = {_user : user, Package : package};
@@ -72,7 +65,7 @@ router.get('/:user/:package/:version/:type?', function(req, res, next) {
 	packages.find(query).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
 });
 
-router.delete('/:user/:package/:version?/:type?', function(req, res, next){
+router.delete('/:user/packages/:package/:version?/:type?', function(req, res, next){
 	var user = req.params.user;
 	var package = req.params.package;
 	var query = {_user: req.params.user, Package: req.params.package};
@@ -162,7 +155,7 @@ function filter_keys(x, regex){
 	return out;
 }
 
-router.put('/:user/:package/:version/:type/:md5', function(req, res, next){
+router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
 	var user = req.params.user;
 	var package = req.params.package;
 	var version = req.params.version;
@@ -191,7 +184,7 @@ router.put('/:user/:package/:version/:type/:md5', function(req, res, next){
 	}).catch(error_cb(400, next));
 });
 
-router.post('/:user/:package/:version/:type', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
+router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
 	if(!req.files.file || !req.files.file[0]){
 		return next(createError(400, "Missing parameter 'file' in upload"));
 	}

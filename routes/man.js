@@ -3,7 +3,7 @@ var router = express.Router();
 var fs = require('fs');
 var marked = require('marked');
 
-router.get('/', function(req, res) {
+router.get('/:user/man', function(req, res) {
   fs.readFile('./docs/api.md', function(err, data) {
     if (err) { console.log(err); throw(err); return; }
 

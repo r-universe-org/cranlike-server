@@ -3,13 +3,13 @@
 
 ## SYNOPSIS
 
-`GET,POST,DELETE`  
-&nbsp; `/api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  
-
 `GET`  
-&nbsp; `/repos/`&lt;*user*>`/src/contrib`  
-&nbsp; `/repos/`&lt;*user*>`/bin/windows/contrib`  
-&nbsp; `/repos/`&lt;*user*>`/bin/macosx/el-capitan/contrib/`  
+&nbsp; `/`&lt;*user*>`/src/contrib`  
+&nbsp; `/`&lt;*user*>`/bin/windows/contrib`  
+&nbsp; `/`&lt;*user*>`/bin/macosx/el-capitan/contrib/`  
+
+`GET,POST,DELETE`  
+&nbsp; `/`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  
 
 
 ## DESCRIPTION
@@ -25,44 +25,43 @@ organization using only the repo parameter in `install.packages()`.
 
 The implementation is designed to be fast and extensible, with the
 potential expose additional filters or services, and scale up to
-large repositories.
+large repositories. Currently cranlike does not handle auth, so
+you have to configure this in your web server.
 
 ## API
 
-* `GET /man`  
+* `GET /`  
   List available users / organizations.
 
-* `GET /repos/`&lt;*user*>`/`  
-  CRAN-like repository for packages published by a given author
-  or organization. Use `any` for packages from all users.
+* `GET /`&lt;*user*>` `  
+  Some info / package stats for given author or organization.
 
-* `GET /api/`  
-  List available users / organizations.
+* `GET /`&lt;*user*>`/{src,bin}/`  
+  CRAN-like repository for packages published by  <*user*>.
 
-* `GET /api/`&lt;*user*>`/`  
-  List available packages from <*user*>.
+* `GET /`&lt;*user*>`/packages/`  
+  JSON array of available packages from <*user*>.
 
-* `GET /api/`&lt;*user*>`/`&lt;*package*>`/`  
-  List available versions for <*package*> from <*user*>.
+* `GET /`&lt;*user*>`/packages/`&lt;*package*>`/`  
+  JSON array of available versions for <*package*> from <*user*>.
 
-* `GET /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`  
-  List available files for <*package*> <*version*> from <*user*>.
+* `GET /`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`  
+  JSON array of builds for <*package*> <*version*> from <*user*>.
 
-* `POST /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`  
-  Upload a package file via multipart form-data in the `file` field. 
-  The <*type*> must be one of `{src,mac,win}`. Additionional form-fields
-  starting with `Builder-` are stored as builder properties.
-
-
-* `PUT /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`&lt;*md5*>` `   
-  Upload a package as raw file post. The <*type*> must be one of `{src,mac,win}`,
+* `PUT /`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`&lt;*md5*>` `   
+  Publish a package via raw file upload. The <*type*> must be one of `{src,mac,win}`,
   and <*md5*> must be a string with the md5 hash of the file. 
   Additionional request headers starting with `Builder-` are stored as builder properties.
 
-* `DELETE /api/`&lt;*user*>`/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`    
+* `POST /`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>` `  
+  Publish a package via multipart form-data in the `file` field. 
+  The <*type*> must be one of `{src,mac,win}`. Additionional form-fields
+  starting with `Builder-` are stored as builder properties.
+
+* `DELETE /`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>` `  
   Delete one or more package files. Both <*version*> and <*type*> are optional,
   if unspecified all matches are deleted.
 
 ## EXAMPLES
 
-install.packages('curl', repos = "https://mycorp.org/repos/jeroen")  
+install.packages('curl', repos = "https://repos.mycorp.org/jeroen")  
