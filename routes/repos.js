@@ -203,4 +203,27 @@ router.get('/:user/stats/checks', function(req, res, next) {
 	.pipe(res.type('text/plain'));
 });
 
+
+router.get("/:user/stats/revdeps", function(req, res, next) {
+	packages.aggregate([
+		{$match: {_user: req.params.user, _type: 'src'}},
+		{$project: {_id: 0, package: '$Package', dependencies: {
+			$concatArrays: [
+				{$ifNull: ['$Imports', []]},
+				{$ifNull: ['$Depends', []]},
+				{$ifNull: ['$LinkingTo', []]},
+				{$ifNull: ['$Suggests', []]},
+			]
+		}}},
+		{$unwind: '$dependencies'},
+		{$group: {
+			_id : '$dependencies',
+			revdeps : { $addToSet: '$package'}
+		}},
+		{$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}}
+	])
+	.transformStream({transform: doc_to_ndjson})
+	.pipe(res.type('text/plain'));
+});
+
 module.exports = router;
