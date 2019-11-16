@@ -209,16 +209,16 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 		{$match: {_user: req.params.user, _type: 'src'}},
 		{$project: {_id: 0, package: '$Package', dependencies: {
 			$concatArrays: [
-				{$ifNull: ['$Imports', []]},
-				{$ifNull: ['$Depends', []]},
-				{$ifNull: ['$LinkingTo', []]},
-				{$ifNull: ['$Suggests', []]},
+				{ $map: { input: {$ifNull: ['$Imports', []]}, in: {dep: '$$this', role:'imports'}}},
+				{ $map: { input: {$ifNull: ['$Depends', []]}, in: {dep: '$$this', role:'depends'}}},
+				{ $map: { input: {$ifNull: ['$LinkingTo', []]}, in: {dep: '$$this', role:'linking'}}},
+				{ $map: { input: {$ifNull: ['$Suggests', []]}, in: {dep: '$$this', role:'suggests'}}}
 			]
 		}}},
 		{$unwind: '$dependencies'},
 		{$group: {
-			_id : '$dependencies',
-			revdeps : { $addToSet: '$package'}
+			_id : '$dependencies.dep',
+			revdeps : { $addToSet: {package: '$package', role: '$dependencies.role'}}
 		}},
 		{$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}}
 	])
