@@ -11,6 +11,8 @@
 `GET,POST,DELETE`  
 &nbsp; `/`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  
 
+`GET`
+&nbsp; `/`&lt;*user*>`/stats/stats/checks`
 
 ## DESCRIPTION
 

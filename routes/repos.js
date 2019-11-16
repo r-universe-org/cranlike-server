@@ -189,12 +189,13 @@ router.get('/:user/bin/macosx/el-capitan/contrib/:built/:pkg.tgz', function(req,
 
 /* Public aggregated data (subject to change) */
 router.get('/:user/stats/checks', function(req, res, next) {
-	packages.aggregate([{
-		$group : {
+	packages.aggregate([
+		{$match: {_user: req.params.user}},
+		{$group : {
 			_id : { package:'$Package', version:'$Version', maintainer: '$Maintainer'},
 			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
-		}},{
-		$project: {
+		}},
+		{$project: {
 			_id: 0, package: '$_id.package', version:'$_id.version', maintainer:'$_id.maintainer', runs:1}
 		}
 	])
