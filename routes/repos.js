@@ -220,7 +220,8 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 			_id : '$dependencies.dep',
 			revdeps : { $addToSet: {package: '$package', role: '$dependencies.role'}}
 		}},
-		{$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}}
+		{$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
+		{$sort:{ package: 1}}
 	])
 	.transformStream({transform: doc_to_ndjson})
 	.pipe(res.type('text/plain'));
