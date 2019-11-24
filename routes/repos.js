@@ -16,13 +16,23 @@ function error_cb(status, next) {
 	}
 }
 
+function dep_to_string(x){
+	if(x.package && x.version){
+		return x.package + " (" + x.version + ")";
+	} else if(x.package) {
+		return x.package
+	} else {
+		return x;
+	}
+}
+
 /* Helpers */
 function doc_to_dcf(x){
 	let keys = Object.keys(x);
 	return keys.map(function(key){
 		let val = x[key];
 		if(Array.isArray(val))
-			val = val.join(", ");
+			val = val.map(dep_to_string).join(", ");
 		else if(key == 'Built')
 			val = "R " + Object.values(val).join("; ");
 		return key + ": " + val.replace(/\s/gi, ' ');
