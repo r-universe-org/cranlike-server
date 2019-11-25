@@ -227,8 +227,8 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 		}}},
 		{$unwind: '$dependencies'},
 		{$group: {
-			_id : '$dependencies.dep',
-			revdeps : { $addToSet: {package: '$package', role: '$dependencies.role'}}
+			_id : '$dependencies.dep.package',
+			revdeps : { $addToSet: {package: '$package', role: '$dependencies.role', version: '$dependencies.dep.version'}}
 		}},
 		{$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
 		{$sort:{ package: 1}}
