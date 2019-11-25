@@ -237,4 +237,21 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 	.pipe(res.type('text/plain'));
 });
 
+//TODO: same for sysdeps
+router.get("/:user/stats/sysdeps", function(req, res, next) {
+	packages.aggregate([
+		{$match: {_user: req.params.user, _type: 'src'}},
+		{$project: {_id: 0, package: '$Package', sysdeps: '$_builder.sysdeps'}},
+		{$unwind: '$sysdeps'},
+		{$group: {
+			_id : '$sysdeps',
+			packages : { $addToSet: '$package'}
+		}},
+		{$project: {_id: 0, sysdep: '$_id', packages: '$packages'}},
+		{$sort:{ sysdep: 1}}
+	])
+	.transformStream({transform: doc_to_ndjson})
+	.pipe(res.type('text/plain'));
+});
+
 module.exports = router;
