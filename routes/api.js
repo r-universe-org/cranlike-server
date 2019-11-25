@@ -155,6 +155,13 @@ function filter_keys(x, regex){
 	return out;
 }
 
+function parse_builder_fields(x){
+	var builder = filter_keys(x, /^builder-/gi);
+	if(builder.sysdeps)
+		builder.sysdeps = rdesc.parse_dep_string(builder.sysdeps);
+	return builder;
+}
+
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
 	var user = req.params.user;
 	var package = req.params.package;
@@ -169,7 +176,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
 			description['_type'] = type;
 			description['_file'] = filename;
 			description['_published'] = new Date();
-			description['_builder'] = filter_keys(req.headers, /^builder-/gi);
+			description['_builder'] = parse_builder_fields(req.headers);
 			description['MD5sum'] = md5;
 			validate_description(description, package, version, type);
 			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
@@ -203,7 +210,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
 			description['_type'] = type;
 			description['_file'] = filename;
 			description['_published'] = new Date();
-			description['_builder'] = filter_keys(req.body, /^builder-/gi);
+			description['_builder'] = parse_builder_fields(req.body);
 			description['MD5sum'] = md5;
 			validate_description(description, package, version, type);
 			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
