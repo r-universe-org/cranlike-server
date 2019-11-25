@@ -241,7 +241,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 router.get("/:user/stats/sysdeps", function(req, res, next) {
 	packages.aggregate([
 		{$match: {_user: req.params.user, _type: 'src'}},
-		{$project: {_id: 0, package: '$Package', sysdeps: '$_builder.sysdeps'}},
+		{$project: {_id: 0, package: '$Package', sysdeps: '$_builder.sysdeps.package'}},
 		{$unwind: '$sysdeps'},
 		{$group: {
 			_id : '$sysdeps',
