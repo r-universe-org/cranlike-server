@@ -5,11 +5,11 @@ const zlib = require('zlib');
 const router = express.Router();
 
 /* Fields included in PACKAGES indices */
-const pkgfields = {_id: 0, Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
+/* To do: once DB is repopulated, we can remove Imports, Suggests, etc in favor of _dependencies */
+const pkgfields = {_id: 0, _hard_deps: 1, _soft_deps: 1, Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
 	NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
 	OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
 
-/* Error generator */
 function error_cb(status, next) {
 	return function(err) {
 		next(createError(status, err));
@@ -26,8 +26,21 @@ function dep_to_string(x){
 	}
 }
 
-/* Helpers */
-function doc_to_dcf(x){
+function unpack_deps(x){
+	var hard_deps = x['_hard_deps'] || [];
+	var soft_deps = x['_soft_deps'] || [];
+	var alldeps = hard_deps.concat(soft_deps);
+	var deptypes = new Set(alldeps.map(dep => dep.role));
+	deptypes.forEach(function(type){
+		x[type] = alldeps.filter(dep => dep.role == type);
+	});
+	delete x['_hard_deps'];
+	delete x['_soft_deps'];
+	return x;
+}
+
+function doc_to_dcf(doc){
+	var x = unpack_deps(doc);
 	let keys = Object.keys(x);
 	return keys.map(function(key){
 		let val = x[key];
@@ -213,22 +226,14 @@ router.get('/:user/stats/checks', function(req, res, next) {
 	.pipe(res.type('text/plain'));
 });
 
-
 router.get("/:user/stats/revdeps", function(req, res, next) {
 	packages.aggregate([
 		{$match: {_user: req.params.user, _type: 'src'}},
-		{$project: {_id: 0, package: '$Package', dependencies: {
-			$concatArrays: [
-				{ $map: { input: {$ifNull: ['$Imports', []]}, in: {dep: '$$this', role:'imports'}}},
-				{ $map: { input: {$ifNull: ['$Depends', []]}, in: {dep: '$$this', role:'depends'}}},
-				{ $map: { input: {$ifNull: ['$LinkingTo', []]}, in: {dep: '$$this', role:'linking'}}},
-				{ $map: { input: {$ifNull: ['$Suggests', []]}, in: {dep: '$$this', role:'suggests'}}}
-			]
-		}}},
+		{$project: {_id: 0, package: '$Package', dependencies: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
 		{$unwind: '$dependencies'},
 		{$group: {
-			_id : '$dependencies.dep.package',
-			revdeps : { $addToSet: {package: '$package', role: '$dependencies.role', version: '$dependencies.dep.version'}}
+			_id : '$dependencies.package',
+			revdeps : { $addToSet: {package: '$package', role: '$dependencies.role', version: '$dependencies.version'}}
 		}},
 		{$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
 		{$sort:{ package: 1}}
@@ -237,7 +242,6 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 	.pipe(res.type('text/plain'));
 });
 
-//TODO: same for sysdeps
 router.get("/:user/stats/sysdeps", function(req, res, next) {
 	packages.aggregate([
 		{$match: {_user: req.params.user, _type: 'src'}},
@@ -249,6 +253,39 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
 		}},
 		{$project: {_id: 0, sysdep: '$_id', packages: '$packages'}},
 		{$sort:{ sysdep: 1}}
+	])
+	.transformStream({transform: doc_to_ndjson})
+	.pipe(res.type('text/plain'));
+});
+
+router.get("/:user/stats/rundeps", function(req, res, next) {
+	packages.aggregate([
+		{$match: {_user: req.params.user, _type: 'src'}},
+		{ $graphLookup: {
+			from: "packages",
+			startWith: "$_hard_deps.package",
+			connectFromField: "_hard_deps.package",
+			connectToField: "Package",
+			as: "DependencyHierarchy"
+		}},
+		{ $project: {Package: 1, rundeps: {'$setUnion': ['$DependencyHierarchy.Package']}}}
+	])
+	.transformStream({transform: doc_to_ndjson})
+	.pipe(res.type('text/plain'));
+});
+
+router.get("/:user/stats/checkdeps", function(req, res, next) {
+	packages.aggregate([
+		{$match: {_user: req.params.user, _type: 'src'}},
+		{ $project: {_id: 0, Package: 1, deps: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
+		{ $graphLookup: {
+			from: "packages",
+			startWith: "$deps.package",
+			connectFromField: "_hard_deps.package",
+			connectToField: "Package",
+			as: "DependencyHierarchy"
+		}},
+		{ $project: {Package: 1, checkdeps: {'$setUnion': ['$DependencyHierarchy.Package']}}}
 	])
 	.transformStream({transform: doc_to_ndjson})
 	.pipe(res.type('text/plain'));

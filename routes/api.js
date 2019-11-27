@@ -5,6 +5,8 @@ const multer  = require('multer')
 const md5file = require('md5-file');
 const rdesc = require('rdesc-parser');
 const fs = require('fs');
+const hard_dep_types = require('r-constants').essential_dependency_types;
+const soft_dep_types = require('r-constants').optional_dependency_types;
 
 /* Local variables */
 const upload = multer({ dest: '/tmp/' });
@@ -162,6 +164,24 @@ function parse_builder_fields(x){
 	return builder;
 }
 
+function merge_dependencies(x){
+	var hard_deps = [];
+	var soft_deps = [];
+	Object.keys(x).forEach(function(key) {
+		if(hard_dep_types.includes(key)){
+			hard_deps = hard_deps.concat(x[key].map(function(y){y.role = key; return y;}));
+			delete x[key];
+		}
+		if(soft_dep_types.includes(key)){
+			soft_deps = soft_deps.concat(x[key].map(function(y){y.role = key; return y;}));
+			delete x[key];
+		}
+	});
+	x['_hard_deps'] = hard_deps;
+	x['_soft_deps'] = soft_deps;
+	return x;
+}
+
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
 	var user = req.params.user;
 	var package = req.params.package;
@@ -178,6 +198,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
 			description['_published'] = new Date();
 			description['_builder'] = parse_builder_fields(req.headers);
 			description['MD5sum'] = md5;
+			description = merge_dependencies(description);
 			validate_description(description, package, version, type);
 			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
 				var original = result.value;
@@ -212,6 +233,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
 			description['_published'] = new Date();
 			description['_builder'] = parse_builder_fields(req.body);
 			description['MD5sum'] = md5;
+			description = merge_dependencies(description);
 			validate_description(description, package, version, type);
 			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
 				var original = result.value;
