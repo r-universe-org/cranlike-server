@@ -112,7 +112,7 @@ function count_by_type(user){
 		const dirname = {
 			src : 'src/contrib',
 			win : 'bin/windows/contrib',
-			mac : 'bin/macosx/el-capitan/contrib/'
+			mac : 'bin/macosx/contrib/'
 		};
 		x.path = dirname[x.type];
 		return doc_to_ndjson(x);
@@ -170,12 +170,12 @@ router.get('/:user/bin/windows/contrib/:built/', function(req, res, next) {
 });
 
 /* CRAN-like index for MacOS packages */
-router.get('/:user/bin/macosx/el-capitan/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
+router.get('/:user/bin/macosx/:xcode?/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}};
 	packages_index(query, req.params.ext, res, next);
 });
 
-router.get('/:user/bin/macosx/el-capitan/contrib/:built/', function(req, res, next) {
+router.get('/:user/bin/macosx/:xcode?/contrib/:built/', function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}};
 	packages_index(query, 'json', res, next);
 });
@@ -185,7 +185,7 @@ router.get('/:user/bin/windows/contrib', function(req, res, next) {
 	count_by_built(req.params.user, 'win').pipe(res);
 });
 
-router.get('/:user/bin/macosx/el-capitan/contrib', function(req, res, next) {
+router.get('/:user/bin/macosx/:xcode?/contrib', function(req, res, next) {
 	count_by_built(req.params.user, 'mac').pipe(res);
 });
 
@@ -203,7 +203,7 @@ router.get('/:user/bin/windows/contrib/:built/:pkg.zip', function(req, res, next
 	send_binary(query, 'application/zip', res, next);
 });
 
-router.get('/:user/bin/macosx/el-capitan/contrib/:built/:pkg.tgz', function(req, res, next) {
+router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
 	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
 		Package: pkg[0], Version: pkg[1]};

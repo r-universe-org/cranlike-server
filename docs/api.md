@@ -6,7 +6,7 @@
 `GET`  
 &nbsp; `/`&lt;*user*>`/src/contrib`  
 &nbsp; `/`&lt;*user*>`/bin/windows/contrib`  
-&nbsp; `/`&lt;*user*>`/bin/macosx/el-capitan/contrib/`  
+&nbsp; `/`&lt;*user*>`/bin/macosx/contrib/`  
 
 `GET,POST,DELETE`  
 &nbsp; `/`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  

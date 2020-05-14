@@ -33,7 +33,7 @@ The `/repos` endpoint exposes the CRAN-like directory structure and package inde
 GET
   /repos/<user>/src/contrib
   /repos/<user>/bin/windows/contrib
-  /repos/<user>/bin/macosx/el-capitan/contrib/
+  /repos/<user>/bin/macosx/contrib/
 ```
 
 For example the R user would use:
