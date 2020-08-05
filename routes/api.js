@@ -182,6 +182,15 @@ function merge_dependencies(x){
 	return x;
 }
 
+function parse_major_version(built){
+	if(!built || !built.R)
+		throw "Package is missing Built.R field. Cannot determine binary version";
+	var r_major_version = built.R.match(/^\d\.\d+/);
+	if(!r_major_version)
+		throw "Failed to find R version from Built.R field: " + str;
+	return r_major_version;
+}
+
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
 	var user = req.params.user;
 	var package = req.params.package;
@@ -200,6 +209,9 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
 			description['MD5sum'] = md5;
 			description = merge_dependencies(description);
 			validate_description(description, package, version, type);
+			if(type != "src"){
+				query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
+			}
 			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
 				var original = result.value;
 				if(original){
@@ -235,6 +247,9 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
 			description['MD5sum'] = md5;
 			description = merge_dependencies(description);
 			validate_description(description, package, version, type);
+			if(type != "src"){
+				query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
+			}
 			return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
 				var original = result.value;
 				if(original){
