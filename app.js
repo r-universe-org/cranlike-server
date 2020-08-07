@@ -31,6 +31,9 @@ mongodb.MongoClient.connect(URL, function(error, client) {
 /* Start App */
 var app = express();
 
+/* Prettify all JSON responses */
+app.set('json spaces', 2)
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
