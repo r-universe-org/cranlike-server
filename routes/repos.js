@@ -291,7 +291,7 @@ router.get("/:user/stats/checkdeps", function(req, res, next) {
 	.pipe(res.type('text/plain'));
 });
 
-router.get("/:user/maintainers", function(req, res, next) {
+router.get("/:user/stats/maintainers", function(req, res, next) {
 	packages.aggregate([
 		{$match: {_user: req.params.user, _type: 'src'}},
 		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
