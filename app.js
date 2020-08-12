@@ -21,7 +21,7 @@ const USER = process.env.CRANLIKE_MONGODB_USERNAME || 'root';
 const PASS = process.env.CRANLIKE_MONGODB_PASSWORD;
 const AUTH = PASS ? (USER + ':' + PASS + "@") : "";
 const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
-mongodb.MongoClient.connect(URL, function(error, client) {
+mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, function(error, client) {
 	assert.ifError(error);
 	const db = client.db('cranlike');
 	global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});

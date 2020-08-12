@@ -291,4 +291,33 @@ router.get("/:user/stats/checkdeps", function(req, res, next) {
 	.pipe(res.type('text/plain'));
 });
 
+router.get("/:user/maintainers", function(req, res, next) {
+	packages.aggregate([
+		{$match: {_user: req.params.user, _type: 'src'}},
+		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
+		{$project: {
+			_id: 0,
+			package: '$Package',
+			version: '$Version',
+			date: '$Date',
+			name: { $trim: { input: { $arrayElemAt: ['$email.captures',0]}}},
+			email: { $arrayElemAt: ['$email.captures',1]}
+		}},
+		{$unwind: '$email'},
+		{$group: {
+			_id : '$email',
+			name : { $first: '$name'},
+			packages : { $addToSet: {
+				package: '$package',
+				version: '$version',
+				date: '$date'
+			}}
+		}},
+		{$project: {_id: 0, name: '$name', email: '$_id', packages: '$packages'}},
+		{$sort:{ email: 1}}
+	])
+	.transformStream({transform: doc_to_ndjson})
+	.pipe(res.type('text/plain'));
+});
+
 module.exports = router;
