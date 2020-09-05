@@ -225,11 +225,11 @@ router.get('/:user/stats/checks', function(req, res, next) {
 	packages.aggregate([
 		{$match: query},
 		{$group : {
-			_id : { package:'$Package', version:'$Version', user: '$_user'},
+			_id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
 			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
 		}},
 		{$project: {
-			_id: 0, user: '$_id.user', package: '$_id.package', version:'$_id.version', runs:1}
+			_id: 0, user: '$_id.user', maintainer:'$_id.maintainer', package: '$_id.package', version:'$_id.version', runs:1}
 		}
 	])
 	.transformStream({transform: doc_to_ndjson})
