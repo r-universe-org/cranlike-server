@@ -140,6 +140,15 @@ function send_binary(query, content_type, res, next){
 	}).catch(error_cb(400, next));	
 }
 
+function find_by_user(_user, _type){
+	var out = {};
+	if(_user != ':any')
+		out._user = _user;
+	if(_type)
+		out_type = _type;
+	return out;
+}
+
 /* Copied from api.js */
 router.get('/', function(req, res, next) {
 	count_by_user().pipe(res);
@@ -210,30 +219,65 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 	send_binary(query, 'application/x-gzip', res, next);
 });
 
-/* Public aggregated data (subject to change) */
+/* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/checks', function(req, res, next) {
+	var query = find_by_user(req.params.user);
 	packages.aggregate([
-		{$match: {_user: req.params.user}},
+		{$match: query},
 		{$group : {
-			_id : { package:'$Package', version:'$Version', maintainer: '$Maintainer'},
+			_id : { package:'$Package', version:'$Version', user: '$_user'},
 			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
 		}},
 		{$project: {
-			_id: 0, package: '$_id.package', version:'$_id.version', maintainer:'$_id.maintainer', runs:1}
+			_id: 0, user: '$_id.user', package: '$_id.package', version:'$_id.version', runs:1}
 		}
 	])
 	.transformStream({transform: doc_to_ndjson})
 	.pipe(res.type('text/plain'));
 });
 
-router.get("/:user/stats/revdeps", function(req, res, next) {
+router.get("/:user/stats/maintainers", function(req, res, next) {
+	var query = find_by_user(req.params.user, 'src');
 	packages.aggregate([
-		{$match: {_user: req.params.user, _type: 'src'}},
-		{$project: {_id: 0, package: '$Package', dependencies: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
+		{$match: query},
+		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
+		{$project: {
+			_id: 0,
+			package: '$Package',
+			version: '$Version',
+			date: '$Date',
+			user: '$_user',
+			name: { $trim: { input: { $arrayElemAt: ['$email.captures',0]}}},
+			email: { $arrayElemAt: ['$email.captures',1]}
+		}},
+		{$unwind: '$email'},
+		{$group: {
+			_id : '$email',
+			name : { $first: '$name'},
+			packages : { $addToSet: {
+				package: '$package',
+				version: '$version',
+				user: '$user',
+				date: '$date'
+			}}
+		}},
+		{$project: {_id: 0, name: '$name', email: '$_id', packages: '$packages'}},
+		{$sort:{ email: 1}}
+	])
+	.transformStream({transform: doc_to_ndjson})
+	.pipe(res.type('text/plain'));
+});
+
+router.get("/:user/stats/revdeps", function(req, res, next) {
+	var query = find_by_user(req.params.user, 'src');
+	packages.aggregate([
+		{$match: query},
+		{$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
 		{$unwind: '$dependencies'},
 		{$group: {
 			_id : '$dependencies.package',
-			revdeps : { $addToSet: {package: '$package', role: '$dependencies.role', version: '$dependencies.version'}}
+			revdeps : { $addToSet: 
+				{user: '$user', package: '$package', role: '$dependencies.role', version: '$dependencies.version'}}
 		}},
 		{$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
 		{$sort:{ package: 1}}
@@ -243,13 +287,14 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 });
 
 router.get("/:user/stats/sysdeps", function(req, res, next) {
+	var query = find_by_user(req.params.user, 'src');
 	packages.aggregate([
-		{$match: {_user: req.params.user, _type: 'src'}},
-		{$project: {_id: 0, package: '$Package', sysdeps: '$_builder.sysdeps.package'}},
+		{$match: query},
+		{$project: {_id: 0, user: '$_user', package: '$Package', sysdeps: '$_builder.sysdeps.package'}},
 		{$unwind: '$sysdeps'},
 		{$group: {
 			_id : '$sysdeps',
-			packages : { $addToSet: '$package'}
+			packages : { $addToSet: {user: '$user', package:'$package'}}
 		}},
 		{$project: {_id: 0, sysdep: '$_id', packages: '$packages'}},
 		{$sort:{ sysdep: 1}}
@@ -258,6 +303,7 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
 	.pipe(res.type('text/plain'));
 });
 
+/* Below haven't been generalized to :any (yet) */
 router.get("/:user/stats/rundeps", function(req, res, next) {
 	packages.aggregate([
 		{$match: {_user: req.params.user, _type: 'src'}},
@@ -291,33 +337,5 @@ router.get("/:user/stats/checkdeps", function(req, res, next) {
 	.pipe(res.type('text/plain'));
 });
 
-router.get("/:user/stats/maintainers", function(req, res, next) {
-	packages.aggregate([
-		{$match: {_user: req.params.user, _type: 'src'}},
-		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
-		{$project: {
-			_id: 0,
-			package: '$Package',
-			version: '$Version',
-			date: '$Date',
-			name: { $trim: { input: { $arrayElemAt: ['$email.captures',0]}}},
-			email: { $arrayElemAt: ['$email.captures',1]}
-		}},
-		{$unwind: '$email'},
-		{$group: {
-			_id : '$email',
-			name : { $first: '$name'},
-			packages : { $addToSet: {
-				package: '$package',
-				version: '$version',
-				date: '$date'
-			}}
-		}},
-		{$project: {_id: 0, name: '$name', email: '$_id', packages: '$packages'}},
-		{$sort:{ email: 1}}
-	])
-	.transformStream({transform: doc_to_ndjson})
-	.pipe(res.type('text/plain'));
-});
 
 module.exports = router;
