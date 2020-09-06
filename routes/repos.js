@@ -221,13 +221,18 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/checks', function(req, res, next) {
+	var limit = parseInt(req.query.limit) || 500;
 	var query = find_by_user(req.params.user);
 	packages.aggregate([
 		{$match: query},
 		{$group : {
 			_id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
+			timestamp: { $max : "$_builder.timestamp" },
 			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
 		}},
+		/* NB: sort+limit requires buffering, maybe not a good idea? */
+		{$sort : {timestamp : -1}},
+		{$limit : limit},
 		{$project: {
 			_id: 0, user: '$_id.user', maintainer:'$_id.maintainer', package: '$_id.package', version:'$_id.version', runs:1}
 		}
