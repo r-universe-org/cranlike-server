@@ -223,7 +223,7 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 router.get('/:user/stats/checks', function(req, res, next) {
 	var limit = parseInt(req.query.limit) || 500;
 	var query = find_by_user(req.params.user);
-	packages.aggregate([
+	var cursor = packages.aggregate([
 		{$match: query},
 		{$group : {
 			_id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
@@ -236,14 +236,15 @@ router.get('/:user/stats/checks', function(req, res, next) {
 		{$project: {
 			_id: 0, user: '$_id.user', maintainer:'$_id.maintainer', package: '$_id.package', version:'$_id.version', runs:1}
 		}
-	])
-	.transformStream({transform: doc_to_ndjson})
-	.pipe(res.type('text/plain'));
+	]);
+	cursor.hasNext().then(function(){
+		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+	}).catch(error_cb(400, next));
 });
 
 router.get("/:user/stats/maintainers", function(req, res, next) {
 	var query = find_by_user(req.params.user, 'src');
-	packages.aggregate([
+	var cursor = packages.aggregate([
 		{$match: query},
 		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
 		{$project: {
@@ -270,14 +271,15 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 		}},
 		{$project: {_id: 0, name: 1, login: { '$first' : '$login'}, email: '$_id', packages: '$packages'}},
 		{$sort:{ email: 1}}
-	])
-	.transformStream({transform: doc_to_ndjson})
-	.pipe(res.type('text/plain'));
+	]);
+	cursor.hasNext().then(function(){
+		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+	}).catch(error_cb(400, next));
 });
 
 router.get("/:user/stats/revdeps", function(req, res, next) {
 	var query = find_by_user(req.params.user, 'src');
-	packages.aggregate([
+	var cursor = packages.aggregate([
 		{$match: query},
 		{$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
 		{$unwind: '$dependencies'},
@@ -288,14 +290,15 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 		}},
 		{$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
 		{$sort:{ package: 1}}
-	])
-	.transformStream({transform: doc_to_ndjson})
-	.pipe(res.type('text/plain'));
+	]);
+	cursor.hasNext().then(function(){
+		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+	}).catch(error_cb(400, next));
 });
 
 router.get("/:user/stats/sysdeps", function(req, res, next) {
 	var query = find_by_user(req.params.user, 'src');
-	packages.aggregate([
+	var cursor = packages.aggregate([
 		{$match: query},
 		{$project: {_id: 0, user: '$_user', package: '$Package', sysdeps: '$_builder.sysdeps.package'}},
 		{$unwind: '$sysdeps'},
@@ -306,14 +309,15 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
 		{$project: {_id: 0, sysdep: '$_id', packages: '$packages'}},
 		{$sort:{ sysdep: 1}}
 	])
-	.transformStream({transform: doc_to_ndjson})
-	.pipe(res.type('text/plain'));
+	cursor.hasNext().then(function(){
+		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+	}).catch(error_cb(400, next));
 });
 
-/* Below haven't been generalized to :any (yet) */
 router.get("/:user/stats/rundeps", function(req, res, next) {
-	packages.aggregate([
-		{$match: {_user: req.params.user, _type: 'src'}},
+	var query = find_by_user(req.params.user, 'src');
+	var cursor = packages.aggregate([
+		{$match: query},
 		{ $graphLookup: {
 			from: "packages",
 			startWith: "$_hard_deps.package",
@@ -322,14 +326,16 @@ router.get("/:user/stats/rundeps", function(req, res, next) {
 			as: "DependencyHierarchy"
 		}},
 		{ $project: {Package: 1, rundeps: {'$setUnion': ['$DependencyHierarchy.Package']}}}
-	])
-	.transformStream({transform: doc_to_ndjson})
-	.pipe(res.type('text/plain'));
+	]);
+	cursor.hasNext().then(function(){
+		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+	}).catch(error_cb(400, next));
 });
 
 router.get("/:user/stats/checkdeps", function(req, res, next) {
-	packages.aggregate([
-		{$match: {_user: req.params.user, _type: 'src'}},
+	var query = find_by_user(req.params.user, 'src');
+	var cursor = packages.aggregate([
+		{$match: query},
 		{ $project: {_id: 0, Package: 1, deps: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
 		{ $graphLookup: {
 			from: "packages",
@@ -339,10 +345,10 @@ router.get("/:user/stats/checkdeps", function(req, res, next) {
 			as: "DependencyHierarchy"
 		}},
 		{ $project: {Package: 1, checkdeps: {'$setUnion': ['$DependencyHierarchy.Package']}}}
-	])
-	.transformStream({transform: doc_to_ndjson})
-	.pipe(res.type('text/plain'));
+	]);
+	cursor.hasNext().then(function(){
+		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+	}).catch(error_cb(400, next));
 });
-
 
 module.exports = router;
