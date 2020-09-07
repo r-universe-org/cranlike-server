@@ -254,7 +254,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			date: '$Date',
 			user: '$_user',
 			login: '$_builder.maintainerlogin',
-			name: { $trim: { input: { $arrayElemAt: ['$email.captures',0]}}},
+			name: { $trim: { input: { $first: '$email.captures'}}},
 			email: { $arrayElemAt: ['$email.captures',1]}
 		}},
 		{$unwind: '$email'},
@@ -314,10 +314,10 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
 	}).catch(error_cb(400, next));
 });
 
+/* Operations below do not support :any user because they are very heavy */
 router.get("/:user/stats/rundeps", function(req, res, next) {
-	var query = find_by_user(req.params.user, 'src');
 	var cursor = packages.aggregate([
-		{$match: query},
+		{$match: {_user: req.params.user, _type: 'src'}},
 		{ $graphLookup: {
 			from: "packages",
 			startWith: "$_hard_deps.package",
@@ -333,9 +333,8 @@ router.get("/:user/stats/rundeps", function(req, res, next) {
 });
 
 router.get("/:user/stats/checkdeps", function(req, res, next) {
-	var query = find_by_user(req.params.user, 'src');
 	var cursor = packages.aggregate([
-		{$match: query},
+		{$match: {_user: req.params.user, _type: 'src'}},
 		{ $project: {_id: 0, Package: 1, deps: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
 		{ $graphLookup: {
 			from: "packages",
