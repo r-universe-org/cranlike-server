@@ -252,6 +252,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			version: '$Version',
 			date: '$Date',
 			user: '$_user',
+			login: '$_builder.maintainerlogin',
 			name: { $trim: { input: { $arrayElemAt: ['$email.captures',0]}}},
 			email: { $arrayElemAt: ['$email.captures',1]}
 		}},
@@ -259,6 +260,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 		{$group: {
 			_id : '$email',
 			name : { $first: '$name'},
+			login : { $addToSet: '$login'}, //login can be null
 			packages : { $addToSet: {
 				package: '$package',
 				version: '$version',
@@ -266,7 +268,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 				date: '$date'
 			}}
 		}},
-		{$project: {_id: 0, name: '$name', email: '$_id', packages: '$packages'}},
+		{$project: {_id: 0, name: 1, login: { '$first' : '$login'}, email: '$_id', packages: '$packages'}},
 		{$sort:{ email: 1}}
 	])
 	.transformStream({transform: doc_to_ndjson})
