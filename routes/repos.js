@@ -65,6 +65,13 @@ function doc_to_filename(x){
 	return x.Package + "_" + x.Version + ext[x['_type']] + '\n';
 }
 
+function qf(x){
+	if(x._user == ":any"){
+		delete x._user;
+	}
+	return x;
+}
+
 function packages_index(query, format, res, next){
 	var input = packages.find(query).project(pkgfields);
 	res.set('Cache-Control', 'no-cache');
@@ -104,7 +111,7 @@ function count_by_user(){
 
 function count_by_type(user){
 	return packages.aggregate([
-		{$match: {_user: user}},
+		{$match: qf({_user: user})},
 		{$group:{_id: "$_type", count: { $sum: 1 }}}
 	])
 	.project({_id: 0, type: "$_id", count: 1})
@@ -160,32 +167,32 @@ router.get('/:user', function(req, res, next) {
 
 /* CRAN-like index for source packages */
 router.get('/:user/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
-	packages_index({_user: req.params.user, _type: 'src'}, req.params.ext, res, next);
+	packages_index(qf({_user: req.params.user, _type: 'src'}), req.params.ext, res, next);
 });
 
 router.get('/:user/src/contrib/', function(req, res, next) {
-	packages_index({_user: req.params.user, _type: 'src'}, 'json', res, next);
+	packages_index(qf({_user: req.params.user, _type: 'src'}), 'json', res, next);
 });
 
 /* CRAN-like index for Windows packages */
 router.get('/:user/bin/windows/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
-	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}};
+	var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}});
 	packages_index(query, req.params.ext, res, next);
 });
 
 router.get('/:user/bin/windows/contrib/:built/', function(req, res, next) {
-	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}};
+	var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}});
 	packages_index(query, 'json', res, next);
 });
 
 /* CRAN-like index for MacOS packages */
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
-	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}};
+	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
 	packages_index(query, req.params.ext, res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/', function(req, res, next) {
-	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}};
+	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
 	packages_index(query, 'json', res, next);
 });
 
@@ -201,30 +208,29 @@ router.get('/:user/bin/macosx/:xcode?/contrib', function(req, res, next) {
 /* Download package files */
 router.get('/:user/src/contrib/:pkg.tar.gz', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
-	var query = {_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]};
+	var query = qf({_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]});
 	send_binary(query, 'application/x-gzip', res, next);
 });
 
 router.get('/:user/bin/windows/contrib/:built/:pkg.zip', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
-	var query = {_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built},
-		Package: pkg[0], Version: pkg[1]};
+	var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built},
+		Package: pkg[0], Version: pkg[1]});
 	send_binary(query, 'application/zip', res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
-	var query = {_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
-		Package: pkg[0], Version: pkg[1]};
+	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
+		Package: pkg[0], Version: pkg[1]});
 	send_binary(query, 'application/x-gzip', res, next);
 });
 
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/checks', function(req, res, next) {
 	var limit = parseInt(req.query.limit) || 500;
-	var query = find_by_user(req.params.user);
 	var cursor = packages.aggregate([
-		{$match: query},
+		{$match: qf({_user: req.params.user})},
 		{$group : {
 			_id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
 			timestamp: { $max : "$_builder.timestamp" },
@@ -243,9 +249,8 @@ router.get('/:user/stats/checks', function(req, res, next) {
 });
 
 router.get("/:user/stats/maintainers", function(req, res, next) {
-	var query = find_by_user(req.params.user, 'src');
 	var cursor = packages.aggregate([
-		{$match: query},
+		{$match: qf({_user: req.params.user, _type: 'src'})},
 		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
 		{$project: {
 			_id: 0,
@@ -276,9 +281,8 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 });
 
 router.get("/:user/stats/revdeps", function(req, res, next) {
-	var query = find_by_user(req.params.user, 'src');
 	var cursor = packages.aggregate([
-		{$match: query},
+		{$match: qf({_user: req.params.user, _type: 'src'})},
 		{$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
 		{$unwind: '$dependencies'},
 		{$group: {
@@ -295,9 +299,8 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 });
 
 router.get("/:user/stats/sysdeps", function(req, res, next) {
-	var query = find_by_user(req.params.user, 'src');
 	var cursor = packages.aggregate([
-		{$match: query},
+		{$match: qf({_user: req.params.user, _type: 'src'})},
 		{$project: {_id: 0, user: '$_user', package: '$Package', sysdeps: '$_builder.sysdeps.package'}},
 		{$unwind: '$sysdeps'},
 		{$group: {
