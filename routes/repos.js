@@ -65,6 +65,10 @@ function doc_to_filename(x){
 	return x.Package + "_" + x.Version + ext[x['_type']] + '\n';
 }
 
+function etagify(x){
+	return 'W/"' +  x + '"';
+}
+
 function qf(x){
 	if(x._user == ":any"){
 		delete x._user;
@@ -135,14 +139,21 @@ function count_by_built(user, type){
 	.transformStream({transform: doc_to_ndjson});
 }
 
-function send_binary(query, content_type, res, next){
+function send_binary(query, content_type, req, res, next){
 	packages.findOne(query, {project: {MD5sum: 1, Redirect: 1}}).then(function(docs){
 		if(!docs){
 			next(createError(404, 'Package not found'));
 		} else if(docs.Redirect) {
-			res.status(301).redirect(docs.Redirect)
+			res.status(301).redirect(docs.Redirect);
 		} else {
-			bucket.openDownloadStream(docs.MD5sum).pipe(res.type(content_type));
+			var etag = etagify(docs.MD5sum);
+			if(etagify(docs.MD5sum) === req.header('If-None-Match')){
+				res.status(304).send()
+			} else {
+				bucket.openDownloadStream(docs.MD5sum).pipe(
+					res.type(content_type).set("ETag", etag)
+				);
+			}
 		}
 	}).catch(error_cb(400, next));	
 }
@@ -209,21 +220,21 @@ router.get('/:user/bin/macosx/:xcode?/contrib', function(req, res, next) {
 router.get('/:user/src/contrib/:pkg.tar.gz', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
 	var query = qf({_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]});
-	send_binary(query, 'application/x-gzip', res, next);
+	send_binary(query, 'application/x-gzip', req, res, next);
 });
 
 router.get('/:user/bin/windows/contrib/:built/:pkg.zip', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
 	var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built},
 		Package: pkg[0], Version: pkg[1]});
-	send_binary(query, 'application/zip', res, next);
+	send_binary(query, 'application/zip', req, res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, res, next) {
 	var pkg = req.params.pkg.split("_");
 	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
 		Package: pkg[0], Version: pkg[1]});
-	send_binary(query, 'application/x-gzip', res, next);
+	send_binary(query, 'application/x-gzip', req, res, next);
 });
 
 /* Public aggregated data (these support :any users)*/
