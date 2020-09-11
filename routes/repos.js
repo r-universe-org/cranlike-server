@@ -150,9 +150,14 @@ function send_binary(query, content_type, req, res, next){
 			if(etagify(docs.MD5sum) === req.header('If-None-Match')){
 				res.status(304).send()
 			} else {
-				bucket.openDownloadStream(docs.MD5sum).pipe(
-					res.type(content_type).set("ETag", etag)
-				);
+				bucket.find({_id: docs.MD5sum}, {limit:1}).toArray(function(err, x){
+					if (err || !x[0]){
+						return next(createError(500, "Failed to locate file in gridFS: " + docs.MD5sum));
+					}
+					bucket.openDownloadStream(docs.MD5sum).pipe(
+						res.type(content_type).set("ETag", etag).set('Content-Length', x[0].length)
+					);
+				});
 			}
 		}
 	}).catch(error_cb(400, next));	
