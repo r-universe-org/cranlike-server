@@ -296,6 +296,29 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 	}).catch(error_cb(400, next));
 });
 
+router.get("/:user/stats/organizations", function(req, res, next) {
+	var cursor = packages.aggregate([
+		{$match: qf({_user: req.params.user, _type: 'src'})},
+		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
+		{$project: {
+			_id: 0,
+			package: '$Package',
+			user: '$_user',
+			name: { $trim: { input: { $first: '$email.captures'}}},
+			email: { $arrayElemAt: ['$email.captures',1]}
+		}},
+		{$group: {
+			_id : '$user',
+			packages : { $addToSet: '$package'},
+			maintainers: { $addToSet: '$email'}
+		}},
+		{$project: {_id: 0, organization: '$_id', packages: 1, maintainers: 1}}
+	]);
+	cursor.hasNext().then(function(){
+		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+	}).catch(error_cb(400, next));
+});
+
 router.get("/:user/stats/revdeps", function(req, res, next) {
 	var cursor = packages.aggregate([
 		{$match: qf({_user: req.params.user, _type: 'src'})},
