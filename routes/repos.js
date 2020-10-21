@@ -245,8 +245,11 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/checks', function(req, res, next) {
 	var limit = parseInt(req.query.limit) || 500;
+	var query = qf({_user: req.params.user});
+	if(req.query.maintainer)
+		query.Maintainer = {$regex: req.query.maintainer, $options: 'i'};
 	var cursor = packages.aggregate([
-		{$match: qf({_user: req.params.user})},
+		{$match: query},
 		{$group : {
 			_id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
 			timestamp: { $max : "$_builder.timestamp" },
