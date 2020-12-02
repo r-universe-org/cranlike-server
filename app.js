@@ -13,6 +13,7 @@ const mongodb = require('mongodb');
 var manRouter = require('./routes/man');
 var apiRouter = require('./routes/api');
 var reposRouter = require('./routes/repos');
+var webhookRouter = require('./routes/webhook');
 
 /* Connect to DB */
 const HOST = process.env.CRANLIKE_MONGODB_SERVER || 'localhost';
@@ -44,6 +45,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use('/webhook', webhookRouter);
 app.use('/', manRouter);
 app.use('/', apiRouter);
 app.use('/', reposRouter);
