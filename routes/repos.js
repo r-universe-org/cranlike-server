@@ -78,34 +78,41 @@ function qf(x){
 }
 
 function packages_index(query, format, req, res, next){
-	var input = packages.find(query).project(pkgfields);
-	var first = input.sort({"_id" : -1}).next().then(function(x){
-		var etag = etagify(x['_id']);
-		if(etag === req.header('If-None-Match')){
+	var input = packages.find(query).project(pkgfields).sort({"_id" : -1});
+	input.hasNext().then(function(has_any_data){
+		if(!has_any_data){
 			input.close();
-			res.status(304).send();
+			res.status(204).send(); //204 is weird
 		} else {
-			input.rewind();
-			res.set('Cache-Control', 'no-cache');
-			res.set("ETag", etag);
-			if(!format){
-				input
-					.transformStream({transform: doc_to_dcf})
-					.pipe(res.type('text/plain'));
-			} else if(format == 'gz'){
-				input
-					.transformStream({transform: doc_to_dcf})
-					.pipe(zlib.createGzip())
-					.pipe(res.type('application/x-gzip'));
-			} else if(format == 'json'){
-				input
-					.transformStream({transform: doc_to_ndjson})
-					.pipe(res.type('text/plain'));
-			} else {
-				next(createError(404, 'Unknown PACKAGES format: ' + format));
-			}
+			input.next().then(function(x){
+				var etag = etagify(x['_id']);
+				if(etag === req.header('If-None-Match')){
+					input.close();
+					res.status(304).send();
+				} else {
+					input.rewind();
+					res.set('Cache-Control', 'no-cache');
+					res.set('ETag', etag);
+					if(!format){
+						input
+							.transformStream({transform: doc_to_dcf})
+							.pipe(res.type('text/plain'));
+					} else if(format == 'gz'){
+						input
+							.transformStream({transform: doc_to_dcf})
+							.pipe(zlib.createGzip())
+							.pipe(res.type('application/x-gzip'));
+					} else if(format == 'json'){
+						input
+							.transformStream({transform: doc_to_ndjson})
+							.pipe(res.type('text/plain'));
+					} else {
+						next(createError(404, 'Unknown PACKAGES format: ' + format));
+					}
+				}
+			});
 		}
-	})
+	}).catch(error_cb(400, next));
 }
 
 function html_index(query, res){
