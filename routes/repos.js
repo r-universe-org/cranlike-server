@@ -6,7 +6,7 @@ const router = express.Router();
 
 /* Fields included in PACKAGES indices */
 /* To do: once DB is repopulated, we can remove Imports, Suggests, etc in favor of _dependencies */
-const pkgfields = {_id: 0, _hard_deps: 1, _soft_deps: 1, Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
+const pkgfields = {_id: 1, _hard_deps: 1, _soft_deps: 1, Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
 	NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
 	OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
 
@@ -41,6 +41,7 @@ function unpack_deps(x){
 
 function doc_to_dcf(doc){
 	var x = unpack_deps(doc);
+	delete x['_id'];
 	let keys = Object.keys(x);
 	return keys.map(function(key){
 		let val = x[key];
@@ -76,25 +77,35 @@ function qf(x){
 	return x;
 }
 
-function packages_index(query, format, res, next){
+function packages_index(query, format, req, res, next){
 	var input = packages.find(query).project(pkgfields);
-	res.set('Cache-Control', 'no-cache');
-	if(!format){
-		input
-			.transformStream({transform: doc_to_dcf})
-			.pipe(res.type('text/plain'));
-	} else if(format == 'gz'){
-		input
-			.transformStream({transform: doc_to_dcf})
-			.pipe(zlib.createGzip())
-			.pipe(res.type('application/x-gzip'));
-	} else if(format == 'json'){
-		input
-			.transformStream({transform: doc_to_ndjson})
-			.pipe(res.type('text/plain'));
-	} else {
-		next(createError(404, 'Unknown PACKAGES format: ' + format));
-	}
+	var first = input.sort({"_id" : -1}).next().then(function(x){
+		var etag = etagify(x['_id']);
+		if(etag === req.header('If-None-Match')){
+			input.close();
+			res.status(304).send();
+		} else {
+			input.rewind();
+			res.set('Cache-Control', 'no-cache');
+			res.set("ETag", etag);
+			if(!format){
+				input
+					.transformStream({transform: doc_to_dcf})
+					.pipe(res.type('text/plain'));
+			} else if(format == 'gz'){
+				input
+					.transformStream({transform: doc_to_dcf})
+					.pipe(zlib.createGzip())
+					.pipe(res.type('application/x-gzip'));
+			} else if(format == 'json'){
+				input
+					.transformStream({transform: doc_to_ndjson})
+					.pipe(res.type('text/plain'));
+			} else {
+				next(createError(404, 'Unknown PACKAGES format: ' + format));
+			}
+		}
+	})
 }
 
 function html_index(query, res){
@@ -147,7 +158,7 @@ function send_binary(query, content_type, req, res, next){
 			res.status(301).redirect(docs.Redirect);
 		} else {
 			var etag = etagify(docs.MD5sum);
-			if(etagify(docs.MD5sum) === req.header('If-None-Match')){
+			if(etag === req.header('If-None-Match')){
 				res.status(304).send()
 			} else {
 				bucket.find({_id: docs.MD5sum}, {limit:1}).toArray(function(err, x){
@@ -183,33 +194,33 @@ router.get('/:user', function(req, res, next) {
 
 /* CRAN-like index for source packages */
 router.get('/:user/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
-	packages_index(qf({_user: req.params.user, _type: 'src'}), req.params.ext, res, next);
+	packages_index(qf({_user: req.params.user, _type: 'src'}), req.params.ext, req, res, next);
 });
 
 router.get('/:user/src/contrib/', function(req, res, next) {
-	packages_index(qf({_user: req.params.user, _type: 'src'}), 'json', res, next);
+	packages_index(qf({_user: req.params.user, _type: 'src'}), 'json', req, res, next);
 });
 
 /* CRAN-like index for Windows packages */
 router.get('/:user/bin/windows/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}});
-	packages_index(query, req.params.ext, res, next);
+	packages_index(query, req.params.ext, req, res, next);
 });
 
 router.get('/:user/bin/windows/contrib/:built/', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}});
-	packages_index(query, 'json', res, next);
+	packages_index(query, 'json', req, res, next);
 });
 
 /* CRAN-like index for MacOS packages */
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
-	packages_index(query, req.params.ext, res, next);
+	packages_index(query, req.params.ext, req, res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
-	packages_index(query, 'json', res, next);
+	packages_index(query, 'json', req, res, next);
 });
 
 /* Index available R builds for binary pkgs */
