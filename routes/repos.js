@@ -78,39 +78,42 @@ function qf(x){
 }
 
 function packages_index(query, format, req, res, next){
-	var input = packages.find(query).project(pkgfields).sort({"_id" : -1});
-	input.hasNext().then(function(has_any_data){
-		if(!has_any_data){
-			input.close(); //R does not understand HTTP 204
-			res.status(200).send();
-		} else {
-			input.next().then(function(x){
-				var etag = etagify(x['_id']);
-				if(etag === req.header('If-None-Match')){
-					input.close();
-					res.status(304).send();
-				} else {
-					input.rewind();
-					res.set('Cache-Control', 'no-cache');
-					res.set('ETag', etag);
-					if(!format){
-						input
-							.transformStream({transform: doc_to_dcf})
-							.pipe(res.type('text/plain'));
-					} else if(format == 'gz'){
-						input
-							.transformStream({transform: doc_to_dcf})
-							.pipe(zlib.createGzip())
-							.pipe(res.type('application/x-gzip'));
-					} else if(format == 'json'){
-						input
-							.transformStream({transform: doc_to_ndjson})
-							.pipe(res.type('text/plain'));
-					} else {
-						next(createError(404, 'Unknown PACKAGES format: ' + format));
-					}
-				}
-			});
+	var cursor = packages.find(query).project(pkgfields).sort({"_id" : -1});
+	cursor.hasNext().then(function(has_any_data){
+		if(has_any_data){
+			return cursor.next(); //promise to read 1 record
+		}
+	}).then(function(doc){
+		if(doc){
+			var etag = etagify(doc['_id']);
+			if(etag === req.header('If-None-Match')){
+				cursor.close();
+				res.status(304).send();
+				return true; //DONE!
+			} else {
+				cursor.rewind();
+				res.set('ETag', etag);
+			}
+		}
+	}).then(function(done){
+		if(!done){
+			res.set('Cache-Control', 'no-cache');
+			if(!format){
+				cursor
+					.transformStream({transform: doc_to_dcf})
+					.pipe(res.type('text/plain'));
+			} else if(format == 'gz'){
+				cursor
+					.transformStream({transform: doc_to_dcf})
+					.pipe(zlib.createGzip())
+					.pipe(res.type('application/x-gzip'));
+			} else if(format == 'json'){
+				cursor
+					.transformStream({transform: doc_to_ndjson})
+					.pipe(res.type('text/plain'));
+			} else {
+				next(createError(404, 'Unknown PACKAGES format: ' + format));
+			}			
 		}
 	}).catch(error_cb(400, next));
 }
