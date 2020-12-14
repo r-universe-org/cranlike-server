@@ -81,8 +81,8 @@ function packages_index(query, format, req, res, next){
 	var input = packages.find(query).project(pkgfields).sort({"_id" : -1});
 	input.hasNext().then(function(has_any_data){
 		if(!has_any_data){
-			input.close();
-			res.status(204).send(); //204 is weird
+			input.close(); //R does not understand HTTP 204
+			res.status(200).send();
 		} else {
 			input.next().then(function(x){
 				var etag = etagify(x['_id']);
