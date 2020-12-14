@@ -89,31 +89,28 @@ function packages_index(query, format, req, res, next){
 			if(etag === req.header('If-None-Match')){
 				cursor.close();
 				res.status(304).send();
-				return true; //DONE!
+				return; //DONE!
 			} else {
 				cursor.rewind();
 				res.set('ETag', etag);
 			}
 		}
-	}).then(function(done){
-		if(!done){
-			res.set('Cache-Control', 'no-cache');
-			if(!format){
-				cursor
-					.transformStream({transform: doc_to_dcf})
-					.pipe(res.type('text/plain'));
-			} else if(format == 'gz'){
-				cursor
-					.transformStream({transform: doc_to_dcf})
-					.pipe(zlib.createGzip())
-					.pipe(res.type('application/x-gzip'));
-			} else if(format == 'json'){
-				cursor
-					.transformStream({transform: doc_to_ndjson})
-					.pipe(res.type('text/plain'));
-			} else {
-				next(createError(404, 'Unknown PACKAGES format: ' + format));
-			}			
+		res.set('Cache-Control', 'no-cache');
+		if(!format){
+			cursor
+				.transformStream({transform: doc_to_dcf})
+				.pipe(res.type('text/plain'));
+		} else if(format == 'gz'){
+			cursor
+				.transformStream({transform: doc_to_dcf})
+				.pipe(zlib.createGzip())
+				.pipe(res.type('application/x-gzip'));
+		} else if(format == 'json'){
+			cursor
+				.transformStream({transform: doc_to_ndjson})
+				.pipe(res.type('text/plain'));
+		} else {
+			next(createError(404, 'Unknown PACKAGES format: ' + format));
 		}
 	}).catch(error_cb(400, next));
 }
