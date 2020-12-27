@@ -9,7 +9,6 @@ router.get('/:user/man', function(req, res) {
 
     marked(data.toString(), { 'format': 'html' }, function(err, html) {
       if (err) { console.log(err); throw(err); return; }
-      console.log(html)
       res.render('man', {
         'docs': html
       })

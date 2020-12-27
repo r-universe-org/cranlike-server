@@ -4,6 +4,7 @@
 ## SYNOPSIS
 
 `GET`  
+&nbsp; `/man`  
 &nbsp; `/src/contrib`  
 &nbsp; `/bin/windows/contrib`  
 &nbsp; `/bin/macosx/contrib`  
@@ -35,29 +36,32 @@ you have to configure this in your web server.
 
 ## API
 
+* `GET /man`  
+  This manual page.
+
 * `GET /{src,bin}/`  
-  CRAN-like repository for packages published current user
+  CRAN-like repository for packages published in this universe.
 
 * `GET /packages/`  
-  JSON array of available packages from <*user*>.
+  JSON array of available packages in this universe.
 
 * `GET /packages/`&lt;*package*>`/`  
-  JSON array of available versions for <*package*> from <*user*>.
+  JSON array of available versions for <*package*> in this universe.
 
 * `GET /packages/`&lt;*package*>`/`&lt;*version*>`/`  
-  JSON array of builds for <*package*> <*version*> from <*user*>.
+  JSON array of builds for <*package*> <*version*> in this universe.
 
 * `GET /stats/checks`  
-  JSONLD stream with recent builds and checks.
+  NDJSON stream with recent builds and checks.
 
 * `GET /stats/descriptions`  
-  JSONLD stream with data from package DESCRIPTION files.
+  NDJSON stream with data from package DESCRIPTION files.
 
 * `GET /stats/maintainers`  
-  JSONLD stream with unique maintainers, identified by email address.
+  NDJSON stream with unique maintainers, identified by email address.
 
 * `GET /stats/sysdeps`  
-  JSONLD stream with external libraries used in this universe.
+  NDJSON stream with external libraries used in this universe.
 
 * `PUT /packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`&lt;*md5*>` `   
   Publish a package via raw file upload. The <*type*> must be one of `{src,mac,win}`,
@@ -74,5 +78,5 @@ you have to configure this in your web server.
   if unspecified all matches are deleted.
 
 ## EXAMPLES
-
-install.packages("curl", repos = "[https://jeroen.r-universe.dev](https://jeroen.r-universe.dev)")  
+*# install a package from 'ropensci' universe*  
+install.packages("gert", repos = "[https://ropensci.r-universe.dev](https://ropensci.r-universe.dev)")  
