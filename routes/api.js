@@ -255,7 +255,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
 				if(original){
 					return delete_file(original['MD5sum']);
 				}
-			}).then(() => res.send(description));	
+			}).then(() => res.send(description));
 		}).catch(function(e){
 			return delete_file(md5).then(()=>{throw e});
 		});

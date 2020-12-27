@@ -4,15 +4,18 @@
 ## SYNOPSIS
 
 `GET`  
-&nbsp; `/`&lt;*user*>`/src/contrib`  
-&nbsp; `/`&lt;*user*>`/bin/windows/contrib`  
-&nbsp; `/`&lt;*user*>`/bin/macosx/contrib/`  
+&nbsp; `/src/contrib`  
+&nbsp; `/bin/windows/contrib`  
+&nbsp; `/bin/macosx/contrib`  
 
-`GET,POST,DELETE`  
-&nbsp; `/`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  
+`GET`  
+&nbsp; `/stats/stats/checks`  
+&nbsp; `/stats/stats/descriptions`  
+&nbsp; `/stats/stats/maintainers`  
+&nbsp; `/stats/stats/sysdeps`  
 
-`GET`
-&nbsp; `/`&lt;*user*>`/stats/stats/checks`
+`GET,PUT,DELETE`  
+&nbsp; `/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  
 
 ## DESCRIPTION
 
@@ -27,43 +30,49 @@ organization using only the repo parameter in `install.packages()`.
 
 The implementation is designed to be fast and extensible, with the
 potential expose additional filters or services, and scale up to
-large repositories. Currently cranlike does not handle auth, so
+large repositories. The cranlike server itself does not handle auth,
 you have to configure this in your web server.
 
 ## API
 
-* `GET /`  
-  List available users / organizations.
+* `GET /{src,bin}/`  
+  CRAN-like repository for packages published current user
 
-* `GET /`&lt;*user*>` `  
-  Some info / package stats for given author or organization.
-
-* `GET /`&lt;*user*>`/{src,bin}/`  
-  CRAN-like repository for packages published by  <*user*>.
-
-* `GET /`&lt;*user*>`/packages/`  
+* `GET /packages/`  
   JSON array of available packages from <*user*>.
 
-* `GET /`&lt;*user*>`/packages/`&lt;*package*>`/`  
+* `GET /packages/`&lt;*package*>`/`  
   JSON array of available versions for <*package*> from <*user*>.
 
-* `GET /`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`  
+* `GET /packages/`&lt;*package*>`/`&lt;*version*>`/`  
   JSON array of builds for <*package*> <*version*> from <*user*>.
 
-* `PUT /`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`&lt;*md5*>` `   
+* `GET /stats/checks`  
+  JSONLD stream with recent builds and checks.
+
+* `GET /stats/descriptions`  
+  JSONLD stream with data from package DESCRIPTION files.
+
+* `GET /stats/maintainers`  
+  JSONLD stream with unique maintainers, identified by email address.
+
+* `GET /stats/sysdeps`  
+  JSONLD stream with external libraries used in this universe.
+
+* `PUT /packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`&lt;*md5*>` `   
   Publish a package via raw file upload. The <*type*> must be one of `{src,mac,win}`,
   and <*md5*> must be a string with the md5 hash of the file. 
   Additionional request headers starting with `Builder-` are stored as builder properties.
 
-* `POST /`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>` `  
+* `POST /packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>` `  
   Publish a package via multipart form-data in the `file` field. 
   The <*type*> must be one of `{src,mac,win}`. Additionional form-fields
   starting with `Builder-` are stored as builder properties.
 
-* `DELETE /`&lt;*user*>`/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>` `  
+* `DELETE /packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>` `  
   Delete one or more package files. Both <*version*> and <*type*> are optional,
   if unspecified all matches are deleted.
 
 ## EXAMPLES
 
-install.packages('curl', repos = "https://repos.mycorp.org/jeroen")  
+install.packages("curl", repos = "[https://jeroen.r-universe.dev](https://jeroen.r-universe.dev)")  
