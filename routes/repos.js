@@ -199,6 +199,22 @@ router.get('/:user', function(req, res, next) {
 	count_by_type(req.params.user).pipe(res);
 });
 
+router.get('/:user/src', function(req, res, next) {
+	res.redirect('/' + req.params.user + '/src/contrib');
+});
+
+router.get('/:user/bin', function(req, res, next) {
+	count_by_type(req.params.user).pipe(res);
+});
+
+router.get('/:user/bin/windows', function(req, res, next) {
+	res.redirect('/' + req.params.user + '/bin/windows/contrib');
+});
+
+router.get('/:user/bin/macosx', function(req, res, next) {
+	res.redirect('/' + req.params.user + '/bin/macosx/contrib');
+});
+
 /* CRAN-like index for source packages */
 router.get('/:user/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
 	packages_index(qf({_user: req.params.user, _type: 'src'}), req.params.ext, req, res, next);

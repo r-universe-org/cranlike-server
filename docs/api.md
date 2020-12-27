@@ -10,13 +10,15 @@
 &nbsp; `/bin/macosx/contrib`  
 
 `GET`  
-&nbsp; `/stats/stats/checks`  
-&nbsp; `/stats/stats/descriptions`  
-&nbsp; `/stats/stats/maintainers`  
-&nbsp; `/stats/stats/sysdeps`  
+&nbsp; `/stats/checks`  
+&nbsp; `/stats/descriptions`  
+&nbsp; `/stats/maintainers`  
+&nbsp; `/stats/sysdeps`  
 
-`GET,PUT,DELETE`  
+`GET, PUT*, DELETE*`  
 &nbsp; `/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  
+
+`*` may require authentication
 
 ## DESCRIPTION
 
@@ -40,7 +42,7 @@ you have to configure this in your web server.
   This manual page.
 
 * `GET /{src,bin}/`  
-  CRAN-like repository for packages published in this universe.
+  CRAN-like repository structure for packages in this universe.
 
 * `GET /packages/`  
   JSON array of available packages in this universe.
