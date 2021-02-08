@@ -161,6 +161,11 @@ function parse_builder_fields(x){
 	var builder = filter_keys(x, /^builder-/gi);
 	if(builder.sysdeps)
 		builder.sysdeps = rdesc.parse_dep_string(builder.sysdeps);
+	if(builder.vignettes){
+		let buff = Buffer.from(builder.vignettes, 'base64');
+		let json = buff.toString('utf-8');
+		builder.vignettes = JSON.parse(json);
+	}
 	return builder;
 }
 
