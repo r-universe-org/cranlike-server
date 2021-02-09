@@ -8,7 +8,7 @@ EXPOSE 3000
 ENV CRANLIKE_MONGODB_SERVER="mongo" \
     VCAP_APP_HOST="0.0.0.0"
 
-RUN npm install cranlike@0.6.9
+RUN npm install cranlike@0.7.0
 
 COPY docker-entrypoint.sh /
 

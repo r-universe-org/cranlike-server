@@ -198,22 +198,33 @@ function send_extracted_file(query, filename, req, res, next){
           if (err || !x[0]){
             return next(createError(500, "Failed to locate file in gridFS: " + docs.MD5sum));
           }
+          var dolist = filename instanceof RegExp;
+          var matches = [];
           var extract = tar.extract();
           var hassent = false;
           extract.on('entry', function(header, stream, cb) {
             stream.on('end', cb);
-            if(!hassent && header.name == filename){
+            if(!dolist && !hassent && header.name === filename){
               hassent = true;
               stream.pipe(
                 res.type(mime.getType(filename) || 'text/plain').set("ETag", etag).set('Content-Length', header.size)
               );
             } else {
+              if(header.name && dolist){
+                let m = header.name.match(filename);
+                if(m && m.length){
+                  matches.push(m.pop());
+                }
+              }
               stream.resume();
             }
           });
           extract.on('finish', function(){
-            if(!hassent)
+            if(dolist){
+              res.send(matches);
+            } else if(!hassent) {
               next(createError(404, "No such file: " + filename));
+            }
           });
           bucket.openDownloadStream(docs.MD5sum).pipe(zlib.createGunzip()).pipe(extract);
         });
@@ -318,10 +329,12 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 });
 
 /* Extract single files */
-router.get('/:user/articles/:pkg/:file', function(req, res, next){
+router.get('/:user/articles/:pkg/:file?', function(req, res, next){
   var pkg = req.params.pkg;
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  send_extracted_file(query, pkg + "/inst/doc/" + req.params.file, req, res, next);
+  var prefix = pkg + "/inst/doc/";
+  var filename = req.params.file ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
+  send_extracted_file(query, filename, req, res, next);
 });
 
 /* Public aggregated data (these support :any users)*/
