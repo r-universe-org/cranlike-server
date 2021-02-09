@@ -2,6 +2,8 @@
 const express = require('express');
 const createError = require('http-errors');
 const zlib = require('zlib');
+const tar = require('tar-stream');
+const mime = require('mime');
 const router = express.Router();
 
 /* Fields included in PACKAGES indices */
@@ -181,6 +183,45 @@ function send_binary(query, content_type, req, res, next){
 	}).catch(error_cb(400, next));	
 }
 
+function send_extracted_file(query, filename, req, res, next){
+  packages.findOne(query, {project: {MD5sum: 1, Redirect: 1}}).then(function(docs){
+    if(!docs){
+      next(createError(404, 'Package not found'));
+    } else if(docs.Redirect) {
+      res.status(301).redirect(docs.Redirect);
+    } else {
+      var etag = etagify(docs.MD5sum);
+      if(etag === req.header('If-None-Match')){
+        res.status(304).send()
+      } else {
+        bucket.find({_id: docs.MD5sum}, {limit:1}).toArray(function(err, x){
+          if (err || !x[0]){
+            return next(createError(500, "Failed to locate file in gridFS: " + docs.MD5sum));
+          }
+          var extract = tar.extract();
+          var hassent = false;
+          extract.on('entry', function(header, stream, cb) {
+            stream.on('end', cb);
+            if(!hassent && header.name == filename){
+              hassent = true;
+              stream.pipe(
+                res.type(mime.getType(filename) || 'text/plain').set("ETag", etag).set('Content-Length', header.size)
+              );
+            } else {
+              stream.resume();
+            }
+          });
+          extract.on('finish', function(){
+            if(!hassent)
+              next(createError(404, "No such file: " + filename));
+          });
+          bucket.openDownloadStream(docs.MD5sum).pipe(zlib.createGunzip()).pipe(extract);
+        });
+      }
+    }
+  }).catch(error_cb(400, next));
+}
+
 function find_by_user(_user, _type){
 	var out = {};
 	if(_user != ':any')
@@ -274,6 +315,13 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
 		Package: pkg[0], Version: pkg[1]});
 	send_binary(query, 'application/x-gzip', req, res, next);
+});
+
+/* Extract single files */
+router.get('/:user/articles/:pkg/:file', function(req, res, next){
+  var pkg = req.params.pkg;
+  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
+  send_extracted_file(query, pkg + "/inst/doc/" + req.params.file, req, res, next);
 });
 
 /* Public aggregated data (these support :any users)*/
