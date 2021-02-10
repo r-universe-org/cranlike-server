@@ -352,6 +352,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
     {$project: {
       _id: 0,
       package: '$Package',
+      version: '$Version',
       user: '$_user',
       published: '$_builder.timestamp',
       builddate: '$_builder.date',
