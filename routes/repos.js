@@ -328,6 +328,14 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 	send_binary(query, 'application/x-gzip', req, res, next);
 });
 
+/* For now articles are only vignettes */
+router.get('/:user/articles', function(req, res, next){
+  var query = qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : { $exists: true }});
+  packages.distinct('Package', query).then(function(x){
+    res.send(x);
+  }).catch(error_cb(400, next));
+});
+
 /* Extract single files */
 router.get('/:user/articles/:pkg/:file?', function(req, res, next){
   var pkg = req.params.pkg;
@@ -337,7 +345,7 @@ router.get('/:user/articles/:pkg/:file?', function(req, res, next){
   send_extracted_file(query, filename, req, res, next);
 });
 
-router.get("/:user/articles", function(req, res, next) {
+router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 500;
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src'})},
