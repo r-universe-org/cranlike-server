@@ -337,6 +337,27 @@ router.get('/:user/articles/:pkg/:file?', function(req, res, next){
   send_extracted_file(query, filename, req, res, next);
 });
 
+router.get("/:user/articles", function(req, res, next) {
+  var limit = parseInt(req.query.limit) || 500;
+  var cursor = packages.aggregate([
+    {$match: qf({_user: req.params.user, _type: 'src'})},
+    {$project: {
+      _id: 0,
+      package: '$Package',
+      user: '$_user',
+      published: '$_builder.timestamp',
+      builddate: '$_builder.date',
+      vignettes: '$_builder.vignettes'
+    }},
+    {$unwind: '$vignettes'},
+    {$sort : {builddate : -1}},
+    {$limit : limit},
+  ]);
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'src'});
