@@ -357,9 +357,9 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       user: '$_user',
       published: '$_builder.timestamp',
       builddate: '$_builder.date',
-      vignettes: '$_builder.vignettes'
+      vignette: '$_builder.vignettes'
     }},
-    {$unwind: '$vignettes'},
+    {$unwind: '$vignette'},
     {$sort : {builddate : -1}},
     {$limit : limit},
   ]);
