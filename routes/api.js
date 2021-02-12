@@ -166,7 +166,7 @@ function parse_builder_fields(x){
 	if(builder.sysdeps)
 		builder.sysdeps = rdesc.parse_dep_string(builder.sysdeps);
 	if(builder.vignettes){
-		let buff = Buffer.from(builder.vignettes, 'base64url');
+		let buff = Buffer.from(builder.vignettes, 'base64');
 		let json = zlib.unzipSync(buff).toString('utf-8');
 		builder.vignettes = JSON.parse(json);
 	}
