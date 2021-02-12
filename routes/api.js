@@ -14,7 +14,10 @@ const router = express.Router();
 
 /* Error generator */
 function error_cb(status, next) {
-	return err => next(createError(status, err));
+	return function(err){
+    console.log("[Debug] HTTP " + status + ": " + err)
+    next(createError(status, err));
+  }
 }
 
 //Remove file from bucket if there are no more references to it
