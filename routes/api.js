@@ -5,6 +5,7 @@ const multer  = require('multer')
 const md5file = require('md5-file');
 const rdesc = require('rdesc-parser');
 const fs = require('fs');
+const zlib = require('zlib');
 const hard_dep_types = require('r-constants').essential_dependency_types;
 const soft_dep_types = require('r-constants').optional_dependency_types;
 
@@ -165,9 +166,8 @@ function parse_builder_fields(x){
 	if(builder.sysdeps)
 		builder.sysdeps = rdesc.parse_dep_string(builder.sysdeps);
 	if(builder.vignettes){
-		let b64string = builder.vignettes.replaceAll('+', "-").replaceAll('/', '_');
-		let buff = Buffer.from(b64string, 'base64url');
-		let json = buff.toString('utf-8');
+		let buff = Buffer.from(builder.vignettes, 'base64url');
+		let json = zlib.unzipSync(buff).toString('utf-8');
 		builder.vignettes = JSON.parse(json);
 	}
 	return builder;
