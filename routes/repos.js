@@ -354,7 +354,9 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       package: '$Package',
       version: '$Version',
       maintainer: '$Maintainer',
-      user: '$_user',
+      universe: '$_user',
+      pkglogo: '$_builder.pkglogo',
+      maintainerlogin: '$_builder.maintainerlogin',
       published: '$_builder.timestamp',
       builddate: '$_builder.date',
       vignette: '$_builder.vignettes'
