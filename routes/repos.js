@@ -349,7 +349,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src'})},
-    {$sort : {'_builder.published' : -1}},
+    {$sort : {'_builder.timestamp' : -1}},
     {$limit : limit},
     {$project: {
       _id: 0,
