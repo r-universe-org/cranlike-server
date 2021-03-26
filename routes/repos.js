@@ -348,7 +348,7 @@ router.get('/:user/articles/:pkg/:file?', function(req, res, next){
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src'})},
+    {$match: qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : {$exists: true}})},
     {$sort : {'_builder.timestamp' : -1}},
     {$limit : limit},
     {$project: {
@@ -358,6 +358,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       maintainer: '$Maintainer',
       universe: '$_user',
       pkglogo: '$_builder.pkglogo',
+      upstream: '$_builder.upstream',
       maintainerlogin: '$_builder.maintainerlogin',
       published: '$_builder.timestamp',
       builddate: '$_builder.date',
