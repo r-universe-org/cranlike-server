@@ -362,6 +362,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       maintainerlogin: '$_builder.maintainerlogin',
       published: '$_builder.timestamp',
       builddate: '$_builder.date',
+      registered: '$_builder.registered',
       vignette: '$_builder.vignettes'
     }},
     {$unwind: '$vignette'}
