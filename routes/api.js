@@ -60,7 +60,7 @@ router.get('/:user/packages/:package', function(req, res, next) {
 	}).catch(error_cb(400, next));
 });
 
-router.get('/:user/packages/:package/:version/:type?', function(req, res, next) {
+router.get('/:user/packages/:package/:version/:type?/:built?', function(req, res, next) {
 	var user = req.params.user;
 	var package = req.params.package;
 	var query = {_user : user, Package : package};
@@ -68,10 +68,12 @@ router.get('/:user/packages/:package/:version/:type?', function(req, res, next) 
 		query.Version = req.params.version;
 	if(req.params.type)
 		query._type = req.params.type;
+	if(req.params.built)
+		query['Built.R'] = {$regex: '^' + req.params.built};
 	packages.find(query).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
 });
 
-router.delete('/:user/packages/:package/:version?/:type?', function(req, res, next){
+router.delete('/:user/packages/:package/:version?/:type?/:built?', function(req, res, next){
 	var user = req.params.user;
 	var package = req.params.package;
 	var query = {_user: req.params.user, Package: req.params.package};
@@ -79,6 +81,8 @@ router.delete('/:user/packages/:package/:version?/:type?', function(req, res, ne
 		query.Version = req.params.version
 	if(req.params.type)
 		query._type = req.params.type;
+	if(req.params.built)
+		query['Built.R'] = {$regex: '^' + req.params.built};
 	delete_by_query(query).then(docs=>res.send(docs)).catch(error_cb(400, next));
 });
 
