@@ -77,7 +77,7 @@ router.delete('/:user/packages/:package/:version?/:type?/:built?', function(req,
 	var user = req.params.user;
 	var package = req.params.package;
 	var query = {_user: req.params.user, Package: req.params.package};
-	if(req.params.version)
+	if(req.params.version && req.params.version != "any")
 		query.Version = req.params.version
 	if(req.params.type)
 		query._type = req.params.type;
