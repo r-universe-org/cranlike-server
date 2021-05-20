@@ -413,9 +413,9 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 		{$project: {
 			_id: 0,
 			package: '$Package',
-			version: '$Version',
 			user: '$_user',
 			login: '$_builder.maintainerlogin',
+			registered: '$_builder.registered',
 			name: { $trim: { input: { $first: '$email.captures'}}},
 			email: { $arrayElemAt: ['$email.captures',1]}
 		}},
@@ -426,7 +426,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			login : { $addToSet: '$login'}, //login can be null
 			packages : { $addToSet: {
 				package: '$package',
-				version: '$version',
+				registered: '$registered',
 				user: '$user'
 			}}
 		}},
