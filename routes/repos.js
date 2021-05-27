@@ -88,7 +88,8 @@ function packages_index(query, format, req, res, next){
 	}).then(function(doc){
 		if(doc){
 			var etag = etagify(doc['_id']);
-			if(etag === req.header('If-None-Match')){
+			/* Cache disabled until we solve _id bug */
+			if(0 && etag === req.header('If-None-Match')){
 				cursor.close();
 				res.status(304).send();
 				return; //DONE!
