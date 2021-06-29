@@ -14,6 +14,7 @@
 &nbsp; `/stats/descriptions`  
 &nbsp; `/stats/maintainers`  
 &nbsp; `/stats/sysdeps`  
+&nbsp; `/badges`  
 
 `GET, PUT*, DELETE*`  
 &nbsp; `/packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>  
@@ -64,6 +65,9 @@ you have to configure this in your web server.
 
 * `GET /stats/sysdeps`  
   NDJSON stream with external libraries used in this universe.
+
+* `GET /badges/`&lt;*package*>  
+  SVG badge with current version of given package.
 
 * `PUT /packages/`&lt;*package*>`/`&lt;*version*>`/`&lt;*type*>`/`&lt;*md5*>` `   
   Publish a package via raw file upload. The <*type*> must be one of `{src,mac,win}`,

@@ -10,6 +10,13 @@ function error_cb(status, next) {
   }
 }
 
+/* Same as /:user/packages */
+router.get('/:user/badges', function(req, res, next) {
+  packages.distinct('Package', {_user : req.params.user}).then(function(x){
+    res.send(x);
+  }).catch(error_cb(400, next));
+});
+
 router.get('/:user/badges/:package', function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
