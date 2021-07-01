@@ -30,7 +30,7 @@ router.get('/:user/badges/:package', function(req, res, next) {
     var svg = badgen.badgen(badge);
     svg = svg.replace('<title>', '<a href="https://' + user + '.r-universe.dev" alt="r-universe">\n  <title>');
     svg = svg.replace('</svg>', '  </a>\n</svg>');
-    res.type('image/svg+xml').send(svg);
+    res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60').send(svg);
   }).catch(error_cb(400, next));
 });
 
