@@ -393,13 +393,14 @@ router.get('/:user/stats/checks', function(req, res, next) {
 		{$group : {
 			_id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
 			timestamp: { $max : "$_builder.timestamp" },
+			os_restriction: { $addToSet: '$OS_type'},
 			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
 		}},
 		/* NB: sort+limit requires buffering, maybe not a good idea? */
 		{$sort : {timestamp : -1}},
 		{$limit : limit},
 		{$project: {
-			_id: 0, user: '$_id.user', maintainer:'$_id.maintainer', package: '$_id.package', version:'$_id.version', runs:1}
+			_id: 0, user: '$_id.user', maintainer:'$_id.maintainer', package: '$_id.package', version:'$_id.version', runs:1, os_restriction:{ $first: "$os_restriction" }}
 		}
 	]);
 	cursor.hasNext().then(function(){
