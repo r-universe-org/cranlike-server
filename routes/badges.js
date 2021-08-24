@@ -20,12 +20,19 @@ router.get('/:user/badges', function(req, res, next) {
 router.get('/:user/badges/:package', function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
-  var badge = {label: 'r-universe', status: 'unavailable', color: 'red'};
+  var color = req.params.color
+  var badge = {
+    label: 'r-universe',
+    status: 'unavailable',
+    color: color || 'red',
+    style: req.params.style,
+    scale: req.params.scale
+  };
   //badge.icon = 'data:image/svg+xml;base64,...';
   packages.distinct('Version', {_user : user, Package : package, _type: 'src'}).then(function(x){
     if(x.length){
       badge.status = x.join("|");
-      badge.color = 'green';
+      badge.color = color || 'green';
     }
     var svg = badgen.badgen(badge);
     svg = svg.replace('<title>', '<a href="https://' + user + '.r-universe.dev" alt="r-universe">\n  <title>');
