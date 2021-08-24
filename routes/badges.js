@@ -20,13 +20,13 @@ router.get('/:user/badges', function(req, res, next) {
 router.get('/:user/badges/:package', function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
-  var color = req.params.color
+  var color = req.query.color
   var badge = {
     label: 'r-universe',
     status: 'unavailable',
     color: color || 'red',
-    style: req.params.style,
-    scale: req.params.scale
+    style: req.query.style,
+    scale: req.query.scale
   };
   //badge.icon = 'data:image/svg+xml;base64,...';
   packages.distinct('Version', {_user : user, Package : package, _type: 'src'}).then(function(x){
