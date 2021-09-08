@@ -13,7 +13,26 @@ function error_cb(status, next) {
 /* Same as /:user/packages */
 router.get('/:user/badges', function(req, res, next) {
   packages.distinct('Package', {_user : req.params.user}).then(function(x){
+    x.push(":total");
     res.send(x);
+  }).catch(error_cb(400, next));
+});
+
+router.get('/:user/badges/::total', function(req, res, next) {
+  var user = req.params.user;
+  var color = req.query.color
+  var badge = {
+    label: 'r-universe',
+    color: color || 'blue',
+    style: req.query.style,
+    scale: req.query.scale
+  };
+  packages.distinct('Version', {_user : user, _type: 'src'}).then(function(x){
+    badge.status = x.length + " packages";
+    var svg = badgen.badgen(badge);
+    svg = svg.replace('<title>', '<a href="https://' + user + '.r-universe.dev" alt="r-universe">\n  <title>');
+    svg = svg.replace('</svg>', '  </a>\n</svg>');
+    res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60').send(svg);
   }).catch(error_cb(400, next));
 });
 
