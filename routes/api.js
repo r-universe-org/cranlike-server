@@ -230,11 +230,29 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
 				if(original){
 					return delete_file(original['MD5sum']);
 				}
+			}).then(function(){
+				if(type === 'src'){
+					return packages.deleteMany({_type : 'failure', _user : user, Package : package});
+				}
 			}).then(() => res.send(description));	
 		}).catch(function(e){
 			return delete_file(md5).then(()=>{throw e});
 		});
 	}).catch(error_cb(400, next));
+});
+
+router.post('/:user/packages/:package/:version/failure', upload.none(), function(req, res, next) {
+  var user = req.params.user;
+  var package = req.params.package;
+  var version = req.params.version;
+  var builder = parse_builder_fields(req.body);
+  var maintainer = builder.maintainer;
+  delete builder.maintainer; /* submit maintainer as build-field instead of description */
+  var query = {_type : 'failure', _user : user, Package : package};
+  var description = {...query, Version: version, Maintainer: maintainer, _builder: builder};
+  packages.findOneAndReplace(query, description, {upsert: true})
+    .then(() => res.send(description))
+    .catch(error_cb(400, next))
 });
 
 router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
@@ -267,6 +285,10 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
 				var original = result.value;
 				if(original){
 					return delete_file(original['MD5sum']);
+				}
+			}).then(function(){
+				if(type === 'src'){
+					return packages.deleteMany({_type : 'failure', _user : user, Package : package});
 				}
 			}).then(() => res.send(description));
 		}).catch(function(e){
