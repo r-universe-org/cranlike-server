@@ -376,10 +376,19 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'src'});
-	var cursor = packages.find(query).sort({"_id" : -1});
+	var cursor = packages.find(query).sort({"_id" : -1}).project({_id:0, _type:0});
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
 	}).catch(error_cb(400, next));
+});
+
+/* Failures(these support :any users)*/
+router.get('/:user/stats/failures', function(req, res, next) {
+  var query = qf({_user: req.params.user, _type: 'failure'});
+  var cursor = packages.find(query).sort({"_id" : -1}).project({_id:0, _type:0});
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
 });
 
 /* Public aggregated data (these support :any users)*/
