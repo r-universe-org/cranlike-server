@@ -1,5 +1,4 @@
 /* Packages */
-const https = require('https');
 const express = require('express');
 const createError = require('http-errors');
 const multer  = require('multer')
@@ -14,16 +13,8 @@ const soft_dep_types = require('r-constants').optional_dependency_types;
 const upload = multer({ dest: '/tmp/' });
 const router = express.Router();
 
-/* Promisify http */
-function http_url_exists(url){
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, res => {
-      resolve(res.statusCode == 200);
-    });
-    req.on('error', reject);
-    req.end();
-  });
-};
+/* Local code */
+const tools = require("../src/tools.js");
 
 /* Error generator */
 function error_cb(status, next) {
@@ -61,11 +52,7 @@ function delete_by_query(query){
 router.get('/:user/landing', function(req, res, next) {
   const user = req.params.user;
   const url = 'https://github.com/r-universe/' + user;
-  packages.findOne({_user : user}).then(function(x){
-    if(x) return true;
-    console.log("Testing if " + url + " exists...");
-    return http_url_exists(url);
-  }).then(function(exists){
+  tools.test_if_universe_exists(user).then(function(exists){
     if(exists){
       const accept = req.headers['accept'];
       if(accept && accept.includes('html')){
@@ -74,7 +61,7 @@ router.get('/:user/landing', function(req, res, next) {
         res.send("Welcome to the " + user + " universe!");
       }
     } else {
-      res.status(404).send("No universe found for user: " + user);
+      res.status(404).type('text/plain').send("No universe found for user: " + user);
     }
   }).catch(error_cb(400, next));
 });
