@@ -19,7 +19,7 @@ function send_badge(badge, user, res){
 }
 
 router.get('/:user/badges', function(req, res, next) {
-  packages.distinct('Package', {_user : req.params.user}).then(function(x){
+  packages.distinct('Package', {_user : req.params.user, '_builder.registered' : {$ne: 'false'}}).then(function(x){
     x.push(":name")
     x.push(":total");
     res.send(x);
@@ -63,7 +63,7 @@ router.get('/:user/badges/:package', function(req, res, next) {
     scale: req.query.scale
   };
   //badge.icon = 'data:image/svg+xml;base64,...';
-  packages.distinct('Version', {_user : user, Package : package, _type: 'src'}).then(function(x){
+  packages.distinct('Version', {_user : user, Package : package, _type: 'src', '_builder.registered' : {$ne: 'false'}}).then(function(x){
     if(x.length){
       badge.status = x.join("|");
       badge.color = color || 'green';
