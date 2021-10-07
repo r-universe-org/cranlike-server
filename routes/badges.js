@@ -36,7 +36,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
     scale: req.query.scale
   };
   tools.test_if_universe_exists(user).then(function(x){
-    if(!x) return res.type('text/plain').send(404, 'No universe for user: ' + user);
+    if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
     if(req.params.meta == 'name'){
       badge.status = user;
       send_badge(badge, user, res);
@@ -45,6 +45,19 @@ router.get('/:user/badges/::meta', function(req, res, next) {
         badge.status = x.length + " packages";
         send_badge(badge, user, res);
       });
+    } else if(req.params.meta == 'registry'){
+      /* This badge mimics https://github.com/r-universe/jeroen/actions/workflows/sync.yml/badge.svg (which is super slow) */
+        return tools.get_registry_info(user).then(function(data){
+          if(data && data.workflow_runs && data.workflow_runs.length){
+            const success = data.workflow_runs[0].conclusion == 'success';
+            badge.label = "Update universe";
+            badge.color = success ? 'green' : 'red';
+            badge.status = success ? 'passing' : 'failure';
+            send_badge(badge, user, res);
+          } else {
+            throw "Failed to query workflow status from GitHub";
+          }
+        });
     } else {
       throw "Unsupported badge type :" + req.params.meta;
     }

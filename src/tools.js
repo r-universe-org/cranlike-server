@@ -1,4 +1,8 @@
 const https = require('https');
+const axios = require('axios');
+
+/* dummy token for GH api limits */
+const token = Buffer.from('Z2hwX2IxR2RLZGN0cEZGSXZYSHUyWnlpZ0dXNmxGcHNzbTBxNGJ0Vg==', 'base64').toString();
 
 /* Promisify http */
 function http_url_exists(url){
@@ -21,6 +25,19 @@ function test_if_universe_exists(user){
   });
 }
 
+function get_registry_info(user){
+  const url = 'https://api.github.com/repos/r-universe/' + user + '/actions/workflows/sync.yml/runs?per_page=1&status=completed';
+  return axios.get(url, {
+    headers: {
+      'Authorization': 'token ' + token
+    }
+  }).then(function(x){return x.data}).catch(err => {
+    const data = err.response.data;
+    throw "Failed to query GitHub: HTTP " + err.response.status + ": " + (data.message || data);
+  });
+}
+
 module.exports = {
-  test_if_universe_exists : test_if_universe_exists
+  test_if_universe_exists : test_if_universe_exists,
+  get_registry_info : get_registry_info
 };
