@@ -375,7 +375,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
 
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
-	var query = qf({_user: req.params.user, _type: 'src'});
+	var query = qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}});
 	var cursor = packages.find(query).sort({"_id" : -1}).project({_id:0, _type:0});
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
@@ -419,7 +419,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
 
 router.get("/:user/stats/maintainers", function(req, res, next) {
 	var cursor = packages.aggregate([
-		{$match: qf({_user: req.params.user, _type: 'src'})},
+		{$match: qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}})},
 		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
 		{$project: {
 			_id: 0,
@@ -451,7 +451,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 
 router.get("/:user/stats/organizations", function(req, res, next) {
 	var cursor = packages.aggregate([
-		{$match: qf({_user: req.params.user, _type: 'src'})},
+		{$match: qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}})},
 		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
 		{$project: {
 			_id: 0,
@@ -474,7 +474,7 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 
 router.get("/:user/stats/revdeps", function(req, res, next) {
 	var cursor = packages.aggregate([
-		{$match: qf({_user: req.params.user, _type: 'src'})},
+		{$match: qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}})},
 		{$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
 		{$unwind: '$dependencies'},
 		{$group: {
