@@ -154,9 +154,9 @@ function count_by_type(user){
 function count_by_built(user, type){
 	return packages.aggregate([
 		{$match: {_user: user, _type : type}},
-		{$group:{_id: "$Built.R", count: { $sum: 1 }}}
+		{$group:{_id: {R: "$Built.R", Platform: "$Built.Platform"}, count: { $sum: 1 }}}
 	])
-	.project({_id: 0, R: "$_id", count: 1})
+	.project({_id: 0, R: "$_id.R", Platform:"$_id.Platform", count: 1})
 	.transformStream({transform: doc_to_ndjson});
 }
 
@@ -243,6 +243,11 @@ function find_by_user(_user, _type){
 	return out;
 }
 
+/* Use negative match, because on packages without compiled code Built.Platform is empty */
+function arch_to_built(xcode){
+  return (xcode && xcode.match("arm64")) ? {$not : /x86_64/} : {$not : /aarch64/ };
+}
+
 /* Copied from api.js */
 router.get('/', function(req, res, next) {
 	count_by_user().pipe(res);
@@ -291,11 +296,13 @@ router.get('/:user/bin/windows/contrib/:built/', function(req, res, next) {
 /* CRAN-like index for MacOS packages */
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
+	query['Built.Platform'] = arch_to_built(req.params.xcode);
 	packages_index(query, req.params.ext, req, res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
+	query['Built.Platform'] = arch_to_built(req.params.xcode);
 	packages_index(query, 'json', req, res, next);
 });
 
@@ -326,6 +333,7 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 	var pkg = req.params.pkg.split("_");
 	var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
 		Package: pkg[0], Version: pkg[1]});
+	query['Built.Platform'] = arch_to_built(req.params.xcode);
 	send_binary(query, 'application/x-gzip', req, res, next);
 });
 
