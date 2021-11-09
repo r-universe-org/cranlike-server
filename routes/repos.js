@@ -451,7 +451,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			}}
 		}},
 		{$project: {_id: 0, name: 1, login: { '$first' : '$login'}, email: '$_id', packages: '$packages', updated: 1}},
-		{$sort:{ email: 1}}
+		{$sort:{ updated: -1}}
 	]);
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
@@ -475,7 +475,8 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 			packages : { $addToSet: '$package'},
 			maintainers: { $addToSet: '$email'}
 		}},
-		{$project: {_id: 0, organization: '$_id', packages: 1, maintainers: 1, updated: 1}}
+		{$project: {_id: 0, organization: '$_id', packages: 1, maintainers: 1, updated: 1}},
+		{$sort:{ updated: -1}}
 	]);
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
