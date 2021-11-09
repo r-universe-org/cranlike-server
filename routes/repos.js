@@ -434,6 +434,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			package: '$Package',
 			user: '$_user',
 			login: '$_builder.maintainerlogin',
+			updated: '$_builder.timestamp',
 			registered: '$_builder.registered',
 			name: { $trim: { input: { $first: '$email.captures'}}},
 			email: { $arrayElemAt: ['$email.captures',1]}
@@ -441,7 +442,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 		{$unwind: '$email'},
 		{$group: {
 			_id : '$email',
-			updated: { $max: '$_builder.timestamp'},
+			updated: { $max: '$updated'},
 			name : { $first: '$name'},
 			login : { $addToSet: '$login'}, //login can be null
 			packages : { $addToSet: {
@@ -466,12 +467,13 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 			_id: 0,
 			package: '$Package',
 			user: '$_user',
+			updated: '$_builder.timestamp',
 			name: { $trim: { input: { $first: '$email.captures'}}},
 			email: { $arrayElemAt: ['$email.captures',1]}
 		}},
 		{$group: {
 			_id : '$user',
-			updated: { $max: '$_builder.timestamp'},
+			updated: { $max: '$updated'},
 			packages : { $addToSet: '$package'},
 			maintainers: { $addToSet: '$email'}
 		}},
