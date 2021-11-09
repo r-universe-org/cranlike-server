@@ -441,6 +441,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 		{$unwind: '$email'},
 		{$group: {
 			_id : '$email',
+			updated: { $max: '$_builder.timestamp'},
 			name : { $first: '$name'},
 			login : { $addToSet: '$login'}, //login can be null
 			packages : { $addToSet: {
@@ -449,7 +450,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 				user: '$user'
 			}}
 		}},
-		{$project: {_id: 0, name: 1, login: { '$first' : '$login'}, email: '$_id', packages: '$packages'}},
+		{$project: {_id: 0, name: 1, login: { '$first' : '$login'}, email: '$_id', packages: '$packages', updated: 1}},
 		{$sort:{ email: 1}}
 	]);
 	cursor.hasNext().then(function(){
@@ -470,10 +471,11 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 		}},
 		{$group: {
 			_id : '$user',
+			updated: { $max: '$_builder.timestamp'},
 			packages : { $addToSet: '$package'},
 			maintainers: { $addToSet: '$email'}
 		}},
-		{$project: {_id: 0, organization: '$_id', packages: 1, maintainers: 1}}
+		{$project: {_id: 0, organization: '$_id', packages: 1, maintainers: 1, updated: 1}}
 	]);
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
