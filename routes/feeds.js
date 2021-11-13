@@ -28,7 +28,7 @@ router.get('/:user/index.xml', function(req, res, next) {
       status: '$_builder.status',
       upstream: '$_builder.upstream',
       repository: '$Repository'
-    }).sort({updated : -1});
+    }).sort({timestamp : -1});
     return cursor.hasNext().then(function(has_any_data){
       if(has_any_data){
         return cursor.next(); //promise to read 1 record
@@ -92,7 +92,6 @@ router.get('/:user/index.xml', function(req, res, next) {
 });
 
 function convert_date(timestamp){
-  console.log(timestamp)
   if(!timestamp) return;
   const date = new Date(parseInt(timestamp)*1000);
   if(!date) return;
