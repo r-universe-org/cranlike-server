@@ -28,7 +28,7 @@ router.get('/:user/index.xml', function(req, res, next) {
       status: '$_builder.status',
       upstream: '$_builder.upstream',
       repository: '$Repository'
-    }).sort({timestamp : -1});
+    }).sort({timestamp : -1}).collation({locale: "en_US", numericOrdering: true});
     return cursor.hasNext().then(function(has_any_data){
       if(has_any_data){
         return cursor.next(); //promise to read 1 record
