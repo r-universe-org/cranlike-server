@@ -17,18 +17,21 @@ router.get('/:user/index.xml', function(req, res, next) {
   const user = req.params.user
   tools.test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
-    var cursor = packages.find({_user: user, _type: 'src'}).project({
-      _id: 0,
-      maintainer: '$Maintainer',
-      package: '$Package',
-      version: '$Version',
-      description: '$Description',
-      timestamp: '$_builder.timestamp',
-      vignettes: '$_builder.vignettes',
-      status: '$_builder.status',
-      upstream: '$_builder.upstream',
-      repository: '$Repository'
-    }).sort({timestamp : -1}).collation({locale: "en_US", numericOrdering: true});
+    var cursor = packages.find({_user: user, _type: 'src'})
+      .sort({'_builder.timestamp' : -1})
+      .collation({locale: "en_US", numericOrdering: true})
+      .project({
+        _id: 0,
+        maintainer: '$Maintainer',
+        package: '$Package',
+        version: '$Version',
+        description: '$Description',
+        updated: '$_builder.timestamp',
+        vignettes: '$_builder.vignettes',
+        status: '$_builder.status',
+        upstream: '$_builder.upstream',
+        repository: '$Repository'
+      });
     return cursor.hasNext().then(function(has_any_data){
       if(has_any_data){
         return cursor.next(); //promise to read 1 record
@@ -56,7 +59,7 @@ router.get('/:user/index.xml', function(req, res, next) {
             .ele('link', repo).up()
           .up();
         if(latest)
-          feed.ele('lastBuildDate', convert_date(latest.timestamp)).up();
+          feed.ele('lastBuildDate', convert_date(latest.updated)).up();
       cursor.rewind();
       return cursor.forEach(function(pkg){
         var item = feed.ele('item');
@@ -64,7 +67,7 @@ router.get('/:user/index.xml', function(req, res, next) {
         item.ele('author', convert_maintainer(pkg.maintainer)).up();
         item.ele('description', pkg.description).up();
         item.ele('link', pkg.upstream).up();
-        item.ele('pubDate', convert_date(pkg.timestamp)).up();
+        item.ele('pubDate', convert_date(pkg.updated)).up();
 
         /* RSS requires namespace for non-standard fields */
         item.ele('r:package', pkg.package).up();
