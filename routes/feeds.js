@@ -48,6 +48,7 @@ router.get('/:user/index.xml', function(req, res, next) {
           .ele('title', user).up()
           .ele('link', 'https://' + user + '.r-universe.dev').up()
           .ele('description', 'Packages from ' + user).up()
+          .ele('image', 'https://github.com/' + user + '.png').up()
           .ele('generator', 'cranlike-server ' + version).up();
         if(latest)
           feed.ele('lastBuildDate', convert_date(latest.timestamp)).up();
@@ -66,17 +67,15 @@ router.get('/:user/index.xml', function(req, res, next) {
         item.ele('r:status', pkg.status).up();
         item.ele('r:repository', pkg.repository).up();
         if(pkg.vignettes && pkg.vignettes.length){
-          item.ele('r:articles');
           for (const vignette of pkg.vignettes) {
-            item.ele('vignette').
-              ele('source', vignette.source).up().
-              ele('filename', vignette.filename).up().
-              ele('title', vignette.title).up().
-              ele('created', vignette.created).up().
-              ele('modified', vignette.modified).up().
+            item.ele('r:article').
+              ele('r:source', vignette.source).up().
+              ele('r:filename', vignette.filename).up().
+              ele('r:title', vignette.title).up().
+              ele('r:created', vignette.created).up().
+              ele('r:modified', vignette.modified).up().
               up();
           }
-          item.up();
         }
         item.up();
       }).finally(function(){
