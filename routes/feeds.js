@@ -36,6 +36,7 @@ router.get('/:user/index.xml', function(req, res, next) {
     }).then(function(latest){
       res.set('Cache-Control', 'public, max-age=60');
       res.type('application/xml');
+      var repo = 'https://' + user + '.r-universe.dev';
       var feed = xmlbuilder.begin(
         {writer: opts}, function(chunk){res.write(chunk)}
       ).dec({encoding:"UTF-8"});
@@ -46,10 +47,14 @@ router.get('/:user/index.xml', function(req, res, next) {
           'xmlns:r': 'https://r-universe.dev' }).
         ele('channel')
           .ele('title', user).up()
-          .ele('link', 'https://' + user + '.r-universe.dev').up()
+          .ele('link', repo).up()
           .ele('description', 'Packages from ' + user).up()
-          .ele('image', 'https://github.com/' + user + '.png').up()
-          .ele('generator', 'cranlike-server ' + version).up();
+          .ele('generator', 'cranlike-server ' + version).up()
+          .ele('image')
+            .ele('url', 'https://github.com/' + user + '.png?size=400').up()
+            .ele('title', user).up()
+            .ele('link', repo).up()
+          .up();
         if(latest)
           feed.ele('lastBuildDate', convert_date(latest.timestamp)).up();
       cursor.rewind();
