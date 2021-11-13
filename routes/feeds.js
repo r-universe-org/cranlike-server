@@ -17,7 +17,7 @@ router.get('/:user/index.xml', function(req, res, next) {
   const user = req.params.user
   tools.test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
-    var cursor = packages.find({_user: user, _type: 'src'})
+    var cursor = packages.find({_user: user, _type: 'src','_builder.registered' : {$ne: 'false'}})
       .sort({'_builder.timestamp' : -1})
       .collation({locale: "en_US", numericOrdering: true})
       .project({
@@ -40,6 +40,7 @@ router.get('/:user/index.xml', function(req, res, next) {
       res.set('Cache-Control', 'public, max-age=60');
       res.type('application/xml');
       var repo = 'https://' + user + '.r-universe.dev';
+      var title = user + ' r-universe repository';
       var feed = xmlbuilder.begin(
         {writer: opts}, function(chunk){res.write(chunk)}
       ).dec({encoding:"UTF-8"});
@@ -49,13 +50,13 @@ router.get('/:user/index.xml', function(req, res, next) {
           'xmlns:atom': 'http://www.w3.org/2005/Atom',
           'xmlns:r': 'https://r-universe.dev' }).
         ele('channel')
-          .ele('title', user).up()
+          .ele('title', title).up()
           .ele('link', repo).up()
           .ele('description', 'Packages from ' + user).up()
           .ele('generator', 'cranlike-server ' + version).up()
           .ele('image')
             .ele('url', 'https://github.com/' + user + '.png?size=400').up()
-            .ele('title', user).up()
+            .ele('title', title).up()
             .ele('link', repo).up()
           .up();
         if(latest)
