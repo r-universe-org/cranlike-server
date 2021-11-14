@@ -54,7 +54,7 @@ router.get('/:user/index.xml', function(req, res, next) {
         ele('channel')
           .ele('title', title).up()
           .ele('link', repo).up()
-          .ele('description', 'Packages from ' + user).up()
+          .ele('description', 'Package updated in ' + user).up()
           .ele('generator', 'cranlike-server ' + version).up()
           .ele('image')
             .ele('url', 'https://github.com/' + user + '.png?size=400').up()
