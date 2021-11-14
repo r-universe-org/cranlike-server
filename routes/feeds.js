@@ -30,6 +30,8 @@ router.get('/:user/index.xml', function(req, res, next) {
         vignettes: '$_builder.vignettes',
         status: '$_builder.status',
         upstream: '$_builder.upstream',
+        commit: '$_builder.commit',
+        buildlog: '$_builder.url',
         repository: '$Repository'
       });
     return cursor.hasNext().then(function(has_any_data){
@@ -67,7 +69,7 @@ router.get('/:user/index.xml', function(req, res, next) {
         item.ele('title', pkg.package + ' ' + pkg.version).up();
         item.ele('author', convert_maintainer(pkg.maintainer)).up();
         item.ele('description', pkg.description).up();
-        item.ele('link', pkg.upstream).up();
+        item.ele('link', pkg.buildlog).up();
         item.ele('pubDate', convert_date(pkg.updated)).up();
 
         /* RSS requires namespace for non-standard fields */
@@ -75,6 +77,8 @@ router.get('/:user/index.xml', function(req, res, next) {
         item.ele('r:version', pkg.version).up();
         item.ele('r:status', pkg.status).up();
         item.ele('r:repository', pkg.repository).up();
+        item.ele('r:upstream', pkg.upstream).up();
+        item.ele('r:commit', pkg.commit).up();
         if(pkg.vignettes && pkg.vignettes.length){
           for (const vignette of pkg.vignettes) {
             item.ele('r:article').
