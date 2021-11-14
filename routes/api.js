@@ -197,7 +197,7 @@ function parse_builder_fields(x){
 	if(builder.sysdeps)
 		builder.sysdeps = rdesc.parse_dep_string(builder.sysdeps);
 	builder.vignettes = from_base64_gzip(builder.vignettes);
-	builder.commitinfo = from_base64_gzip(builder.commitinfo);
+	builder.commit = from_base64_gzip(builder.commit);
 	return builder;
 }
 

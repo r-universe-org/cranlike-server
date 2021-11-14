@@ -30,7 +30,6 @@ router.get('/:user/index.xml', function(req, res, next) {
         vignettes: '$_builder.vignettes',
         status: '$_builder.status',
         upstream: '$_builder.upstream',
-        commit: '$_builder.commit',
         buildlog: '$_builder.url',
         repository: '$Repository'
       });
@@ -78,7 +77,6 @@ router.get('/:user/index.xml', function(req, res, next) {
         item.ele('r:status', pkg.status).up();
         item.ele('r:repository', pkg.repository).up();
         item.ele('r:upstream', pkg.upstream).up();
-        item.ele('r:commit', pkg.commit).up();
         if(pkg.vignettes && pkg.vignettes.length){
           for (const vignette of pkg.vignettes) {
             item.ele('r:article').
