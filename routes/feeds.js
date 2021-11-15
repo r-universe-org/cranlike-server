@@ -75,7 +75,7 @@ router.get('/:user/index.xml', function(req, res, next) {
       cursor.rewind();
       return cursor.forEach(function(pkg){
         var item = feed.ele('item');
-        var pkgtitle = (pkg.type === 'failure' ? 'FAILURE: ' : '') + pkg.package + ' ' + pkg.version;
+        var pkgtitle = (pkg.type === 'failure' ? 'FAILURE: ' : '') + '[' + user + '] ' + pkg.package + ' ' + pkg.version;
         item.ele('title', pkgtitle).up();
         item.ele('author', convert_maintainer(pkg.maintainer)).up();
         item.ele('description', pkg.description).up();
