@@ -13,11 +13,20 @@ function error_cb(status, next) {
   }
 }
 
+function qf(x){
+  if(x._user == ":any"){
+    delete x._user;
+  }
+  return x;
+}
+
 router.get('/:user/index.xml', function(req, res, next) {
-  const user = req.params.user
+  const user = req.params.user;
+  const query = qf({_user: user, _type: {$in: ['src', 'failure']}, '_builder.registered': {$ne: 'false'}});
+  const limit = parseInt(req.query.limit) || 50;
   tools.test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
-    var cursor = packages.find({_user: user, _type: 'src','_builder.registered' : {$ne: 'false'}})
+    var cursor = packages.find(query, {limit:limit})
       .sort({'_builder.timestamp' : -1})
       .collation({locale: "en_US", numericOrdering: true})
       .project({
@@ -31,7 +40,8 @@ router.get('/:user/index.xml', function(req, res, next) {
         status: '$_builder.status',
         upstream: '$_builder.upstream',
         buildlog: '$_builder.url',
-        repository: '$Repository'
+        repository: '$Repository',
+        type: '$_type'
       });
     return cursor.hasNext().then(function(has_any_data){
       if(has_any_data){
@@ -65,7 +75,8 @@ router.get('/:user/index.xml', function(req, res, next) {
       cursor.rewind();
       return cursor.forEach(function(pkg){
         var item = feed.ele('item');
-        item.ele('title', pkg.package + ' ' + pkg.version).up();
+        var pkgtitle = (pkg.type === 'failure' ? 'FAILURE: ' : '') + pkg.package + ' ' + pkg.version;
+        item.ele('title', pkgtitle).up();
         item.ele('author', convert_maintainer(pkg.maintainer)).up();
         item.ele('description', pkg.description).up();
         item.ele('link', pkg.buildlog).up();
