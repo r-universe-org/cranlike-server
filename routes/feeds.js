@@ -21,7 +21,7 @@ function qf(x){
 }
 
 router.get('/:user/index.xml', function(req, res, next) {
-  const user = req.params.user;
+  var user = req.params.user;
   const query = qf({_user: user, _type: {$in: ['src', 'failure']}, '_builder.registered': {$ne: 'false'}});
   const limit = parseInt(req.query.limit) || 50;
   tools.test_if_universe_exists(user).then(function(x){
@@ -41,7 +41,8 @@ router.get('/:user/index.xml', function(req, res, next) {
         upstream: '$_builder.upstream',
         buildlog: '$_builder.url',
         repository: '$Repository',
-        type: '$_type'
+        type: '$_type',
+        user: '$_user'
       });
     return cursor.hasNext().then(function(has_any_data){
       if(has_any_data){
@@ -50,8 +51,14 @@ router.get('/:user/index.xml', function(req, res, next) {
     }).then(function(latest){
       res.set('Cache-Control', 'public, max-age=60');
       res.type('application/xml');
-      var repo = 'https://' + user + '.r-universe.dev';
-      var title = user + ' r-universe repository';
+      if(user == ':any'){
+        var repo = 'https://r-universe.dev';
+        var title = 'Updates in r-universe';
+        user = 'r-universe';
+      } else {
+        var repo = 'https://' + user + '.r-universe.dev';
+        var title = user + ' r-universe repository';
+      }
       var feed = xmlbuilder.begin(
         {writer: opts}, function(chunk){res.write(chunk)}
       ).dec({encoding:"UTF-8"});
@@ -75,7 +82,7 @@ router.get('/:user/index.xml', function(req, res, next) {
       cursor.rewind();
       return cursor.forEach(function(pkg){
         var item = feed.ele('item');
-        var pkgtitle = (pkg.type === 'failure' ? 'FAILURE: ' : '') + '[' + user + '] ' + pkg.package + ' ' + pkg.version;
+        var pkgtitle = (pkg.type === 'failure' ? 'FAILURE: ' : '') + '[' + pkg.user + '] ' + pkg.package + ' ' + pkg.version;
         item.ele('title', pkgtitle).up();
         item.ele('author', convert_maintainer(pkg.maintainer)).up();
         item.ele('description', pkg.description).up();
