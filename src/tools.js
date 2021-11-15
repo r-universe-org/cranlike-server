@@ -17,6 +17,7 @@ function http_url_exists(url){
 
 /* true if we either have packages in the db, or an upstream monorepo exists */
 function test_if_universe_exists(user){
+  if(user === ':any') return Promise.resolve();
   const url = 'https://github.com/r-universe/' + user;
   return packages.findOne({_user : user}).then(function(x){
     if(x) return true;
