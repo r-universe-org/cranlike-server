@@ -20,7 +20,7 @@ function qf(x){
   return x;
 }
 
-router.get('/:user/index.xml', function(req, res, next) {
+router.get('/:user/feed.xml', function(req, res, next) {
   var user = req.params.user;
   const query = qf({_user: user, _type: {$in: ['src', 'failure']}, '_builder.registered': {$ne: 'false'}});
   const limit = parseInt(req.query.limit) || 50;
