@@ -404,7 +404,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
 	var user = req.params.user;
 	var limit = parseInt(req.query.limit) || 500;
 	if(req.query.all){
-		var query = {'$or': [{'_user': user},{'_builder.maintainerlogin': user}]};
+		var query = {'$or': [{'_user': user},{'_builder.maintainerlogin': user, '_builder.registered' : {$ne: 'false'}}]};
 	} else {
 		var query = qf({_user: user});
 	}
