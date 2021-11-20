@@ -401,12 +401,15 @@ router.get('/:user/stats/failures', function(req, res, next) {
 
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/checks', function(req, res, next) {
+	var user = req.params.user;
 	var limit = parseInt(req.query.limit) || 500;
-	var query = qf({_user: req.params.user});
-//	if(req.query.maintainer)
-//		query.Maintainer = {$regex: req.query.maintainer, $options: 'i'};
+	if(req.params.all){
+		var query = {'$_or': [{'_user': user},{'_builder.maintainerlogin': user}]};
+	} else {
+		var query = qf({_user: user});
+	}
 	if(req.query.maintainer)
-		query['_builder.maintainerlogin'] = req.query.maintainer;
+		query.Maintainer = {$regex: req.query.maintainer, $options: 'i'};
 	var cursor = packages.aggregate([
 		{$match: query},
 		{$group : {
