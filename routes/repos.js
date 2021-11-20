@@ -403,8 +403,8 @@ router.get('/:user/stats/failures', function(req, res, next) {
 router.get('/:user/stats/checks', function(req, res, next) {
 	var user = req.params.user;
 	var limit = parseInt(req.query.limit) || 500;
-	if(req.params.all){
-		var query = {'$_or': [{'_user': user},{'_builder.maintainerlogin': user}]};
+	if(req.query.all){
+		var query = {'$or': [{'_user': user},{'_builder.maintainerlogin': user}]};
 	} else {
 		var query = qf({_user: user});
 	}
