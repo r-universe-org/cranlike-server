@@ -403,8 +403,10 @@ router.get('/:user/stats/failures', function(req, res, next) {
 router.get('/:user/stats/checks', function(req, res, next) {
 	var limit = parseInt(req.query.limit) || 500;
 	var query = qf({_user: req.params.user});
+//	if(req.query.maintainer)
+//		query.Maintainer = {$regex: req.query.maintainer, $options: 'i'};
 	if(req.query.maintainer)
-		query.Maintainer = {$regex: req.query.maintainer, $options: 'i'};
+		query['_builder.maintainerlogin'] = req.query.maintainer;
 	var cursor = packages.aggregate([
 		{$match: query},
 		{$group : {
