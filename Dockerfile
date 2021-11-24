@@ -1,4 +1,4 @@
-FROM node:14-alpine
+FROM node:16-alpine
 
 RUN apk add --no-cache bash tini
 
@@ -8,11 +8,9 @@ EXPOSE 3000
 ENV CRANLIKE_MONGODB_SERVER="mongo" \
     VCAP_APP_HOST="0.0.0.0"
 
-RUN npm install cranlike@0.9.38
+RUN mkdir /app && cd /app && npm install cranlike@0.9.38
 
-COPY docker-entrypoint.sh /
+WORKDIR /app/node_modules/cranlike
 
-WORKDIR /node_modules/cranlike
-
-ENTRYPOINT [ "tini", "--", "/docker-entrypoint.sh"]
+ENTRYPOINT [ "tini", "--", "/app/node_modules/cranlike/docker-entrypoint.sh"]
 CMD ["cranlike"]
