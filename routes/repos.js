@@ -85,14 +85,14 @@ function packages_index(query, format, req, res, next){
 	}
 	var cursor = packages.find(query).project(pkgfields).sort({"_id" : -1});
 	cursor.hasNext().then(function(has_any_data){
-		if(has_any_data){
-			return cursor.next(); //promise to read 1 record
+		/* Cache disabled until we solve _id bug */
+		if(0 && has_any_data){
+			return cursor.next(); //promise to read 1st record
 		}
 	}).then(function(doc){
 		if(doc){
 			var etag = etagify(doc['_id']);
-			/* Cache disabled until we solve _id bug */
-			if(0 && etag === req.header('If-None-Match')){
+			if(etag === req.header('If-None-Match')){
 				cursor.close();
 				res.status(304).send();
 				return; //DONE!
