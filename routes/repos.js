@@ -80,6 +80,9 @@ function qf(x){
 }
 
 function packages_index(query, format, req, res, next){
+	if(format && format !== 'gz' && format !== 'json'){
+		return next(createError(404, 'Unsupported PACKAGES format: ' + format));
+	}
 	var cursor = packages.find(query).project(pkgfields).sort({"_id" : -1});
 	cursor.hasNext().then(function(has_any_data){
 		if(has_any_data){
@@ -113,6 +116,7 @@ function packages_index(query, format, req, res, next){
 				.transformStream({transform: doc_to_ndjson})
 				.pipe(res.type('text/plain'));
 		} else {
+			cursor.close();
 			next(createError(404, 'Unknown PACKAGES format: ' + format));
 		}
 	}).catch(error_cb(400, next));
