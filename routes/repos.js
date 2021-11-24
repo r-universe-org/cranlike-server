@@ -97,6 +97,8 @@ function packages_index(query, format, req, res, next){
 				res.status(304).send();
 				return; //DONE!
 			} else {
+				/* Jeroen: the next() / rewind() here seems to trigger a warning/ bug in the mongo driver:
+				   Field 'cursors' contains an element that is not of type long: 0 */
 				cursor.rewind();
 				res.set('ETag', etag);
 			}
