@@ -72,9 +72,13 @@ function etagify(x){
 	return 'W/"' +  x + '"';
 }
 
-function qf(x){
-	if(x._user == ":any"){
+function qf(x, query_by_user_or_maintainer){
+	const user = x._user;
+	if(user == ":any"){
 		delete x._user;
+	} else if(query_by_user_or_maintainer) {
+		delete x._user;
+		x['$or'] = [{'_user': user},{'_builder.maintainerlogin': user, '_builder.registered' : {$ne: 'false'}}];
 	}
 	return x;
 }
@@ -409,11 +413,7 @@ router.get('/:user/stats/failures', function(req, res, next) {
 router.get('/:user/stats/checks', function(req, res, next) {
 	var user = req.params.user;
 	var limit = parseInt(req.query.limit) || 500;
-	if(req.query.all){
-		var query = {'$or': [{'_user': user},{'_builder.maintainerlogin': user, '_builder.registered' : {$ne: 'false'}}]};
-	} else {
-		var query = qf({_user: user});
-	}
+	var query = qf({_user: user}, req.query.all);
 	if(req.query.maintainer)
 		query.Maintainer = {$regex: req.query.maintainer, $options: 'i'};
 	var cursor = packages.aggregate([
@@ -437,8 +437,9 @@ router.get('/:user/stats/checks', function(req, res, next) {
 });
 
 router.get("/:user/stats/maintainers", function(req, res, next) {
+	var query = {_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}};
 	var cursor = packages.aggregate([
-		{$match: qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}})},
+		{$match: qf(query, req.query.all)},
 		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
 		{$project: {
 			_id: 0,
