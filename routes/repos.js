@@ -472,8 +472,9 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 });
 
 router.get("/:user/stats/organizations", function(req, res, next) {
+	var query = {_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}};
 	var cursor = packages.aggregate([
-		{$match: qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}})},
+		{$match: qf(query, req.query.all)},
 		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
 		{$project: {
 			_id: 0,
