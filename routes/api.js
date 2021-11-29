@@ -198,7 +198,9 @@ function parse_builder_fields(x){
 		builder.sysdeps = rdesc.parse_dep_string(builder.sysdeps);
 	builder.vignettes = from_base64_gzip(builder.vignettes);
 	builder.commit = from_base64_gzip(builder.commit);
-	builder.maintainer = from_base64_gzip(builder.maintainer);
+	builder.maintainer = from_base64_gzip(builder.maintainer) || {};
+	/* For backward compatibility, remove later */
+	builder.maintainerlogin = builder.maintainerlogin || builder.maintainer.login;
 	return builder;
 }
 
@@ -273,8 +275,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var package = req.params.package;
   var version = req.params.version;
   var builder = parse_builder_fields(req.body);
-  var maintainer = builder.maintainer;
-  delete builder.maintainer; /* submit maintainer as build-field instead of description */
+  var maintainer = `${builder.maintainer.name} <${builder.maintainer.email}>`;
   var query = {_type : 'failure', _user : user, Package : package};
   var description = {...query, Version: version, Maintainer: maintainer, _builder: builder};
   packages.findOneAndReplace(query, description, {upsert: true})
