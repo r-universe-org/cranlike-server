@@ -242,10 +242,12 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
 			description['_type'] = type;
 			description['_file'] = filename;
 			description['_published'] = new Date();
-			description['_builder'] = parse_builder_fields(req.headers);
+			description['_builder'] = parse_builder_fields(req.headers) || {};
 			description['MD5sum'] = md5;
 			description = merge_dependencies(description);
 			validate_description(description, package, version, type);
+			var upstream = description['_builder'].upstream || "";
+			description['_selfowned'] = upstream.toLowerCase().indexOf("github.com/" + user.toLowerCase() + "/") > 0;
 			if(type != "src"){
 				query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
 			}
