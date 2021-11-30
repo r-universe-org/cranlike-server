@@ -253,6 +253,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
 			description['_published'] = new Date();
 			description['_builder'] = parse_builder_fields(req.headers) || {};
 			description['_selfowned'] = is_self_owned(user, description);
+			description['_registered'] = (description['_builder'].registered !== "false");
 			description['MD5sum'] = md5;
 			description = merge_dependencies(description);
 			validate_description(description, package, version, type);
@@ -284,6 +285,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var query = {_type : 'failure', _user : user, Package : package};
   var description = {...query, Version: version, Maintainer: maintainer, _builder: builder};
   description['_selfowned'] = is_self_owned(user, description);
+  description['_registered'] = (description['_builder'].registered !== "false");
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
     .catch(error_cb(400, next))
@@ -310,6 +312,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
 			description['_published'] = new Date();
 			description['_builder'] = parse_builder_fields(req.body);
 			description['_selfowned'] = is_self_owned(user, description);
+			description['_registered'] = (description['_builder'].registered !== "false");
 			description['MD5sum'] = md5;
 			description = merge_dependencies(description);
 			validate_description(description, package, version, type);
