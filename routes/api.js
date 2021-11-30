@@ -232,9 +232,11 @@ function parse_major_version(built){
 	return r_major_version;
 }
 
-function is_self_owned(user, description){
-	var upstream = description['_builder'].upstream || "";
-	return upstream.toLowerCase().indexOf("github.com/" + user.toLowerCase() + "/") > 0;
+function get_repo_owner(description){
+  var url = description['_builder'].upstream || "";
+  if(url.indexOf("github.com/") > 0){
+    return url.split('/').at(-2).toLowerCase();
+  }
 }
 
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
@@ -252,7 +254,8 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
 			description['_file'] = filename;
 			description['_published'] = new Date();
 			description['_builder'] = parse_builder_fields(req.headers) || {};
-			description['_selfowned'] = is_self_owned(user, description);
+			description['_owner'] = get_repo_owner(description);
+			description['_selfowned'] = description['_owner'] === user;
 			description['_registered'] = (description['_builder'].registered !== "false");
 			description['MD5sum'] = md5;
 			description = merge_dependencies(description);
@@ -284,7 +287,8 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var maintainer = `${builder.maintainer.name} <${builder.maintainer.email}>`;
   var query = {_type : 'failure', _user : user, Package : package};
   var description = {...query, Version: version, Maintainer: maintainer, _builder: builder, _published: new Date()};
-  description['_selfowned'] = is_self_owned(user, description);
+  description['_owner'] = get_repo_owner(description);
+  description['_selfowned'] = description['_owner'] === user;
   description['_registered'] = (description['_builder'].registered !== "false");
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
@@ -311,7 +315,8 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
 			description['_file'] = filename;
 			description['_published'] = new Date();
 			description['_builder'] = parse_builder_fields(req.body);
-			description['_selfowned'] = is_self_owned(user, description);
+			description['_owner'] = get_repo_owner(description);
+			description['_selfowned'] = description['_owner'] === user;
 			description['_registered'] = (description['_builder'].registered !== "false");
 			description['MD5sum'] = md5;
 			description = merge_dependencies(description);
