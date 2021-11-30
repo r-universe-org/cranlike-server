@@ -283,7 +283,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var builder = parse_builder_fields(req.body);
   var maintainer = `${builder.maintainer.name} <${builder.maintainer.email}>`;
   var query = {_type : 'failure', _user : user, Package : package};
-  var description = {...query, Version: version, Maintainer: maintainer, _builder: builder};
+  var description = {...query, Version: version, Maintainer: maintainer, _builder: builder, _published: new Date()};
   description['_selfowned'] = is_self_owned(user, description);
   description['_registered'] = (description['_builder'].registered !== "false");
   packages.findOneAndReplace(query, description, {upsert: true})
