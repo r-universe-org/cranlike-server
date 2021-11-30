@@ -274,6 +274,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var user = req.params.user;
   var package = req.params.package;
   var version = req.params.version;
+  req.body['Builder-Maintainer'] = req.body['Builder-Maintainer'].replace(/ /g, "+");
   var builder = parse_builder_fields(req.body);
   var maintainer = `${builder.maintainer.name} <${builder.maintainer.email}>`;
   var query = {_type : 'failure', _user : user, Package : package};
