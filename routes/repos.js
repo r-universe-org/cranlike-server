@@ -445,7 +445,8 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			_id: 0,
 			package: '$Package',
 			user: '$_user',
-			login: '$_builder.maintainerlogin',
+			login: '$_builder.maintainerlogin', //TODO: change to .maintainer.login
+			orcid: '$_builder.maintainer.orcid',
 			updated: '$_builder.timestamp',
 			registered: '$_builder.registered',
 			name: { $trim: { input: { $first: '$email.captures'}}},
@@ -457,13 +458,14 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			updated: { $max: '$updated'},
 			name : { $first: '$name'},
 			login : { $addToSet: '$login'}, //login can be null
+			orcids : { $addToSet: '$orcid'}, //orcid can be null or more than 1
 			packages : { $addToSet: {
 				package: '$package',
 				registered: '$registered',
 				user: '$user'
 			}}
 		}},
-		{$project: {_id: 0, name: 1, login: { '$first' : '$login'}, email: '$_id', packages: '$packages', updated: 1}},
+		{$project: {_id: 0, name: 1, login: { '$first' : '$login'}, orcids: 1, email: '$_id', packages: '$packages', updated: 1}},
 		{$sort:{ updated: -1}}
 	]);
 	cursor.hasNext().then(function(){
@@ -480,7 +482,7 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 			_id: 0,
 			package: '$Package',
 			user: '$_user',
-			updated: '$_builder.timestamp',
+			updated: '$_builder.timestamp', //TODO: update to .commit.time
 			name: { $trim: { input: { $first: '$email.captures'}}},
 			email: { $arrayElemAt: ['$email.captures',1]}
 		}},
