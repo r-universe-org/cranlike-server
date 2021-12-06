@@ -535,6 +535,23 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
 	}).catch(error_cb(400, next));
 });
 
+router.get("/:user/stats/oldies", function(req, res, next) {
+  var before = new Date(req.query.before || "2021-12-31");
+  var query = qf({_user: req.params.user, '_published' : {'$lt': before }});
+  var cursor = packages.find(query).project({
+    _id: 0,
+    type: '$_type',
+    user: '$_user',
+    package: '$Package',
+    version: '$Version',
+    r: '$Built.R',
+    date: { $dateToString: { format: "%Y-%m-%d", date: "$_published" } }
+  });
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
 /* Operations below do not support :any user because they are very heavy */
 router.get("/:user/stats/rundeps", function(req, res, next) {
 	var cursor = packages.aggregate([
