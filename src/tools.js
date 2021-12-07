@@ -19,7 +19,11 @@ function http_url_exists(url){
 function test_if_universe_exists(user){
   if(user === ':any') return Promise.resolve(true);
   const url = 'https://github.com/r-universe/' + user;
-  return packages.findOne({_user : user}).then(function(x){
+  const query = {'$or': [
+    {'_user': user},
+    {'_builder.maintainer.login': user, '_selfowned': true}
+  ]};
+  return packages.findOne(query).then(function(x){
     if(x) return true;
     console.log("Testing if " + url + " exists...");
     return http_url_exists(url);
