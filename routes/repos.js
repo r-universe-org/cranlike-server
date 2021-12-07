@@ -78,7 +78,7 @@ function qf(x, query_by_user_or_maintainer){
 		delete x._user;
 	} else if(query_by_user_or_maintainer) {
 		delete x._user;
-		x['$or'] = [{'_user': user},{'_builder.maintainerlogin': user, '_builder.registered' : {$ne: 'false'}}];
+		x['$or'] = [{'_user': user},{'_builder.maintainer.login': user, '_builder.registered' : {$ne: 'false'}}];
 	}
 	return x;
 }
@@ -368,7 +368,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : {$exists: true}})},
-    {$sort : {'_builder.timestamp' : -1}},
+    {$sort : {'_builder.commit.time' : -1}},
     {$limit : limit},
     {$project: {
       _id: 0,
@@ -378,8 +378,8 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       universe: '$_user',
       pkglogo: '$_builder.pkglogo',
       upstream: '$_builder.upstream',
-      maintainerlogin: '$_builder.maintainerlogin',
-      published: '$_builder.timestamp',
+      maintainerlogin: '$_builder.maintainer.login',
+      published: '$_builder.commit.time',
       builddate: '$_builder.date',
       registered: '$_builder.registered',
       vignette: '$_builder.vignettes'
@@ -420,7 +420,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
 		{$match: query},
 		{$group : {
 			_id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
-			timestamp: { $max : "$_builder.timestamp" },
+			timestamp: { $max : "$_builder.commit.time" },
 			os_restriction: { $addToSet: '$OS_type'},
 			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
 		}},
@@ -440,17 +440,16 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}};
 	var cursor = packages.aggregate([
 		{$match: qf(query, req.query.all)},
-		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
 		{$project: {
 			_id: 0,
 			package: '$Package',
 			user: '$_user',
-			login: '$_builder.maintainerlogin', //TODO: change to .maintainer.login
+			login: '$_builder.maintainer.login', //TODO: change to .maintainer.login
 			orcid: '$_builder.maintainer.orcid',
-			updated: '$_builder.timestamp',
+			updated: '$_builder.commit.time',
 			registered: '$_builder.registered',
-			name: { $trim: { input: { $first: '$email.captures'}}},
-			email: { $arrayElemAt: ['$email.captures',1]}
+			name: '$_builder.maintainer.name',
+			email: '$_builder.maintainer.email',
 		}},
 		{$unwind: '$email'},
 		{$group: {
@@ -477,14 +476,13 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}};
 	var cursor = packages.aggregate([
 		{$match: qf(query, req.query.all)},
-		{$set: { email: { $regexFind: { input: "$Maintainer", regex: /^(.+)<(.*)>$/ } } } },
 		{$project: {
 			_id: 0,
 			package: '$Package',
 			user: '$_user',
-			updated: '$_builder.timestamp', //TODO: update to .commit.time
-			name: { $trim: { input: { $first: '$email.captures'}}},
-			email: { $arrayElemAt: ['$email.captures',1]}
+			updated: '$_builder.commit.time',
+			name: '$_builder.maintainer.name',
+			email: '$_builder.maintainer.email',
 		}},
 		{$group: {
 			_id : '$user',
