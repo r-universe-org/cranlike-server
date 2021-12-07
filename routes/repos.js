@@ -78,7 +78,10 @@ function qf(x, query_by_user_or_maintainer){
 		delete x._user;
 	} else if(query_by_user_or_maintainer) {
 		delete x._user;
-		x['$or'] = [{'_user': user},{'_builder.maintainer.login': user, '_builder.registered' : {$ne: 'false'}}];
+		x['$or'] = [
+			{'_user': user},
+			{'_builder.maintainer.login': user, '_selfowned': true}
+		];
 	}
 	return x;
 }
