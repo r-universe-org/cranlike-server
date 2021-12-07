@@ -375,6 +375,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
     {$limit : limit},
     {$project: {
       _id: 0,
+      user: '$_user',
       package: '$Package',
       version: '$Version',
       maintainer: '$Maintainer',
@@ -384,7 +385,6 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       maintainerlogin: '$_builder.maintainer.login',
       published: '$_builder.commit.time',
       builddate: '$_builder.date',
-      registered: '$_builder.registered',
       vignette: '$_builder.vignettes'
     }},
     {$unwind: '$vignette'}
