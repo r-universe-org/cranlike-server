@@ -352,7 +352,7 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 
 /* For now articles are only vignettes */
 router.get('/:user/articles', function(req, res, next){
-  var query = qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : { $exists: true }});
+  var query = qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : { $exists: true }}, req.query.all);
   packages.distinct('Package', query).then(function(x){
     res.send(x);
   }).catch(error_cb(400, next));
@@ -370,7 +370,7 @@ router.get('/:user/articles/:pkg/:file?', function(req, res, next){
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : {$exists: true}})},
+    {$match: qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : {$exists: true}}, req.query.all)},
     {$sort : {'_builder.commit.time' : -1}},
     {$limit : limit},
     {$project: {
@@ -396,7 +396,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
 
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
-	var query = qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}});
+	var query = qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}}, req.query.all);
 	var cursor = packages.find(query).sort({"_id" : -1}).project({_id:0, _type:0});
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
@@ -405,7 +405,7 @@ router.get('/:user/stats/descriptions', function(req, res, next) {
 
 /* Failures(these support :any users)*/
 router.get('/:user/stats/failures', function(req, res, next) {
-  var query = qf({_user: req.params.user, _type: 'failure'});
+  var query = qf({_user: req.params.user, _type: 'failure'}, req.query.all);
   var cursor = packages.find(query).sort({"_id" : -1}).project({_id:0, _type:0});
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
