@@ -28,6 +28,17 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, function(error, cli
 	const db = client.db('cranlike');
 	global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
 	global.packages = db.collection('packages');
+
+	/* Speed up common query fields */
+	packages.createIndex("_user");
+	packages.createIndex("_selfowned");
+	packages.createIndex("_published");
+	packages.createIndex("_builder.maintainer.login");
+	packages.createIndex("_builder.commit.time");
+	packages.indexes().then(function(x){
+		console.log("Current indexes() for packages:")
+		console.log(x);
+	});
 });
 
 /* Start App */
