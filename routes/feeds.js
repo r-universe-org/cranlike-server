@@ -13,16 +13,23 @@ function error_cb(status, next) {
   }
 }
 
-function qf(x){
-  if(x._user == ":any"){
+function qf(x, query_by_user_or_maintainer){
+  const user = x._user;
+  if(user == ":any"){
     delete x._user;
+  } else if(query_by_user_or_maintainer) {
+    delete x._user;
+    x['$or'] = [
+      {'_user': user},
+      {'_builder.maintainer.login': user, '_selfowned': true}
+    ];
   }
   return x;
 }
 
 router.get('/:user/feed.xml', function(req, res, next) {
   var user = req.params.user;
-  const query = qf({_user: user, _type: {$in: ['src', 'failure']}, '_builder.registered': {$ne: 'false'}});
+  const query = qf({_user: user, _registered: true, _type: {$in: ['src', 'failure']}}, true);
   const limit = parseInt(req.query.limit) || 50;
   tools.test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
