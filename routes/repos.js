@@ -76,6 +76,9 @@ function qf(x, query_by_user_or_maintainer){
 	const user = x._user;
 	if(user == ":any"){
 		delete x._user;
+		if(query_by_user_or_maintainer){
+			x['_selfowned'] = true;
+		}
 	} else if(query_by_user_or_maintainer) {
 		delete x._user;
 		x['$or'] = [
