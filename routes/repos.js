@@ -385,7 +385,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       universe: '$_user',
       pkglogo: '$_builder.pkglogo',
       upstream: '$_builder.upstream',
-      maintainerlogin: '$_builder.maintainer.login',
+      login: '$_builder.maintainer.login',
       published: '$_builder.commit.time',
       builddate: '$_builder.date',
       vignette: '$_builder.vignettes'
@@ -450,7 +450,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			_id: 0,
 			package: '$Package',
 			user: '$_user',
-			login: '$_builder.maintainer.login', //TODO: change to .maintainer.login
+			login: '$_builder.maintainer.login',
 			orcid: '$_builder.maintainer.orcid',
 			updated: '$_builder.commit.time',
 			registered: '$_builder.registered',
