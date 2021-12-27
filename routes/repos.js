@@ -434,8 +434,15 @@ router.get('/:user/stats/checks', function(req, res, next) {
 		{$sort : {timestamp : -1}},
 		{$limit : limit},
 		{$project: {
-			_id: 0, user: '$_id.user', maintainer:'$_id.maintainer', package: '$_id.package', version:'$_id.version', runs:1, os_restriction:{ $first: "$os_restriction" }}
-		}
+			_id: 0, 
+      user: '$_id.user', 
+      maintainer:'$_id.maintainer', 
+      package: '$_id.package', 
+      version:'$_id.version',
+      os_restriction:{ $first: "$os_restriction" },
+      registered: 1,
+      runs: 1
+		}}
 	]);
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
