@@ -426,6 +426,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
 		{$group : {
 			_id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
 			timestamp: { $max : "$_builder.commit.time" },
+			registered: { $first: "$_registered" },
 			os_restriction: { $addToSet: '$OS_type'},
 			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
 		}},
