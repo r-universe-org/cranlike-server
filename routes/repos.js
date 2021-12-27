@@ -440,6 +440,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
       package: '$_id.package', 
       version:'$_id.version',
       os_restriction:{ $first: "$os_restriction" },
+      timestamp: 1,
       registered: 1,
       runs: 1
 		}}
