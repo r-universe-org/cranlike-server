@@ -398,7 +398,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
 
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
-	var query = qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}}, req.query.all);
+	var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
 	var cursor = packages.find(query).sort({"_id" : -1}).project({_id:0, _type:0});
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
@@ -442,7 +442,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
 });
 
 router.get("/:user/stats/maintainers", function(req, res, next) {
-	var query = {_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}};
+	var query = {_user: req.params.user, _type: 'src', _registered : true};
 	var cursor = packages.aggregate([
 		{$match: qf(query, req.query.all)},
 		{$project: {
@@ -451,10 +451,10 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 			user: '$_user',
 			login: '$_builder.maintainer.login',
 			orcid: '$_builder.maintainer.orcid',
-			updated: '$_builder.commit.time',
-			registered: '$_builder.registered',
 			name: '$_builder.maintainer.name',
 			email: '$_builder.maintainer.email',
+			updated: '$_builder.commit.time',
+			registered: '$_registered'
 		}},
 		{$unwind: '$email'},
 		{$group: {
@@ -478,7 +478,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 });
 
 router.get("/:user/stats/organizations", function(req, res, next) {
-	var query = {_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}};
+	var query = {_user: req.params.user, _type: 'src', '_registered' : true};
 	var cursor = packages.aggregate([
 		{$match: qf(query, req.query.all)},
 		{$project: {
@@ -505,7 +505,7 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 
 router.get("/:user/stats/revdeps", function(req, res, next) {
 	var cursor = packages.aggregate([
-		{$match: qf({_user: req.params.user, _type: 'src', '_builder.registered' : {$ne: 'false'}})},
+		{$match: qf({_user: req.params.user, _type: 'src', _registered : true})},
 		{$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
 		{$unwind: '$dependencies'},
 		{$group: {
