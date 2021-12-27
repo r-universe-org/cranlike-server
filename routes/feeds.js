@@ -34,7 +34,7 @@ router.get('/:user/feed.xml', function(req, res, next) {
   tools.test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
     var cursor = packages.find(query, {limit:limit})
-      .sort({'_builder.timestamp' : -1})
+      .sort({'_builder.commit.time' : -1})
       .collation({locale: "en_US", numericOrdering: true})
       .project({
         _id: 0,
@@ -42,7 +42,7 @@ router.get('/:user/feed.xml', function(req, res, next) {
         package: '$Package',
         version: '$Version',
         description: '$Description',
-        updated: '$_builder.timestamp',
+        updated: '$_builder.commit.time',
         vignettes: '$_builder.vignettes',
         status: '$_builder.status',
         upstream: '$_builder.upstream',
