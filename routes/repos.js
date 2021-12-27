@@ -399,7 +399,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
 	var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
-	var cursor = packages.find(query).sort({"$_builder.commit.time" : -1}).project({_id:0, _type:0});
+	var cursor = packages.find(query).sort({"_builder.commit.time" : -1}).project({_id:0, _type:0});
 	cursor.hasNext().then(function(){
 		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
 	}).catch(error_cb(400, next));
