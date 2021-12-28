@@ -37,8 +37,8 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, function(error, cli
 	packages.createIndex("_builder.commit.time");
 	packages.createIndex({"_user":1, "_type":1});
 	packages.createIndex({"_user":1, "_type":1, "_registered":1});
+	packages.createIndex({"_user":1, "_type":1, "Package":1});
 	packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1});
-	packages.dropIndex("_selfowned_1").catch(console.log);
 	packages.indexes().then(function(x){
 		console.log("Current indexes() for packages:")
 		console.log(x);
