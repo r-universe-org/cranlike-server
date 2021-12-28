@@ -30,11 +30,15 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, function(error, cli
 	global.packages = db.collection('packages');
 
 	/* Speed up common query fields */
+	/* NB: Dont use indexes with low cardinality (few unique values) */
 	packages.createIndex("_user");
-	packages.createIndex("_selfowned");
 	packages.createIndex("_published");
 	packages.createIndex("_builder.maintainer.login");
 	packages.createIndex("_builder.commit.time");
+	packages.createIndex({"_user":1, "_type":1});
+	packages.createIndex({"_user":1, "_type":1, "_registered":1});
+	packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1});
+	packages.dropIndex("_selfowned_1").catch(console.log);
 	packages.indexes().then(function(x){
 		console.log("Current indexes() for packages:")
 		console.log(x);
