@@ -474,7 +474,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
 			sysdeps: { $addToSet: '$_builder.sysdeps'},
 			pkgdocs: { $addToSet : '$_builder.pkgdocs' },
 			runs : { $addToSet:
-				{ type: "$_type", built: '$Built', date:'$_published', url: '$_builder.url', status: '$_builder.status'}
+				{ type: "$_type", built: '$Built', date:'$_published', url: '$_builder.url', status: '$_builder.status', distro: '$_builder.distro'}
 			}
 		}},
 		{$sort : {"timestamp" : -1}},
