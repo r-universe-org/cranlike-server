@@ -472,7 +472,9 @@ router.get('/:user/stats/checks2', function(req, res, next) {
 			registered: { $first: "$_registered" },
 			os_restriction: { $addToSet: '$OS_type'},
 			sysdeps: { $addToSet: '$_builder.sysdeps'},
-			runs : { $addToSet: { type: "$_type", built: '$Built', date:'$_published'}}
+			runs : { $addToSet:
+				{ type: "$_type", built: '$Built', date:'$_published', url: '$_builder.url', status: '$_builder.status'}
+			}
 		}},
 		{$project: {
 			_id: 0,
