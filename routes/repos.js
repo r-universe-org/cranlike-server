@@ -463,7 +463,6 @@ router.get('/:user/stats/builds', function(req, res, next) {
 	}
 	var cursor = packages.aggregate([
 		{$match: query},
-		{$sort : {"_builder.commit.time" : -1}},
 		{$group : {
 			_id : { user: '$_user', package: '$Package', commit: '$_builder.commit.id'},
 			version: { $first : "$Version" },
@@ -478,6 +477,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
 				{ type: "$_type", built: '$Built', date:'$_published', url: '$_builder.url', status: '$_builder.status'}
 			}
 		}},
+		{$sort : {"timestamp" : -1}},
 		{$project: {
 			_id: 0,
 			user: '$_id.user',
