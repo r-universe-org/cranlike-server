@@ -473,6 +473,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
 			registered: { $first: "$_registered" },
 			os_restriction: { $addToSet: '$OS_type'},
 			sysdeps: { $addToSet: '$_builder.sysdeps'},
+			pkgdocs: { $addToSet : '$_builder.pkgdocs' },
 			runs : { $addToSet:
 				{ type: "$_type", built: '$Built', date:'$_published', url: '$_builder.url', status: '$_builder.status'}
 			}
@@ -488,6 +489,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
 			registered: 1,
 			runs: 1,
 			upstream: 1,
+			pkgdocs: { $first: "$pkgdocs" },
 			sysdeps: { $first: "$sysdeps" },
 			os_restriction:{ $first: "$os_restriction" }
 		}}
