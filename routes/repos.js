@@ -471,7 +471,8 @@ router.get('/:user/stats/checks2', function(req, res, next) {
 			timestamp: { $first : "$_builder.commit.time" },
 			registered: { $first: "$_registered" },
 			os_restriction: { $addToSet: '$OS_type'},
-			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
+			sysdeps: { $addToSet: '$_builder.sysdeps'},
+			runs : { $addToSet: { type: "$_type", built: '$Built', date:'$_published'}}
 		}},
 		{$project: {
 			_id: 0,
@@ -482,6 +483,7 @@ router.get('/:user/stats/checks2', function(req, res, next) {
 			timestamp: 1,
 			registered: 1,
 			runs: 1,
+			sysdeps: { $first: "$sysdeps" },
 			os_restriction:{ $first: "$os_restriction" }
 		}}
 	]);
