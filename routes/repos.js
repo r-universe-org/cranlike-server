@@ -455,7 +455,7 @@ function days_ago(n){
 	return now.getTime()/1000 - (n*60*60*24);
 }
 
-router.get('/:user/stats/checks2', function(req, res, next) {
+router.get('/:user/stats/builds', function(req, res, next) {
 	var user = req.params.user;
 	var query = qf({_user: user}, req.query.all);
 	if(user == ":any"){
@@ -469,6 +469,7 @@ router.get('/:user/stats/checks2', function(req, res, next) {
 			version: { $first : "$Version" },
 			maintainer: { $first : "$Maintainer" },
 			timestamp: { $first : "$_builder.commit.time" },
+			upstream: { $first : "$_builder.upstream" },
 			registered: { $first: "$_registered" },
 			os_restriction: { $addToSet: '$OS_type'},
 			sysdeps: { $addToSet: '$_builder.sysdeps'},
@@ -480,11 +481,13 @@ router.get('/:user/stats/checks2', function(req, res, next) {
 			_id: 0,
 			user: '$_id.user',
 			package: '$_id.package',
+			commit: '$_id.commit',
 			maintainer: 1,
 			version: 1,
 			timestamp: 1,
 			registered: 1,
 			runs: 1,
+			upstream: 1,
 			sysdeps: { $first: "$sysdeps" },
 			os_restriction:{ $first: "$os_restriction" }
 		}}
