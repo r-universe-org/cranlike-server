@@ -450,6 +450,46 @@ router.get('/:user/stats/checks', function(req, res, next) {
 	}).catch(error_cb(400, next));
 });
 
+function days_ago(n){
+	var now = new Date();
+	return now.getTime()/1000 - (n*60*60*24);
+}
+
+router.get('/:user/stats/checks2', function(req, res, next) {
+	var user = req.params.user;
+	var query = qf({_user: user}, req.query.all);
+	if(user == ":any"){
+		query['_builder.commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
+	}
+	var cursor = packages.aggregate([
+		{$match: query},
+		{$sort : {"_builder.commit.time" : -1}},
+		{$group : {
+			_id : { user: '$_user', package: '$Package', commit: '$_builder.commit.id'},
+			version: { $first : "$Version" },
+			maintainer: { $first : "$Maintainer" },
+			timestamp: { $first : "$_builder.commit.time" },
+			registered: { $first: "$_registered" },
+			os_restriction: { $addToSet: '$OS_type'},
+			runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
+		}},
+		{$project: {
+			_id: 0,
+			user: '$_id.user',
+			package: '$_id.package',
+			maintainer: 1,
+			version: 1,
+			timestamp: 1,
+			registered: 1,
+			runs: 1,
+			os_restriction:{ $first: "$os_restriction" }
+		}}
+	]);
+	cursor.hasNext().then(function(){
+		cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+	}).catch(error_cb(400, next));
+});
+
 router.get("/:user/stats/maintainers", function(req, res, next) {
 	var query = {_user: req.params.user, _type: 'src', _registered : true};
 	var cursor = packages.aggregate([
