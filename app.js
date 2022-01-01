@@ -31,6 +31,7 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, function(error, cli
 
 	/* Speed up common query fields */
 	/* NB: Dont use indexes with low cardinality (few unique values) */
+	packages.createIndex("MD5sum");
 	packages.createIndex("_user");
 	packages.createIndex("_published");
 	packages.createIndex("_builder.commit.time");
