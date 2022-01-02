@@ -23,7 +23,7 @@ const USER = process.env.CRANLIKE_MONGODB_USERNAME || 'root';
 const PASS = process.env.CRANLIKE_MONGODB_PASSWORD;
 const AUTH = PASS ? (USER + ':' + PASS + "@") : "";
 const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
-mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, function(error, client) {
+mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(error, client) {
 	assert.ifError(error);
 	const db = client.db('cranlike');
 	global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
@@ -31,16 +31,19 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, function(error, cli
 
 	/* Speed up common query fields */
 	/* NB: Dont use indexes with low cardinality (few unique values) */
-	packages.createIndex("MD5sum");
-	packages.createIndex("_user");
-	packages.createIndex("_published");
-	packages.createIndex("_builder.commit.time");
-	packages.createIndex("_builder.maintainer.login");
-	packages.createIndex({"_user":1, "_type":1});
-	packages.createIndex({"_user":1, "_type":1, "_registered":1});
-	packages.createIndex({"_user":1, "_type":1, "Package":1});
-	packages.createIndex({"_user":1, "_builder.commit.id":1, "Package":1});
-	packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1});
+	await packages.createIndex("MD5sum");
+	await packages.createIndex("_user");
+	await packages.createIndex("_published");
+	await packages.createIndex("_builder.commit.time");
+	await packages.createIndex("_builder.maintainer.login");
+	await packages.createIndex({"_user":1, "_type":1, "Package":1});
+	await packages.createIndex({"_user":1, "_builder.commit.id":1, "Package":1});
+	await packages.dropIndex("_user_1__type_1__registered_1").catch(console.log);
+	await packages.dropIndex("_user_1__type_1").catch(console.log);
+	await packages.dropIndex("_builder.maintainer.login_1__selfowned_1").catch(console.log);
+	await packages.createIndex({"_user":1, "_type":1, "_builder.commit.time":1});
+	await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_builder.commit.time":1});
+	await packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1, "_builder.commit.time":1});
 	packages.indexes().then(function(x){
 		console.log("Current indexes() for packages:")
 		console.log(x);
