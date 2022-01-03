@@ -38,12 +38,10 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
 	await packages.createIndex("_builder.maintainer.login");
 	await packages.createIndex({"_user":1, "_type":1, "Package":1});
 	await packages.createIndex({"_user":1, "_builder.commit.id":1, "Package":1});
-	await packages.dropIndex("_user_1__type_1__registered_1").catch(console.log);
-	await packages.dropIndex("_user_1__type_1").catch(console.log);
-	await packages.dropIndex("_builder.maintainer.login_1__selfowned_1").catch(console.log);
 	await packages.createIndex({"_user":1, "_type":1, "_builder.commit.time":1});
 	await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_builder.commit.time":1});
 	await packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1, "_builder.commit.time":1});
+	//await packages.dropIndex("_user_1__type_1__registered_1").catch(console.log);
 	packages.indexes().then(function(x){
 		console.log("Current indexes() for packages:")
 		console.log(x);

@@ -33,9 +33,9 @@ router.get('/:user/feed.xml', function(req, res, next) {
   const limit = parseInt(req.query.limit) || 50;
   tools.test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
-    var cursor = packages.find(query, {limit:limit})
+    var cursor = packages.find(query)
       .sort({'_builder.commit.time' : -1})
-      .collation({locale: "en_US", numericOrdering: true})
+      .limit(limit)
       .project({
         _id: 0,
         maintainer: '$Maintainer',
