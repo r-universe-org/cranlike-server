@@ -117,13 +117,15 @@ function read_description(stream){
 
 function store_stream_file(stream, key, filename){
 	return new Promise(function(resolve, reject) {
-		stream.pipe(bucket.openUploadStreamWithId(key, filename, {disableMD5 : false}))
+		stream.pipe(bucket.openUploadStreamWithId(key, filename))
 		.on('error', reject)
 		.on('finish', function(){
 			bucket.find({_id : key}).project({md5:1}).toArray().then(function(docs){
 				if(docs.length == 0){
 					reject("Upload success but key not found?")
 				} else if(docs[0].md5 != key) {
+					/* Automatic .md5 value no longer exists in mongo-node 4.0 (npm)
+					   https://github.com/r-universe-org/bugs/issues/118 */
 					bucket.delete(key).finally(function(){
 						reject("md5 did not match key");
 					});
