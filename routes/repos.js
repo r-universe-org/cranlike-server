@@ -466,7 +466,8 @@ router.get('/:user/stats/builds', function(req, res, next) {
 		{$group : {
 			_id : { user: '$_user', package: '$Package', commit: '$_builder.commit.id'},
 			version: { $first : "$Version" },
-			maintainer: { $first : "$Maintainer" },
+			maintainer: { $first : "$_builder.maintainer.name" },
+			maintainerlogin: { $first : "$_builder.maintainer.login" },
 			timestamp: { $first : "$_builder.commit.time" },
 			upstream: { $first : "$_builder.upstream" },
 			registered: { $first: "$_registered" },
@@ -484,6 +485,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
 			package: '$_id.package',
 			commit: '$_id.commit',
 			maintainer: 1,
+			maintainerlogin: 1,
 			version: 1,
 			timestamp: 1,
 			registered: 1,
