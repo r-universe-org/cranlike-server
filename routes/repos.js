@@ -537,6 +537,44 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+/* Double aggregate: first by email, and then by login.
+   The goal is that if an email->login map changes, we use the most current
+   github login associated with that maintainer email address.
+   TODO: aggregate by universe so that we get counts per universe */
+router.get("/:user/stats/maintainers2", function(req, res, next) {
+  var query = {_user: req.params.user, _type: 'src', _registered : true};
+  var cursor = packages.aggregate([
+    {$match: qf(query, req.query.all)},
+    {$sort:{ _published: -1}}, //assume most recent builds have most current email-login mapping
+    {$group: {
+      _id : '$_builder.maintainer.email',
+      updated: { $first: '$_builder.commit.time'},
+      name : { $first: '$_builder.maintainer.name'},
+      login : { $addToSet: '$_builder.maintainer.login'}, //login can be null
+      packages : { $sum: 1 }
+    }},
+    {$group: {
+      _id : { $ifNull: [ {$first: "$login"}, "$_id" ]},
+      emails: { $addToSet: '$_id' },
+      updated: { $max: '$updated'},
+      name : { $first: '$name'},
+      packages : { $sum: '$packages'}
+    }},
+    {$project: {
+      _id: 0,
+      id: "$_id",
+      emails: 1,
+      updated: 1,
+      name: 1,
+      packages : 1
+    }},
+    {$sort:{ updated: -1}}
+  ]);
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
 router.get("/:user/stats/organizations", function(req, res, next) {
   var query = {_user: req.params.user, _type: 'src', '_registered' : true};
   var cursor = packages.aggregate([
