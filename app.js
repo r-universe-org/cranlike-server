@@ -11,7 +11,7 @@ const mongodb = require('mongodb');
 
 /* Routers */
 var manRouter = require('./routes/man');
-var apiRouter = require('./routes/api');
+var packagesRouter = require('./routes/packages');
 var reposRouter = require('./routes/repos');
 var badgesRouter = require('./routes/badges');
 var feedsRouter = require('./routes/feeds');
@@ -64,7 +64,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/', manRouter);
-app.use('/', apiRouter);
+app.use('/', packagesRouter);
 app.use('/', reposRouter);
 app.use('/', badgesRouter);
 app.use('/', feedsRouter);
