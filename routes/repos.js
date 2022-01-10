@@ -540,6 +540,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 /* Double aggregate: first by email, and then by login.
    The goal is that if an email->login map changes, we use the most current
    github login associated with that maintainer email address.
+   We go from array to object to array because I can't figure out a better way to get unique _user values.
    TODO: aggregate by universe so that we get counts per universe */
 router.get("/:user/stats/maintainers2", function(req, res, next) {
   var query = {_user: req.params.user, _type: 'src', _registered : true};
@@ -551,23 +552,32 @@ router.get("/:user/stats/maintainers2", function(req, res, next) {
       updated: { $first: '$_builder.commit.time'},
       name : { $first: '$_builder.maintainer.name'},
       login : { $addToSet: '$_builder.maintainer.login'}, //login can be null
-      packages : { $sum: 1 }
+      orcid : { $addToSet: '$_builder.maintainer.orcid'}, //login can be null
+      orgs: { $push:  { "k": "$_user", "v": true}},
+      count : { $sum: 1 }
     }},
+    {$set: {orgs: {$arrayToObject: '$orgs'}, orcid: {$first: '$orcid'}, login: {$first: '$login'}}},
     {$group: {
-      _id : { $ifNull: [ {$first: "$login"}, "$_id" ]},
+      _id : { $ifNull: [ "$login", "$_id" ]},
+      login: { $first: '$login'},
       emails: { $addToSet: '$_id' },
       updated: { $max: '$updated'},
       name : { $first: '$name'},
-      packages : { $sum: '$packages'}
+      orcid : { $addToSet: "$orcid"},
+      count : { $sum: '$count'},
+      orgs: {$mergeObjects: '$orgs'}
     }},
     {$project: {
       _id: 0,
-      id: "$_id",
+      login: 1,
       emails: 1,
       updated: 1,
       name: 1,
-      packages : 1
+      count : 1,
+      orcid: {$first: '$orcid'},
+      orgs: {$objectToArray: "$orgs"}
     }},
+    {$set: {orgs: '$orgs.k'}},
     {$sort:{ updated: -1}}
   ]);
   cursor.hasNext().then(function(){
