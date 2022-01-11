@@ -549,7 +549,7 @@ router.get("/:user/stats/maintainers2", function(req, res, next) {
     {$sort:{ _published: -1}}, //assume most recent builds have most current email-login mapping
     {$group: {
       _id : '$_builder.maintainer.email',
-      updated: { $first: '$_builder.commit.time'},
+      updated: { $max: '$_builder.commit.time'},
       name : { $first: '$_builder.maintainer.name'},
       login : { $addToSet: '$_builder.maintainer.login'}, //login can be null
       orcid : { $addToSet: '$_builder.maintainer.orcid'}, //login can be null
