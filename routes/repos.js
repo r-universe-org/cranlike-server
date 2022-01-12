@@ -501,7 +501,8 @@ router.get('/:user/stats/builds', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-router.get("/:user/stats/maintainers", function(req, res, next) {
+/* This API is mostly superseded by /stats/maintainers below */
+router.get("/:user/stats/pkgsbymaintainer", function(req, res, next) {
   var query = {_user: req.params.user, _type: 'src', _registered : true};
   var cursor = packages.aggregate([
     {$match: qf(query, req.query.all)},
@@ -513,10 +514,8 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       orcid: '$_builder.maintainer.orcid',
       name: '$_builder.maintainer.name',
       email: '$_builder.maintainer.email',
-      updated: '$_builder.commit.time',
-      registered: '$_registered'
+      updated: '$_builder.commit.time'
     }},
-    {$unwind: '$email'},
     {$group: {
       _id : '$email',
       updated: { $max: '$updated'},
@@ -525,11 +524,18 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       orcids : { $addToSet: '$orcid'}, //orcid can be null or more than 1
       packages : { $addToSet: {
         package: '$package',
-        registered: '$registered',
         user: '$user'
       }}
     }},
-    {$project: {_id: 0, name: 1, login: { '$first' : '$login'}, orcids: 1, email: '$_id', packages: '$packages', updated: 1}},
+    {$project: {
+      _id: 0,
+      name: 1,
+      login: { '$first' : '$login'},
+      orcids: 1,
+      email: '$_id',
+      packages: '$packages',
+      updated: 1
+    }},
     {$sort:{ updated: -1}}
   ]);
   cursor.hasNext().then(function(){
@@ -537,12 +543,12 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-/* Double aggregate: first by email, and then by login.
-   The goal is that if an email->login map changes, we use the most current
+/* Double group: first by email, and then by login, such that
+   if an email->login mapping changes, we use the most current
    github login associated with that maintainer email address.
-   We go from array to object to array because I can't figure out a better way to get unique _user values.
-   TODO: aggregate by universe so that we get counts per universe */
-router.get("/:user/stats/maintainers2", function(req, res, next) {
+   TODO: We convert array to object to array because I can't figure out a better way to get unique
+   _user values, or better: aggregate so that we get counts per _user. */
+router.get("/:user/stats/maintainers", function(req, res, next) {
   var query = {_user: req.params.user, _type: 'src', _registered : true};
   var cursor = packages.aggregate([
     {$match: qf(query, req.query.all)},
