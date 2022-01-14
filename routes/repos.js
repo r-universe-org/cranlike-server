@@ -652,9 +652,14 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-router.get("/:user/stats/oldies", function(req, res, next) {
-  var before = new Date(req.query.before || "2021-12-31");
-  var query = qf({_user: req.params.user, '_published' : {'$lt': before }});
+router.get("/:user/stats/files", function(req, res, next) {
+  var query = qf({_user: req.params.user});
+  if(req.query.type){
+    query['_type'] = req.query.type;
+  }
+  if(req.query.before){
+    query['_published'] = {'$lt': new Date(req.query.before)};
+  }
   var cursor = packages.find(query).project({
     _id: 0,
     type: '$_type',
@@ -662,7 +667,7 @@ router.get("/:user/stats/oldies", function(req, res, next) {
     package: '$Package',
     version: '$Version',
     r: '$Built.R',
-    date: { $dateToString: { format: "%Y-%m-%d", date: "$_published" } }
+    published: { $dateToString: { format: "%Y-%m-%d", date: "$_published" } }
   });
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
