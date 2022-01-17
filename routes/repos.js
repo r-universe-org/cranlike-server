@@ -176,24 +176,28 @@ function count_by_built(user, type){
   .transformStream({transform: doc_to_ndjson});
 }
 
-function send_binary(query, content_type, req, res, next){
+function send_binary(query, filename, req, res, next){
   packages.findOne(query, {project: {MD5sum: 1, Redirect: 1}}).then(function(docs){
     if(!docs){
       next(createError(404, 'Package not found'));
-    } else if(docs.Redirect) {
-      res.status(301).redirect(docs.Redirect);
     } else {
-      var etag = etagify(docs.MD5sum);
+      var hash = docs.MD5sum;
+      var etag = etagify(hash);
       if(etag === req.header('If-None-Match')){
         res.status(304).send();
-      } else {
-        return bucket.find({_id: docs.MD5sum}, {limit:1}).next().then(function(x){
+      } else if(req.query.nocdn) {
+        return bucket.find({_id: hash}, {limit:1}).next().then(function(x){
           if (!x)
-            throw `Failed to locate file in gridFS: ${docs.MD5sum}`;
+            throw `Failed to locate file in gridFS: ${hash}`;
+          let type = x.filename.endsWith('.zip') ? 'application/zip' : 'application/x-gzip';
           return bucket.openDownloadStream(x['_id']).pipe(
-            res.type(content_type).set("ETag", etag).set('Content-Length', x.length)
+            res.type(type).set("ETag", etag).set('Content-Length', x.length)
           );
         });
+      } else {
+        const host = req.headers.host || "";
+        const cdn = host.endsWith('r-universe.dev') ? 'https://cdn.r-universe.dev' : '/cdn'
+        res.set("ETag", etag).redirect(`${cdn}/${hash}/${filename}`);
       }
     }
   }).catch(error_cb(400, next));  
@@ -334,14 +338,14 @@ router.get('/:user/bin/macosx/:xcode?/contrib', function(req, res, next) {
 router.get('/:user/src/contrib/:pkg.tar.gz', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]});
-  send_binary(query, 'application/x-gzip', req, res, next);
+  send_binary(query, `${req.params.pkg}.tar.gz`, req, res, next);
 });
 
 router.get('/:user/bin/windows/contrib/:built/:pkg.zip', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
-  send_binary(query, 'application/zip', req, res, next);
+  send_binary(query, `${req.params.pkg}.zip`, req, res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, res, next) {
@@ -349,7 +353,7 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
   var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
   query['Built.Platform'] = arch_to_built(req.params.xcode);
-  send_binary(query, 'application/x-gzip', req, res, next);
+  send_binary(query, `${req.params.pkg}.tgz`, req, res, next);
 });
 
 /* For now articles are only vignettes */
