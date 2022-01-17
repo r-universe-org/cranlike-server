@@ -10,14 +10,8 @@ function error_cb(status, next) {
   }
 }
 
-/* Proper file extension is required for CloudFlare caching */
-router.get("/cdn/:hash/:file", function(req, res, next) {
-  let hash = req.params.hash || "";
-  let file = req.params.file || "";
-  if(hash.length != 32) //assume md5 for now
-    return next(createError(400, "Invalid hash length"));
-  let cursor = bucket.find({_id: hash}, {limit:1});
-  return cursor.next().then(function(x){
+function send_from_bucket(hash, file, res){
+  return bucket.find({_id: hash}, {limit:1}).next().then(function(x){
     if(!x)
       throw `Failed to locate file in gridFS: ${hash}`;
     if(file !== x.filename)
@@ -30,7 +24,16 @@ router.get("/cdn/:hash/:file", function(req, res, next) {
         'Last-Modified' : x.uploadDate.toUTCString()
       })
     );
-  }).catch(error_cb(400, next));
+  });
+}
+
+/* Proper file extension is required for CloudFlare caching */
+router.get("/cdn/:hash/:file", function(req, res, next) {
+  let hash = req.params.hash || "";
+  let file = req.params.file || "";
+  if(hash.length != 32) //assume md5 for now
+    return next(createError(400, "Invalid hash length"));
+  send_from_bucket(hash, file, res).catch(error_cb(400, next));
 });
 
 router.get("/cdn/", function(req, res, next) {
