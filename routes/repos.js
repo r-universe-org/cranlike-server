@@ -185,14 +185,13 @@ function send_binary(query, content_type, req, res, next){
     } else {
       var etag = etagify(docs.MD5sum);
       if(etag === req.header('If-None-Match')){
-        res.status(304).send()
+        res.status(304).send();
       } else {
-        bucket.find({_id: docs.MD5sum}, {limit:1}).toArray(function(err, x){
-          if (err || !x[0]){
-            return next(createError(500, "Failed to locate file in gridFS: " + docs.MD5sum));
-          }
-          bucket.openDownloadStream(docs.MD5sum).pipe(
-            res.type(content_type).set("ETag", etag).set('Content-Length', x[0].length)
+        return bucket.find({_id: docs.MD5sum}, {limit:1}).next().then(function(x){
+          if (!x)
+            throw `Failed to locate file in gridFS: ${docs.MD5sum}`;
+          return bucket.openDownloadStream(x['_id']).pipe(
+            res.type(content_type).set("ETag", etag).set('Content-Length', x.length)
           );
         });
       }
