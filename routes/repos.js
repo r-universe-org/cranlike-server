@@ -196,7 +196,7 @@ function send_binary(query, filename, req, res, next){
         });
       } else {
         const host = req.headers.host || "";
-        const cdn = host.endsWith('r-universe.dev') ? 'https://cdn.r-universe.dev' : '/cdn'
+        const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
         res.set("ETag", etag).redirect(`${cdn}/${hash}/${filename}`);
       }
     }
