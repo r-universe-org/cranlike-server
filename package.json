@@ -1,6 +1,6 @@
 {
   "name": "cranlike",
-  "version": "0.9.99",
+  "version": "0.9.100",
   "description": "High-performance R package server",
   "author": "Jeroen Ooms <jeroen@berkeley.edu>",
   "license": "MIT",
@@ -20,7 +20,7 @@
     "fs": "0.0.2",
     "gunzip-maybe": "^1.4.2",
     "http-errors": "^1.8.0",
-    "marked": "^4.0.10",
+    "marked": "^2.0.0",
     "md5-file": "^5.0.0",
     "mime": "^2.5.0",
     "mongodb": "^3.7.3",
