@@ -15,7 +15,7 @@ function send_from_bucket(hash, file, res){
     if(!x)
       throw `Failed to locate file in gridFS: ${hash}`;
     if(file !== x.filename)
-      throw `Incorrect filename ${file} (should be be ${x.filename})`;
+      throw `Incorrect filename ${file} (should be: ${x.filename})`;
     let type = x.filename.endsWith('.zip') ? 'application/zip' : 'application/x-gzip';
     return bucket.openDownloadStream(x['_id']).pipe(
       res.type(type).set({
@@ -28,6 +28,7 @@ function send_from_bucket(hash, file, res){
 }
 
 /* Proper file extension is required for CloudFlare caching */
+/* Although I have now added a cloudflare rule to 'cache-everything' */
 router.get("/cdn/:hash/:file", function(req, res, next) {
   let hash = req.params.hash || "";
   let file = req.params.file || "";
