@@ -270,11 +270,13 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       if(type != "src"){
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
-      return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
+      return packages.findOneAndDelete(query).then(function(result) {
         var original = result.value;
-        if(original){
+        if(original && original['MD5sum'] !== md5){
           return delete_file(original['MD5sum']);
         }
+      }).then(function(x){
+        return packages.insert(description);
       }).then(function(){
         if(type === 'src'){
           return packages.deleteMany({_type : 'failure', _user : user, Package : package});
@@ -331,11 +333,13 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       if(type != "src"){
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
-      return packages.findOneAndReplace(query, description, {upsert: true, returnOriginal: true}).then(function(result) {
+      return packages.findOneAndDelete(query).then(function(result) {
         var original = result.value;
-        if(original){
+        if(original && original['MD5sum'] !== md5){
           return delete_file(original['MD5sum']);
         }
+      }).then(function(x){
+        return packages.insert(description);
       }).then(function(){
         if(type === 'src'){
           return packages.deleteMany({_type : 'failure', _user : user, Package : package});
