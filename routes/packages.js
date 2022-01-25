@@ -116,17 +116,23 @@ function read_description(stream){
 }
 
 function store_stream_file(stream, key, filename){
+  console.log("store_stream_file: " + filename)
   return new Promise(function(resolve, reject) {
     stream.pipe(bucket.openUploadStreamWithId(key, filename))
-    .on('error', reject)
+    .on('error', function(err){
+      console.log("Error in openUploadStreamWithId()");
+      reject("Error in openUploadStreamWithId()");
+    })
     .on('finish', function(){
-      bucket.find({_id : key}).project({md5:1}).toArray().then(function(docs){
-        if(docs.length == 0){
+      bucket.find({_id : key}).project({md5:1}).next().then(function(doc){
+        if(!doc){
+          console.log("Upload success but key not found?")
           reject("Upload success but key not found?")
-        } else if(docs[0].md5 != key) {
+        } else if(doc.md5 != key) {
           /* Automatic .md5 value no longer exists in mongo-node 4.0 (npm)
              https://github.com/r-universe-org/bugs/issues/118 */
           bucket.delete(key).finally(function(){
+            console.log("md5 did not match key")
             reject("md5 did not match key");
           });
         } else {
@@ -142,7 +148,7 @@ function crandb_store_file(stream, key, filename){
     if(docs.length > 0){
       console.log("Already have this file: " + key);
     } else {
-      return(store_stream_file(stream, key, filename));
+      return store_stream_file(stream, key, filename);
     }
   });
 }
@@ -248,6 +254,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   var query = {_user : user, _type : type, Package : package};
   var filename = get_filename(package, version, type);
   crandb_store_file(req, md5, filename).then(function(){
+    console.log("Successfully stored file: " + filename);
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
       description['_user'] = user;
       description['_type'] = type;
