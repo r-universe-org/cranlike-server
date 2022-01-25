@@ -144,8 +144,8 @@ function store_stream_file(stream, key, filename){
 }
 
 function crandb_store_file(stream, key, filename){
-  return bucket.find({_id : key}).toArray().then(function(docs){
-    if(docs.length > 0){
+  return bucket.find({_id : key}, {limit:1}).next().then(function(x){
+    if(x){
       console.log("Already have this file: " + key);
     } else {
       return store_stream_file(stream, key, filename);
