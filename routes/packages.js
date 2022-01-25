@@ -146,7 +146,7 @@ function store_stream_file(stream, key, filename){
 function crandb_store_file(stream, key, filename){
   return bucket.find({_id : key}, {limit:1}).next().then(function(x){
     if(x){
-      console.log("Already have this file: " + key);
+      console.log(`Already have file ${key} (${filename})`);
     } else {
       return store_stream_file(stream, key, filename);
     }
@@ -276,7 +276,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
           return delete_file(original['MD5sum']);
         }
       }).then(function(x){
-        return packages.insert(description);
+        return packages.insertOne(description);
       }).then(function(){
         if(type === 'src'){
           return packages.deleteMany({_type : 'failure', _user : user, Package : package});
@@ -339,7 +339,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
           return delete_file(original['MD5sum']);
         }
       }).then(function(x){
-        return packages.insert(description);
+        return packages.insertOne(description);
       }).then(function(){
         if(type === 'src'){
           return packages.deleteMany({_type : 'failure', _user : user, Package : package});
