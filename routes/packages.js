@@ -106,11 +106,21 @@ router.delete('/:user/packages/:package/:version?/:type?/:built?', function(req,
   delete_by_query(query).then(docs=>res.send(docs)).catch(error_cb(400, next));
 });
 
+// Some packages have X-schema.org fields in description, which mongo does not accept.
+function sanitize_keys(data){
+  let keys = Object.keys(data).filter(key => key.includes('.'));
+  for (const x of keys){
+    console.log(`Deleting description field ${x} (dots in names not allowed)`)
+    delete data[x];
+  }
+  return data;
+}
+
 function read_description(stream){
   return new Promise(function(resolve, reject) {
     rdesc.parse_stream(stream, function(err, data){
       if(err) reject(err);
-      resolve(data);
+      resolve(sanitize_keys(data));
     });
   });
 }
