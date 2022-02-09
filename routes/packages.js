@@ -271,10 +271,14 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_type'] = type;
       description['_file'] = filename;
       description['_published'] = new Date();
-      description['_builder'] = parse_builder_fields(req.headers) || {};
+      var builder = parse_builder_fields(req.headers) || {};
+      description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = description['_owner'] === user;
-      description['_registered'] = (description['_builder'].registered !== "false");
+      description['_registered'] = (builder.registered !== "false");
+      if(builder.gitstats && builder.gitstats.contributions){
+        description['_contributors'] = Object.keys(builder.gitstats.contributions);
+      }
       description['MD5sum'] = md5;
       description = merge_dependencies(description);
       validate_description(description, package, version, type);
@@ -334,10 +338,14 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_type'] = type;
       description['_file'] = filename;
       description['_published'] = new Date();
-      description['_builder'] = parse_builder_fields(req.body);
+      var builder = parse_builder_fields(req.body);
+      description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = description['_owner'] === user;
-      description['_registered'] = (description['_builder'].registered !== "false");
+      description['_registered'] = (builder.registered !== "false");
+      if(builder.gitstats && builder.gitstats.contributions){
+        description['_contributors'] = Object.keys(builder.gitstats.contributions);
+      }
       description['MD5sum'] = md5;
       description = merge_dependencies(description);
       validate_description(description, package, version, type);
