@@ -126,7 +126,7 @@ function read_description(stream){
 }
 
 function store_stream_file(stream, key, filename){
-  console.log("store_stream_file: " + filename)
+  //console.log("store_stream_file: " + filename)
   return new Promise(function(resolve, reject) {
     stream.pipe(bucket.openUploadStreamWithId(key, filename))
     .on('error', function(err){
@@ -264,7 +264,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   var query = {_user : user, _type : type, Package : package};
   var filename = get_filename(package, version, type);
   crandb_store_file(req, md5, filename).then(function(){
-    console.log("Successfully stored file: " + filename);
+    //console.log("Successfully stored file: " + filename);
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
       description['_user'] = user;
       description['_type'] = type;
