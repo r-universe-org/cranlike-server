@@ -203,54 +203,75 @@ function send_binary(query, filename, req, res, next){
   }).catch(error_cb(400, next));  
 }
 
-function send_extracted_file(query, filename, req, res, next){
-  packages.findOne(query, {project: {MD5sum: 1, Redirect: 1}}).then(function(docs){
-    if(!docs){
-      next(createError(404, 'Package not found'));
-    } else if(docs.Redirect) {
-      res.status(301).redirect(docs.Redirect);
-    } else {
-      var etag = etagify(docs.MD5sum);
-      if(etag === req.header('If-None-Match')){
-        res.status(304).send()
+/* See https://www.npmjs.com/package/tar-stream#Extracting */
+function tar_stream_file(hash, res, filename){
+  var input = bucket.openDownloadStream(hash);
+  var gunzip = zlib.createGunzip();
+  return new Promise(function(resolve, reject) {
+
+    /* callback to extract single file from tarball */
+    function process_entry(header, filestream, next_file) {
+      if(!dolist && !hassent && header.name === filename){
+        filestream.on('end', function(){
+          hassent = true;
+          resolve(filename);
+          input.destroy(); // close mongo stream prematurely, is this safe?
+        }).pipe(
+          res.type(mime.getType(filename) || 'text/plain').set("ETag", hash).set('Content-Length', header.size)
+        );
       } else {
-        bucket.find({_id: docs.MD5sum}, {limit:1}).toArray(function(err, x){
-          if (err || !x[0]){
-            return next(createError(500, "Failed to locate file in gridFS: " + docs.MD5sum));
+        if(dolist && header.name){
+          let m = header.name.match(filename);
+          if(m && m.length){
+            matches.push(m.pop());
           }
-          var dolist = filename instanceof RegExp;
-          var matches = [];
-          var extract = tar.extract();
-          var hassent = false;
-          extract.on('entry', function(header, stream, cb) {
-            stream.on('end', cb);
-            if(!dolist && !hassent && header.name === filename){
-              hassent = true;
-              stream.pipe(
-                res.type(mime.getType(filename) || 'text/plain').set("ETag", etag).set('Content-Length', header.size)
-              );
-            } else {
-              if(header.name && dolist){
-                let m = header.name.match(filename);
-                if(m && m.length){
-                  matches.push(m.pop());
-                }
-              }
-              stream.resume();
-            }
-          });
-          extract.on('finish', function(){
-            if(dolist){
-              res.send(matches);
-            } else if(!hassent) {
-              next(createError(404, "No such file: " + filename));
-            }
-          });
-          bucket.openDownloadStream(docs.MD5sum).pipe(zlib.createGunzip()).pipe(extract);
+        }
+        filestream.resume(); //drain the file
+      }
+      next_file(); //ready for next entry
+    }
+
+    /* callback at end of tarball */
+    function finish_stream(){
+      if(dolist){
+        res.send(matches);
+        resolve(matches);
+      } else if(!hassent){
+        reject(`No such file: ${filename}`);
+      }
+    }
+
+    var dolist = filename instanceof RegExp;
+    var matches = [];
+    var hassent = false;
+    var extract = tar.extract()
+      .on('entry', process_entry)
+      .on('finish', finish_stream);
+    input.pipe(gunzip).pipe(extract);
+  }).finally(function(){
+    gunzip.destroy();
+    input.destroy();
+  });
+}
+
+function send_extracted_file(query, filename, req, res, next){
+  return packages.findOne(query).then(function(x){
+    if(!x){
+      next(createError(404, 'Package not found'));
+    } else {
+      var hash = x.MD5sum;
+      var etag = etagify(hash);
+      if(etag === req.header('If-None-Match')){
+        res.status(304).send();
+      } else {
+        return bucket.find({_id: hash}, {limit:1}).hasNext().then(function(x){
+          if(!x)
+            throw `Failed to locate file in gridFS: ${hash}`;
+          return tar_stream_file(hash, res, filename);
         });
       }
     }
-  }).catch(error_cb(400, next));
+  });
 }
 
 function find_by_user(_user, _type){
@@ -370,7 +391,7 @@ router.get('/:user/articles/:pkg/:file?', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
   var prefix = pkg + "/inst/doc/";
   var filename = req.params.file ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
-  send_extracted_file(query, filename, req, res, next);
+  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
 });
 
 router.get("/:user/stats/vignettes", function(req, res, next) {
