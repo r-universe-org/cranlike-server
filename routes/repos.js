@@ -641,6 +641,39 @@ router.get("/:user/stats/organizations", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+router.get("/:user/stats/contributions", function(req, res, next) {
+  var user = req.params.user;
+  var query = {_type: 'src', '_registered' : true};
+  var contribfield = `_builder.gitstats.contributions.${user}`;
+  query[contribfield] = { $gt: 0 };
+  var cursor = packages.find(query).project({
+    _id: 0,
+    package: '$Package',
+    user: '$_user',
+    contributions: '$' + contribfield
+  }).sort({ contributions: -1});
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
+router.get("/:user/stats/contributors", function(req, res, next) {
+  var query = {_user: req.params.user, _type: 'src', '_registered' : true};
+  var cursor = packages.aggregate([
+    {$match: qf(query, req.query.all)},
+    {$project: {
+      _id: 0,
+      contributions: '$_builder.gitstats.contributions'
+    }},
+    {$addFields: {contributions: {$objectToArray:"$contributions"}}},
+    {$unwind: "$contributions"},
+    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}}}
+  ]);
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
 router.get("/:user/stats/revdeps", function(req, res, next) {
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src', _registered : true})},
