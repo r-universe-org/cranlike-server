@@ -652,6 +652,7 @@ router.get("/:user/stats/contributions", function(req, res, next) {
     _id: 0,
     package: '$Package',
     universe: '$_user',
+    maintainer: '$_builder.maintainer.login',
     contributions: '$' + contribfield
   });
   cursor.hasNext().then(function(){
@@ -665,12 +666,13 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$match: qf(query, req.query.all)},
     {$project: {
       _id: 0,
-      contributions: '$_builder.gitstats.contributions'
+      contributions: '$_builder.gitstats.contributions',
+      package: '$Package'
     }},
     {$addFields: {contributions: {$objectToArray:"$contributions"}}},
     {$unwind: "$contributions"},
-    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}}},
-    {$project: {_id:0, login: '$_id', contributions: '$total' }},
+    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}, packages: {$addToSet: '$package'}}},
+    {$project: {_id:0, login: '$_id', contributions: '$total', packages: '$packages' }},
     {$sort:{ contributions: -1}}
   ]);
   cursor.hasNext().then(function(){
