@@ -645,13 +645,15 @@ router.get("/:user/stats/contributions", function(req, res, next) {
   var user = req.params.user;
   var query = {_type: 'src', '_registered' : true};
   var contribfield = `_builder.gitstats.contributions.${user}`;
+  var sort = {}
   query[contribfield] = { $gt: 0 };
-  var cursor = packages.find(query).project({
+  sort[contribfield] = -1;
+  var cursor = packages.find(query).sort(sort).project({
     _id: 0,
     package: '$Package',
-    user: '$_user',
+    universe: '$_user',
     contributions: '$' + contribfield
-  }).sort({ contributions: -1});
+  });
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
@@ -667,7 +669,9 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     }},
     {$addFields: {contributions: {$objectToArray:"$contributions"}}},
     {$unwind: "$contributions"},
-    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}}}
+    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}}},
+    {$project: {login: '$_id', contributions: '$total' }},
+    {$sort:{ contributions: -1}}
   ]);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
