@@ -670,7 +670,7 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$addFields: {contributions: {$objectToArray:"$contributions"}}},
     {$unwind: "$contributions"},
     {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}}},
-    {$project: {login: '$_id', contributions: '$total' }},
+    {$project: {_id:0, login: '$_id', contributions: '$total' }},
     {$sort:{ contributions: -1}}
   ]);
   cursor.hasNext().then(function(){
