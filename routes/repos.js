@@ -723,7 +723,7 @@ router.get("/:user/stats/files", function(req, res, next) {
   if(req.query.before){
     query['_published'] = {'$lt': new Date(req.query.before)};
   }
-  var cursor = packages.find(query).project({
+  var projection = {
     _id: 0,
     type: '$_type',
     user: '$_user',
@@ -731,7 +731,13 @@ router.get("/:user/stats/files", function(req, res, next) {
     version: '$Version',
     r: '$Built.R',
     published: { $dateToString: { format: "%Y-%m-%d", date: "$_published" } }
-  });
+  }
+  if(req.query.fields){
+    req.query.fields.split(",").forEach(function (f) {
+      projection[f] = 1;
+    });
+  }
+  var cursor = packages.find(query).project(projection);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
