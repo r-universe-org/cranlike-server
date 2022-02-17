@@ -643,7 +643,7 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 
 router.get("/:user/stats/contributions", function(req, res, next) {
   var user = req.params.user;
-  var query = {_type: 'src', '_registered' : true};
+  var query = {_type: 'src', '_selfowned' : true};
   var contribfield = `_builder.gitstats.contributions.${user}`;
   var sort = {}
   query[contribfield] = { $gt: 0 };
