@@ -651,7 +651,7 @@ router.get("/:user/stats/contributions", function(req, res, next) {
   var cursor = packages.find(query).sort(sort).project({
     _id: 0,
     package: '$Package',
-    universe: '$_user',
+    owner: '$_user',
     maintainer: '$_builder.maintainer.login',
     contributions: '$' + contribfield
   });
