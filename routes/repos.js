@@ -642,13 +642,14 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 });
 
 router.get("/:user/stats/contributions", function(req, res, next) {
+  var limit = parseInt(req.query.limit) || 100000;
   var user = req.params.user;
   var query = {_type: 'src', '_selfowned' : true};
   var contribfield = `_builder.gitstats.contributions.${user}`;
   var sort = {}
   query[contribfield] = { $gt: 0 };
   sort[contribfield] = -1;
-  var cursor = packages.find(query).sort(sort).project({
+  var cursor = packages.find(query).sort(sort).limit(limit).project({
     _id: 0,
     package: '$Package',
     owner: '$_user',
@@ -661,6 +662,7 @@ router.get("/:user/stats/contributions", function(req, res, next) {
 });
 
 router.get("/:user/stats/contributors", function(req, res, next) {
+  var limit = parseInt(req.query.limit) || 100000;
   var query = {_user: req.params.user, _type: 'src', '_registered' : true};
   var cursor = packages.aggregate([
     {$match: qf(query, req.query.all)},
@@ -673,7 +675,8 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$unwind: "$contributions"},
     {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}, pkgcontrib: {$addToSet: {k: '$package', v: '$contributions.v'}}}},
     {$project: {_id:0, login: '$_id', total: '$total', contributions: {$arrayToObject: '$pkgcontrib'}}},
-    {$sort:{ total: -1}}
+    {$sort:{ total: -1}},
+    {$limit: limit}
   ]);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
