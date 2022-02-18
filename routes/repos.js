@@ -671,9 +671,9 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     }},
     {$addFields: {contributions: {$objectToArray:"$contributions"}}},
     {$unwind: "$contributions"},
-    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}, packages: {$addToSet: '$package'}}},
-    {$project: {_id:0, login: '$_id', contributions: '$total', packages: '$packages' }},
-    {$sort:{ contributions: -1}}
+    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}, pkgcontrib: {$addToSet: {k: '$package', v: '$contributions.v'}}}},
+    {$project: {_id:0, login: '$_id', total: '$total', contributions: {$arrayToObject: '$pkgcontrib'}}},
+    {$sort:{ total: -1}}
   ]);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
