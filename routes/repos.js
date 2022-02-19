@@ -669,16 +669,12 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$project: {
       _id: 0,
       contributions: '$_builder.gitstats.contributions',
-      package: '$Package',
-      user: '$_user'
+      package: '$Package'
     }},
     {$addFields: {contributions: {$objectToArray:"$contributions"}}},
     {$unwind: "$contributions"},
-    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"},
-      pkgcontrib: {$addToSet: {k: '$package', v: '$contributions.v'}},
-      sources: {$addToSet: {user: '$user', package: '$package', count: '$contributions.v'}}
-    }},
-    {$project: {_id:0, login: '$_id', total: '$total', contributions: {$arrayToObject: '$pkgcontrib'}, sources:1}},
+    {$group: {_id: "$contributions.k", total: {$sum: "$contributions.v"}, pkgcontrib: {$addToSet: {k: '$package', v: '$contributions.v'}}}},
+    {$project: {_id:0, login: '$_id', total: '$total', contributions: {$arrayToObject: '$pkgcontrib'}}},
     {$sort:{ total: -1}},
     {$limit: limit}
   ]);
