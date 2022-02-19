@@ -661,6 +661,9 @@ router.get("/:user/stats/contributions", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+/* Group by upstream instead of package to avoid duplicate counting of contributions in
+ * repos that have multiple packages, e.g. https://github.com/r-forge/ctm/tree/master/pkg
+ */
 router.get("/:user/stats/contributors", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 100000;
   var query = {_user: req.params.user, _type: 'src', '_registered' : true};
@@ -669,12 +672,12 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$project: {
       _id: 0,
       contributions: '$_builder.gitstats.contributions',
-      package: '$Package'
+      upstream: '$_builder.upstream'
     }},
     {$addFields: {contributions: {$objectToArray:"$contributions"}}},
     {$unwind: "$contributions"},
-    {$group: {_id: "$contributions.k", pkgcontrib: {$addToSet: {k: '$package', v: '$contributions.v'}}}},
-    {$project: {_id:0, login: '$_id', total: {$sum: '$pkgcontrib.v'}, contributions: {$arrayToObject: '$pkgcontrib'}}},
+    {$group: {_id: "$contributions.k", repos: {$addToSet: {upstream: '$upstream', count: '$contributions.v'}}}},
+    {$project: {_id:0, login: '$_id', total: {$sum: '$repos.count'}, repos: 1}},
     {$sort:{ total: -1}},
     {$limit: limit}
   ]);
