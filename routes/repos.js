@@ -686,6 +686,25 @@ router.get("/:user/stats/contributors", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+router.get("/:user/stats/updates", function(req, res, next) {
+  var query = {_user: req.params.user, _type: 'src', '_registered' : true};
+  var cursor = packages.aggregate([
+    {$match: qf(query, req.query.all)},
+    {$project: {
+      _id: 0,
+      package: '$Package',
+      updates: '$_builder.gitstats.updates'
+    }},
+    {$unwind: "$updates"},
+    {$group: {_id: "$updates.week", total: {$sum: '$updates.n'}, packages: {$addToSet: '$package'}}},
+    {$project: {_id:0, week: '$_id', total: '$total', packages: '$packages'}},
+    {$sort:{ week: 1}}
+  ]);
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
 router.get("/:user/stats/revdeps", function(req, res, next) {
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src', _registered : true})},
