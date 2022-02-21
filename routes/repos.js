@@ -696,8 +696,8 @@ router.get("/:user/stats/updates", function(req, res, next) {
       updates: '$_builder.gitstats.updates'
     }},
     {$unwind: "$updates"},
-    {$group: {_id: "$updates.week", total: {$sum: '$updates.n'}, packages: {$addToSet: '$package'}}},
-    {$project: {_id:0, week: '$_id', total: '$total', packages: '$packages'}},
+    {$group: {_id: "$updates.week", total: {$sum: '$updates.n'}, packages: {$addToSet: {k:'$package', v:'$updates.n'}}}},
+    {$project: {_id:0, week: '$_id', total: '$total', packages: {$arrayToObject: '$packages'}}},
     {$sort:{ week: 1}}
   ]);
   cursor.hasNext().then(function(){
