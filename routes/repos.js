@@ -646,16 +646,20 @@ router.get("/:user/stats/contributions", function(req, res, next) {
   var user = req.params.user;
   var query = {_type: 'src', '_selfowned' : true};
   var contribfield = `_builder.gitstats.contributions.${user}`;
-  var sort = {}
   query[contribfield] = { $gt: 0 };
-  sort[contribfield] = -1;
-  var cursor = packages.find(query).sort(sort).limit(limit).project({
-    _id: 0,
-    package: '$Package',
-    owner: '$_user',
-    maintainer: '$_builder.maintainer.login',
-    contributions: '$' + contribfield
-  });
+  var cursor = packages.aggregate([
+    {$match: query},
+    {$group: {
+      _id: "$_builder.upstream",
+      owner: {$first: '$_user'}, //equals upstream org
+      packages: {$addToSet: '$Package'},
+      maintainers: {$addToSet: '$_builder.maintainer.login'},
+      contributions: {$max: '$' + contribfield}
+    }},
+    {$project: {_id:0, contributions:'$contributions', upstream: '$_id', owner: '$owner', packages: '$packages', maintainers: '$maintainers'}},
+    {$sort:{ contributions: -1}},
+    {$limit: limit}
+  ]);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
