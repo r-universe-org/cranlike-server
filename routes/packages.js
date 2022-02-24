@@ -130,8 +130,8 @@ function store_stream_file(stream, key, filename){
   return new Promise(function(resolve, reject) {
     stream.pipe(bucket.openUploadStreamWithId(key, filename))
     .on('error', function(err){
-      console.log("Error in openUploadStreamWithId()");
-      reject("Error in openUploadStreamWithId()");
+      console.log("Error in openUploadStreamWithId()" + err);
+      reject("Error in openUploadStreamWithId(): " + err);
     })
     .on('finish', function(){
       bucket.find({_id : key}).project({md5:1}).next().then(function(doc){
