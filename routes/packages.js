@@ -213,8 +213,12 @@ function from_base64_gzip(str){
 
 function parse_builder_fields(x){
   var builder = filter_keys(x, /^builder-/gi);
-  builder.sysdeps = from_base64_gzip(builder.sysdeps);
-  builder.vignettes = from_base64_gzip(builder.vignettes);
+  if(builder.sysdeps){
+    builder.sysdeps = from_base64_gzip(builder.sysdeps);
+  }
+  if(builder.vignettes){
+    builder.vignettes = from_base64_gzip(builder.vignettes);
+  }
   builder.gitstats = from_base64_gzip(builder.gitstats);
   builder.commit = from_base64_gzip(builder.commit);
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
