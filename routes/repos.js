@@ -744,7 +744,7 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
       usedby : { $addToSet: {owner: '$_owner', package:'$Package'}}
     }},
     {$project: {_id: 0, library: '$_id', packages: 1, headers: 1, version: 1, usedby: 1}},
-    {$sort:{ package: 1}}
+    {$sort:{ library: 1}}
   ])
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
