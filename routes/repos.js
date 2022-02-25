@@ -731,14 +731,19 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src', '_builder.sysdeps': {$exists: true}})},
     {$unwind: '$_builder.sysdeps'},
+    {$set: {name: { $cond: {
+      if: { $eq: ['gcc', '$_builder.sysdeps.source']},
+      then: '$_builder.sysdeps.package',
+      else: '$_builder.sysdeps.source'
+    }}}},
     {$group: {
-      _id : '$_builder.sysdeps.package',
-      source: { $addToSet: '$_builder.sysdeps.source'},
+      _id : '$name',
+      packages: { $addToSet: '$_builder.sysdeps.package'},
       headers: { $addToSet: '$_builder.sysdeps.headers'},
       version: { $first: '$_builder.sysdeps.version'},
       usedby : { $addToSet: {owner: '$_owner', package:'$Package'}}
     }},
-    {$project: {_id: 0, package: '$_id', source: {$first: '$source'}, headers: {$first: '$headers'}, version: 1, usedby: 1}},
+    {$project: {_id: 0, library: '$_id', packages: 1, headers: 1, version: 1, usedby: 1}},
     {$sort:{ package: 1}}
   ])
   cursor.hasNext().then(function(){
