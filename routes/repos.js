@@ -729,15 +729,17 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 
 router.get("/:user/stats/sysdeps", function(req, res, next) {
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src'})},
-    {$project: {_id: 0, user: '$_user', package: '$Package', sysdeps: '$_builder.sysdeps.package'}},
-    {$unwind: '$sysdeps'},
+    {$match: qf({_user: req.params.user, _type: 'src', '_builder.sysdeps': {$exists: true}})},
+    {$unwind: '$_builder.sysdeps'},
     {$group: {
-      _id : '$sysdeps',
-      packages : { $addToSet: {user: '$user', package:'$package'}}
+      _id : '$_builder.sysdeps.package',
+      source: { $first: '$_builder.sysdeps.source'},
+      headers: { $first: '$_builder.sysdeps.headers'},
+      version: { $first: '$_builder.sysdeps.version'},
+      usedby : { $addToSet: {owner: '$_owner', package:'$Package'}}
     }},
-    {$project: {_id: 0, sysdep: '$_id', packages: '$packages'}},
-    {$sort:{ sysdep: 1}}
+    {$project: {_id: 0, package: '$_id', source: 1, headers: 1, version: 1, usedby: 1}},
+    {$sort:{ package: 1}}
   ])
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
