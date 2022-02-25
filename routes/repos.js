@@ -741,9 +741,10 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
       packages: { $addToSet: '$_builder.sysdeps.package'},
       headers: { $addToSet: '$_builder.sysdeps.headers'},
       version: { $first: '$_builder.sysdeps.version'},
+      distro : { $first: '$_builder.distro'},
       usedby : { $addToSet: {owner: '$_owner', package:'$Package'}}
     }},
-    {$project: {_id: 0, library: '$_id', packages: 1, headers: 1, version: 1, usedby: 1}},
+    {$project: {_id: 0, library: '$_id', packages: 1, headers: 1, version: 1, usedby: 1, distro:1}},
     {$sort:{ library: 1}}
   ])
   cursor.hasNext().then(function(){
