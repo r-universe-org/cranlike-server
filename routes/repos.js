@@ -733,12 +733,12 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
     {$unwind: '$_builder.sysdeps'},
     {$group: {
       _id : '$_builder.sysdeps.package',
-      source: { $first: '$_builder.sysdeps.source'},
-      headers: { $first: '$_builder.sysdeps.headers'},
+      source: { $addToSet: '$_builder.sysdeps.source'},
+      headers: { $addToSet: '$_builder.sysdeps.headers'},
       version: { $first: '$_builder.sysdeps.version'},
       usedby : { $addToSet: {owner: '$_owner', package:'$Package'}}
     }},
-    {$project: {_id: 0, package: '$_id', source: 1, headers: 1, version: 1, usedby: 1}},
+    {$project: {_id: 0, package: '$_id', source: {$first: '$source'}, headers: {$first: '$headers'}, version: 1, usedby: 1}},
     {$sort:{ package: 1}}
   ])
   cursor.hasNext().then(function(){
