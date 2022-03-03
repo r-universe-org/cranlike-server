@@ -653,7 +653,7 @@ router.get("/:user/stats/contributions", function(req, res, next) {
       _id: "$_builder.upstream",
       owner: {$first: '$_user'}, //equals upstream org
       packages: {$addToSet: '$Package'},
-      maintainers: {$addToSet: '$_builder.maintainer.login'},
+      maintainers: {$addToSet: '$_builder.maintainer.login'}, //upstreams can have multiple pkgs and maintainers
       contributions: {$max: '$' + contribfield}
     }},
     {$project: {_id:0, contributions:'$contributions', upstream: '$_id', owner: '$owner', packages: '$packages', maintainers: '$maintainers'}},
