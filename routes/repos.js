@@ -643,10 +643,14 @@ router.get("/:user/stats/organizations", function(req, res, next) {
 
 router.get("/:user/stats/contributions", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 100000;
+  var cutoff = parseInt(req.query.cutoff) || 0;
   var user = req.params.user;
   var query = {_type: 'src', '_selfowned' : true};
   var contribfield = `_builder.gitstats.contributions.${user}`;
-  query[contribfield] = { $gt: 0 };
+  query[contribfield] = { $gt: cutoff };
+  if(req.query.skipself){
+    query['_builder.maintainer.login'] = {$ne: user};
+  }
   var cursor = packages.aggregate([
     {$match: query},
     {$group: {
