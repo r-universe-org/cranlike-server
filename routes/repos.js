@@ -669,6 +669,8 @@ router.get("/:user/stats/contributions", function(req, res, next) {
  * repos that have multiple packages, e.g. https://github.com/r-forge/ctm/tree/master/pkg
  */
 router.get("/:user/stats/contributors", function(req, res, next) {
+  /* TODO: small bug: $addToSet{upstream, count} can generate duplicates in case
+     a package exists in multiple orgs but with different stats (e.g. an older rebuild) */
   var limit = parseInt(req.query.limit) || 100000;
   var query = {_user: req.params.user, _type: 'src', '_registered' : true};
   var cursor = packages.aggregate([
