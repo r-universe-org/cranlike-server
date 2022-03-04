@@ -718,14 +718,18 @@ router.get("/:user/stats/updates", function(req, res, next) {
 router.get("/:user/stats/revdeps", function(req, res, next) {
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src', _registered : true})},
-    {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
+    {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {
+      $concatArrays: ['$_hard_deps', '$_soft_deps', [{package: '$Package', owner: '$_user', role: 'self'}]]}}
+    },
     {$unwind: '$dependencies'},
     {$group: {
       _id : '$dependencies.package',
       revdeps : { $addToSet: 
-        {user: '$user', package: '$package', role: '$dependencies.role', version: '$dependencies.version'}}
+        {user: '$user', package: '$package', role: '$dependencies.role', version: '$dependencies.version'}
+      }, //in theory the pkg can have multiple owners in case of a fork or name conflict
+      owner: {$addToSet : '$dependencies.owner'}
     }},
-    {$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
+    {$project: {_id: 0, owner: 1, package: '$_id', revdeps: '$revdeps'}},
     {$sort:{ package: 1}}
   ]);
   cursor.hasNext().then(function(){
