@@ -716,8 +716,14 @@ router.get("/:user/stats/updates", function(req, res, next) {
 });
 
 router.get("/:user/stats/revdeps", function(req, res, next) {
+  /* Filter by user after aggregate to get cross universe dependencies */
+  var deptypes = ["Depends", "Imports", "LinkingTo", "Suggests", "Enhances"]
+  var postmatch = {'revdeps.0': {$exists: true}};
+  if(req.params.user != ":any"){
+    postmatch.owner = req.params.user;
+  }
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', _registered : true})},
+    {$match: {_type: 'src', _selfowned : true}},
     {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {
       $concatArrays: ['$_hard_deps', '$_soft_deps', [{package: '$Package', owner: '$_user', role: 'self'}]]}}
     },
@@ -729,7 +735,9 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
       }, //in theory the pkg can have multiple owners in case of a fork or name conflict
       owner: {$addToSet : '$dependencies.owner'}
     }},
-    {$project: {_id: 0, owner: 1, package: '$_id', revdeps: '$revdeps'}},
+    {$project: {_id: 0, owner: 1, package: '$_id', revdeps: {
+      $filter: {input: '$revdeps', as: 'dep', cond: {$in: ["$$dep.role", deptypes]}}}}},
+    {$match: postmatch},
     {$sort:{ package: 1}}
   ]);
   cursor.hasNext().then(function(){
