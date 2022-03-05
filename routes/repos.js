@@ -734,10 +734,10 @@ router.get("/:user/stats/simplerevdeps", function(req,res,next){
       {$set: {total: { $size: "$revdeps" }}},
       {$sort:{total: -1}}
     ]);
-    cursor.hasNext().then(function(){
+    return cursor.hasNext().then(function(){
       cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-    }).catch(error_cb(400, next));
-  });
+    })
+  }).catch(error_cb(400, next));
 });
 
 router.get("/:user/stats/revdeps", function(req, res, next) {
