@@ -715,6 +715,31 @@ router.get("/:user/stats/updates", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+router.get("/:user/stats/simplerevdeps", function(req,res,next){
+  var prequery = {_user: req.params.user, _type: 'src', '_selfowned' : true};
+  packages.distinct('Package', qf(prequery, req.query.all)).then(function(pkgs){
+    var query = {_type: 'src', _selfowned : true, _hard_deps: {$elemMatch: { package: {$in: pkgs}}}};
+    var cursor = packages.aggregate([
+      {$match: query},
+      {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: '$_hard_deps', maintainer: '$_builder.maintainer.login'}},
+      {$unwind: '$dependencies'},
+      {$match: {'dependencies.package': {$in: pkgs}}},
+      {$group: {
+        _id : '$dependencies.package',
+        revdeps : { $addToSet:
+          {package: '$package', owner: '$user', maintainer:'$maintainer', role: '$dependencies.role'}
+        }
+      }},
+      {$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
+      {$set: {total: { $size: "$revdeps" }}},
+      {$sort:{total: -1}}
+    ]);
+    cursor.hasNext().then(function(){
+      cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    }).catch(error_cb(400, next));
+  });
+});
+
 router.get("/:user/stats/revdeps", function(req, res, next) {
   /* Filter by user after aggregate to get cross universe dependencies */
   var user = req.params.user;
