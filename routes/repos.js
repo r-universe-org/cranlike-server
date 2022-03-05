@@ -718,15 +718,14 @@ router.get("/:user/stats/updates", function(req, res, next) {
 router.get("/:user/stats/revdeps", function(req, res, next) {
   /* Filter by user after aggregate to get cross universe dependencies */
   var user = req.params.user;
-  var deptypes = ["Depends", "Imports", "LinkingTo", "Suggests", "Enhances"]
-  var postmatch = {'revdeps.0': {$exists: true}};
+  var postmatch = {'revdeps.1': {$exists: true}};
   if(user != ":any"){
     postmatch['$or'] = [{'owner': user}, {'maintainer': user}];
   }
   var cursor = packages.aggregate([
     {$match: {_type: 'src', _selfowned : true}},
     {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {
-      $concatArrays: ['$_hard_deps', '$_soft_deps', [{
+      $concatArrays: ['$_hard_deps', req.params.optinional ? '$_soft_deps' : [], [{
         package: '$Package',
         owner: '$_user',
         maintainer: '$_builder.maintainer.login',
@@ -737,15 +736,16 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
     {$group: {
       _id : '$dependencies.package',
       revdeps : { $addToSet: 
-        {user: '$user', package: '$package', role: '$dependencies.role', version: '$dependencies.version'}
+        {user: '$user', package: '$package', role: '$dependencies.role'}
       }, //in theory the pkg can have multiple owners in case of a fork or name conflict
       owner: {$addToSet : '$dependencies.owner'},
       maintainer: {$addToSet : '$dependencies.maintainer'},
     }},
-    {$project: {_id: 0, owner: 1, maintainer:1, package: '$_id', revdeps: {
-      $filter: {input: '$revdeps', as: 'dep', cond: {$in: ["$$dep.role", deptypes]}}}}},
     {$match: postmatch},
-    {$sort:{ package: 1}}
+    {$project: {_id: 0, owner: 1, maintainer:1, package: '$_id', revdeps: {
+      $filter: {input: '$revdeps', as: 'dep', cond: {$ne: ["$$dep.role", 'self']}}}}},
+    {$set: {count: { $size: "$revdeps" }}},
+    {$sort:{count: -1}}
   ]);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
