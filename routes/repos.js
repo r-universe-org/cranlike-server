@@ -715,10 +715,31 @@ router.get("/:user/stats/updates", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-router.get("/:user/stats/simplerevdeps", function(req,res,next){
+router.get("/:user/stats/pkgdeps", function(req,res,next){
+  var cursor = packages.aggregate([
+    {$match: qf({_user: req.params.user, _type: 'src', '_registered': true})},
+    {$set: {dependencies: '$_hard_deps'}},
+    {$unwind: '$dependencies'},
+    {$group: {
+      _id : '$dependencies.package',
+      revdeps : { $addToSet:
+        {package: '$Package', role: '$dependencies.role'}
+      }
+    }},
+    {$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
+    {$set: {total: { $size: "$revdeps" }}},
+    {$sort:{total: -1}}
+  ]);
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
+router.get("/:user/stats/pkgrevdeps", function(req,res,next){
   var prequery = {_user: req.params.user, _type: 'src', '_selfowned' : true};
   packages.distinct('Package', qf(prequery, req.query.all)).then(function(pkgs){
-    var query = {_type: 'src', _selfowned : true, _hard_deps: {$elemMatch: { package: {$in: pkgs}}}};
+    //var query = {_type: 'src', _selfowned : true, _hard_deps: {$elemMatch: { package: {$in: pkgs}}}};
+    var query = {_type: 'src', _selfowned : true};
     var cursor = packages.aggregate([
       {$match: query},
       {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: '$_hard_deps', maintainer: '$_builder.maintainer.login'}},
@@ -777,6 +798,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
+
 
 router.get("/:user/stats/sysdeps", function(req, res, next) {
   var cursor = packages.aggregate([
