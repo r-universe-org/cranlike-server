@@ -717,7 +717,7 @@ router.get("/:user/stats/updates", function(req, res, next) {
 
 router.get("/:user/stats/pkgdeps", function(req,res,next){
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_registered': true})},
+    {$match: qf({_user: req.params.user, _type: 'src', '_registered': true}, req.query.all)},
     {$set: {dependencies: '$_hard_deps'}},
     {$unwind: '$dependencies'},
     {$group: {
