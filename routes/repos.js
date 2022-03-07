@@ -736,22 +736,25 @@ router.get("/:user/stats/pkgdeps", function(req,res,next){
 });
 
 router.get("/:user/stats/pkgrevdeps", function(req,res,next){
+  //group can be set to 'owner' or 'maintainer'
+  var group = req.query.group || 'dependencies.package';
+  var groupname = group.split('.').pop();
   var prequery = {_user: req.params.user, _type: 'src', '_selfowned' : true};
   packages.distinct('Package', qf(prequery, req.query.all)).then(function(pkgs){
     //var query = {_type: 'src', _selfowned : true, _hard_deps: {$elemMatch: { package: {$in: pkgs}}}};
     var query = {_type: 'src', _selfowned : true};
     var cursor = packages.aggregate([
       {$match: query},
-      {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: '$_hard_deps', maintainer: '$_builder.maintainer.login'}},
+      {$project: {_id: 0, owner: '$_user', package: '$Package', dependencies: '$_hard_deps', maintainer: '$_builder.maintainer.login'}},
       {$unwind: '$dependencies'},
       {$match: {'dependencies.package': {$in: pkgs}}},
       {$group: {
-        _id : '$dependencies.package',
+        _id : '$' + group,
         revdeps : { $addToSet:
-          {package: '$package', owner: '$user', maintainer:'$maintainer', role: '$dependencies.role'}
+          {package: '$package', uses: '$dependencies.package', owner: '$owner', maintainer:'$maintainer'}
         }
       }},
-      {$project: {_id: 0, package: '$_id', revdeps: '$revdeps'}},
+      {$project: {_id: 0, [groupname]: '$_id', revdeps: '$revdeps'}},
       {$set: {total: { $size: "$revdeps" }}},
       {$sort:{total: -1}}
     ]);
