@@ -892,4 +892,14 @@ router.get("/:user/stats/checkdeps", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+router.get("/:user/stats/search", function(req, res, next) {
+  var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
+  query['$text'] = { $search: req.query.q || "" };
+  var limit =  parseInt(req.query.limit) || 100;
+  var cursor = packages.find(query, {limit:limit});
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
 module.exports = router;
