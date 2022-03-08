@@ -219,8 +219,10 @@ function parse_builder_fields(x){
   if(builder.vignettes){
     builder.vignettes = from_base64_gzip(builder.vignettes);
   }
-  builder.gitstats = from_base64_gzip(builder.gitstats);
-  builder.commit = from_base64_gzip(builder.commit);
+  if(builder.gitstats){
+    builder.gitstats = from_base64_gzip(builder.gitstats);
+  }
+  builder.commit = from_base64_gzip(builder.commit) || {};
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
   return builder;
 }
