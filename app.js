@@ -25,26 +25,26 @@ const PASS = process.env.CRANLIKE_MONGODB_PASSWORD;
 const AUTH = PASS ? (USER + ':' + PASS + "@") : "";
 const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
 mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(error, client) {
-	assert.ifError(error);
-	const db = client.db('cranlike');
-	global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
-	global.packages = db.collection('packages');
+  assert.ifError(error);
+  const db = client.db('cranlike');
+  global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
+  global.packages = db.collection('packages');
 
-	/* Speed up common query fields */
-	/* NB: Dont use indexes with low cardinality (few unique values) */
-	await packages.createIndex("MD5sum");
-	await packages.createIndex("_user");
-	await packages.createIndex("_published");
-	await packages.createIndex("_builder.commit.time");
-	await packages.createIndex("_builder.maintainer.login");
-	await packages.createIndex({"_user":1, "_type":1, "Package":1});
-	await packages.createIndex({"_user":1, "_builder.commit.id":1, "Package":1});
-	await packages.createIndex({"_user":1, "_type":1, "_builder.commit.time":1});
-	await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_builder.commit.time":1});
-	await packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1, "_builder.commit.time":1});
+  /* Speed up common query fields */
+  /* NB: Dont use indexes with low cardinality (few unique values) */
+  await packages.createIndex("MD5sum");
+  await packages.createIndex("_user");
+  await packages.createIndex("_published");
+  await packages.createIndex("_builder.commit.time");
+  await packages.createIndex("_builder.maintainer.login");
+  await packages.createIndex({"_user":1, "_type":1, "Package":1});
+  await packages.createIndex({"_user":1, "_builder.commit.id":1, "Package":1});
+  await packages.createIndex({"_user":1, "_type":1, "_builder.commit.time":1});
+  await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_builder.commit.time":1});
+  await packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1, "_builder.commit.time":1});
 
   /* The text search index (only one is allowed) */
-  //await packages.dropIndex("textsearch").catch(console.log);
+  await packages.dropIndex("textsearch").catch(console.log);
   await packages.createIndex({
     _type:1,
     Package: "text",
@@ -52,26 +52,28 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
     Title: "text",
     Author: "text",
     Description: "text",
+    '_builder.vignettes.title': "text",
     '_builder.maintainer.name': "text",
     '_builder.gitstats.topics': "text"
   },{
     weights: {
-      Package: 20,
+      Package: 50,
       _owner: 20,
       Title: 5,
       Author: 3,
       Description: 1,
+      '_builder.vignettes.title': 5,
       '_builder.maintainer.name': 10,
       '_builder.gitstats.topics': 10
     },
     name: "textsearch"
   });
 
-	//await packages.dropIndex("_user_1__type_1__registered_1").catch(console.log);
-	packages.indexes().then(function(x){
-		console.log("Current indexes() for packages:")
-		console.log(x);
-	});
+  //await packages.dropIndex("_user_1__type_1__registered_1").catch(console.log);
+  packages.indexes().then(function(x){
+    console.log("Current indexes() for packages:")
+    console.log(x);
+  });
 });
 
 /* Start App */
