@@ -44,7 +44,7 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
   await packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1, "_builder.commit.time":1});
 
   /* The text search index (only one is allowed) */
-  //await packages.dropIndex("textsearch").catch(console.log);
+  await packages.dropIndex("textsearch").catch(console.log);
   await packages.createIndex({
     _type:1,
     Package: "text",
@@ -54,7 +54,8 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
     Description: "text",
     '_builder.vignettes.title': "text",
     '_builder.maintainer.name': "text",
-    '_builder.gitstats.topics': "text"
+    '_builder.gitstats.topics': "text",
+    '_builder.sysdeps.source': "text"
   },{
     weights: {
       Package: 50,
@@ -64,7 +65,8 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
       Description: 1,
       '_builder.vignettes.title': 5,
       '_builder.maintainer.name': 10,
-      '_builder.gitstats.topics': 10
+      '_builder.gitstats.topics': 10,
+      '_builder.sysdeps.source': 20
     },
     name: "textsearch"
   });
