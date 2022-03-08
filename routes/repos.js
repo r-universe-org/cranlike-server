@@ -894,7 +894,7 @@ router.get("/:user/stats/checkdeps", function(req, res, next) {
 
 router.get("/:user/stats/search", function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
-  query['$text'] = { $search: req.query.q || "" };
+  query['$text'] = { $search: req.query.q || "", $caseSensitive: false};
   var limit =  parseInt(req.query.limit) || 100;
   //todo: maybe combine textscore with popularity/activity?
   var cursor = packages.find(query, {limit:limit}).project({score:{$meta: "textScore"}}).sort({score:{$meta:"textScore"}});
