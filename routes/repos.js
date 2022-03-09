@@ -829,6 +829,7 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
 });
 
 router.get("/:user/stats/topics", function(req, res, next) {
+  var min =  parseInt(req.query.min) || 1;
   var limit =  parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src'})},
@@ -838,6 +839,7 @@ router.get("/:user/stats/topics", function(req, res, next) {
       packages: { $addToSet: '$Package' }
     }},
     {$project: {_id: 0, topic: '$_id', packages: '$packages', count: { $size: "$packages" }}},
+    {$match:{count: {$gte: min}}},
     {$sort:{count: -1}},
     {$limit: limit}
   ])
