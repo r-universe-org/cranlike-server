@@ -828,6 +828,22 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+router.get("/:user/stats/topics", function(req, res, next) {
+  var cursor = packages.aggregate([
+    {$match: qf({_user: req.params.user, _type: 'src'})},
+    {$unwind: '$_builder.gitstats.topics'},
+    {$group: {
+      _id : '$_builder.gitstats.topics',
+      packages: { $addToSet: '$Package' }
+    }},
+    {$project: {_id: 0, topic: '$_id', packages: '$packages', count: { $size: "$packages" }}},
+    {$sort:{count: -1}}
+  ])
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
 router.get("/:user/stats/files", function(req, res, next) {
   var query = qf({_user: req.params.user});
   if(req.query.type){
