@@ -829,6 +829,7 @@ router.get("/:user/stats/sysdeps", function(req, res, next) {
 });
 
 router.get("/:user/stats/topics", function(req, res, next) {
+  var limit =  parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src'})},
     {$unwind: '$_builder.gitstats.topics'},
@@ -837,7 +838,8 @@ router.get("/:user/stats/topics", function(req, res, next) {
       packages: { $addToSet: '$Package' }
     }},
     {$project: {_id: 0, topic: '$_id', packages: '$packages', count: { $size: "$packages" }}},
-    {$sort:{count: -1}}
+    {$sort:{count: -1}},
+    {$limit: limit}
   ])
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
