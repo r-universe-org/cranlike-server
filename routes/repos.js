@@ -635,7 +635,7 @@ router.get("/:user/stats/universes", function(req, res, next) {
       maintainers: { $addToSet: '$email'},
       is_organization: { $addToSet: '$is_organization'}
     }},
-    {$project: {_id: 0, universes: '$_id', packages: 1, maintainers: 1, updated: 1, is_organization: {$first: '$is_organization'}}},
+    {$project: {_id: 0, universe: '$_id', packages: 1, maintainers: 1, updated: 1, is_organization: {$first: '$is_organization'}}},
     {$sort:{ updated: -1}}
   ]);
   cursor.hasNext().then(function(){
