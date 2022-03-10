@@ -615,7 +615,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-router.get("/:user/stats/organizations", function(req, res, next) {
+router.get("/:user/stats/universes", function(req, res, next) {
   var query = {_user: req.params.user, _type: 'src', '_registered' : true};
   var cursor = packages.aggregate([
     {$match: qf(query, req.query.all)},
@@ -626,14 +626,16 @@ router.get("/:user/stats/organizations", function(req, res, next) {
       updated: '$_builder.commit.time',
       name: '$_builder.maintainer.name',
       email: '$_builder.maintainer.email',
+      is_organization: '$_builder.gitstats.organization'
     }},
     {$group: {
       _id : '$user',
       updated: { $max: '$updated'},
       packages : { $addToSet: '$package'},
-      maintainers: { $addToSet: '$email'}
+      maintainers: { $addToSet: '$email'},
+      is_organization: { $addToSet: '$is_organization'}
     }},
-    {$project: {_id: 0, organization: '$_id', packages: 1, maintainers: 1, updated: 1}},
+    {$project: {_id: 0, universes: '$_id', packages: 1, maintainers: 1, updated: 1, is_organization: {$first: '$is_organization'}}},
     {$sort:{ updated: -1}}
   ]);
   cursor.hasNext().then(function(){
