@@ -626,16 +626,20 @@ router.get("/:user/stats/universes", function(req, res, next) {
       updated: '$_builder.commit.time',
       name: '$_builder.maintainer.name',
       email: '$_builder.maintainer.email',
-      is_organization: '$_builder.gitstats.organization'
+      owner: '$_owner',
+      organization: '$_builder.gitstats.organization'
     }},
     {$group: {
       _id : '$user',
       updated: { $max: '$updated'},
-      packages : { $addToSet: '$package'},
       maintainers: { $addToSet: '$email'},
-      is_organization: { $addToSet: '$is_organization'}
+      owners: { $addToSet: {
+        owner: '$owner',
+        organization: '$organization'
+      }},
+      packages : { $addToSet: '$package'},
     }},
-    {$project: {_id: 0, universe: '$_id', packages: 1, maintainers: 1, updated: 1, is_organization: {$first: '$is_organization'}}},
+    {$project: {_id: 0, universe: '$_id', packages: 1, maintainers: 1, updated: 1, owners: 1}},
     {$sort:{ updated: -1}}
   ]);
   cursor.hasNext().then(function(){
