@@ -639,7 +639,7 @@ router.get("/:user/stats/universes", function(req, res, next) {
       }},
       packages : { $addToSet: '$package'},
     }},
-    {$match: req.query.organization ? {owners: {owner:req.params.user, organization: true}} : {}},
+    {$match: req.query.organization ? {owners: {owner:'$_id', organization: true}} : {}},
     {$project: {_id: 0, universe: '$_id', packages: 1, maintainers: 1, updated: 1, owners: 1}},
     {$sort:{ updated: -1}}
   ]);
