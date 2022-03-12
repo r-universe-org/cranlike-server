@@ -946,12 +946,13 @@ router.get('/:user/stats/summary', function(req, res, next){
     {$count: "total"}
   ]).next();
   Promise.all([p1, p2, p3, p4]).then((values) => {
-    res.send({
+    const out = doc_to_ndjson({
       packages: values[0].length,
       maintainers: values[1].length,
       articles: values[2].length,
       contributors: values[3].total
     });
+    res.type('text/plain').send(out);
   });
 });
 
