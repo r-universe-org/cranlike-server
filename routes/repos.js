@@ -573,6 +573,7 @@ router.get("/:user/stats/pkgsbymaintainer", function(req, res, next) {
    TODO: We convert array to object to array because I can't figure out a better way to get unique
    _user values, or better: aggregate so that we get counts per _user. */
 router.get("/:user/stats/maintainers", function(req, res, next) {
+  var limit = parseInt(req.query.limit) || 100000;
   var query = {_user: req.params.user, _type: 'src', _registered : true};
   var cursor = packages.aggregate([
     {$match: qf(query, req.query.all)},
@@ -608,7 +609,8 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       orgs: {$objectToArray: "$orgs"}
     }},
     {$set: {orgs: '$orgs.k'}},
-    {$sort:{ updated: -1}}
+    {$sort:{ updated: -1}},
+    {$limit: limit}
   ]);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
