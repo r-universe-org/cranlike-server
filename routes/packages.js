@@ -393,9 +393,8 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
     const rebuild = doc['_rebuild'];
     if(rebuild){
       const minutes = (now - rebuild) / 60000;
-      if(minutes < 1){
-        /* Prevent abusive hammering of the GH API */
-        throw `A rebuild of ${package} ${version} was alread triggered ${minutes} minutes ago`;
+      if(minutes < 60){ /* Prevent abusive hammering of the GH API */
+        throw `A rebuild of ${package} ${version} was just triggered ${Math.round(minutes)} minutes ago. You can try again later.`;
       }
     }
     var builder = doc['_builder'];
