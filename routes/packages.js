@@ -377,4 +377,50 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
   });
 });
 
+
+/* HTTP PATCH does not require authentication, so this API is public */
+router.patch('/:user/packages/:package/:version/:type', function(req, res, next) {
+  var user = req.params.user;
+  var package = req.params.package;
+  var version = req.params.version;
+  var type = req.params.type || 'src'
+  var query = {_user : user, _type : type, Package : package, Version: version};
+  packages.find(query).next().then(function(doc){
+    if(!doc) {
+      throw `Failed to find package ${package} ${version} in ${user}`;
+    }
+    const now = new Date();
+    const rebuild = doc['_rebuild'];
+    if(rebuild){
+      const minutes = (now - rebuild) / 60000;
+      if(minutes < 1){
+        /* Prevent abusive hammering of the GH API */
+        throw `A rebuild of ${package} ${version} was alread triggered ${minutes} minutes ago`;
+      }
+    }
+    var builder = doc['_builder'];
+    var run_url = builder && builder.url;
+    if(!run_url) {
+      throw `Failed to find builder.url in ${package} ${version}`;
+    }
+    const pattern = new RegExp('https://github.com/(r-universe/.*/actions/runs/[0-9]+)');
+    const match = run_url.match(pattern);
+    if(!match || !match[1]) {
+      throw 'Did not recognize github action url'
+    }
+    const run_path = match[1];
+    return tools.trigger_rebuild(run_path).then(function(){
+      return packages.updateOne(
+        { _id: doc['_id'] },
+        { "$set": {"_rebuild": now }}
+      ).then(function(){
+        res.send({
+          run: run_path,
+          time: now
+        });
+      });
+    }); /* plain-text error to show in UI alert box */
+  }).catch(err => res.status(400).send(err));
+});
+
 module.exports = router;

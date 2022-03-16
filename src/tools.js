@@ -42,7 +42,25 @@ function get_registry_info(user){
   });
 }
 
+function trigger_rebuild(run_path){
+  const rebuild_token = process.env.REBUILD_TOKEN;
+  if(!rebuild_token)
+    throw "No rebuild_token available";
+  const url = `https://api.github.com/repos/${run_path}/rerun-failed-jobs`;
+  return axios.post(url, {}, {
+    headers: {
+      'Authorization': 'token ' + rebuild_token
+    }
+  }).then(function(x){
+    return x.data;
+  }).catch(err => {
+    const data = err.response.data;
+    throw `${data.message || data} (HTTP ${err.response.status} at ${run_path})`;
+  });
+}
+
 module.exports = {
   test_if_universe_exists : test_if_universe_exists,
-  get_registry_info : get_registry_info
+  get_registry_info : get_registry_info,
+  trigger_rebuild : trigger_rebuild
 };
