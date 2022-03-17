@@ -394,7 +394,8 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
     if(rebuild){
       const minutes = (now - rebuild) / 60000;
       if(minutes < 60){ /* Prevent abusive hammering of the GH API */
-        throw `A rebuild of ${package} ${version} was already triggered ${Math.round(minutes)} minutes ago.`;
+        res.status(304).send(`A rebuild of ${package} ${version} was already triggered ${Math.round(minutes)} minutes ago.`);
+        return;
       }
     }
     var builder = doc['_builder'];
