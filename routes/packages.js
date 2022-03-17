@@ -390,10 +390,12 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
       throw `Failed to find package ${package} ${version} in ${user}`;
     }
     const now = new Date();
-    const rebuild = doc['_rebuild'];
+    /* Try to prevent hammering of the GH API. However note that the _rebuild_pending field
+       automatically disappears upon any new deployment, so you can still have more builds. */
+    const rebuild = doc['_rebuild_pending'];
     if(rebuild){
       const minutes = (now - rebuild) / 60000;
-      if(minutes < 60){ /* Prevent abusive hammering of the GH API */
+      if(minutes < 60){
         res.status(429).send(`A rebuild of ${package} ${version} was already triggered ${Math.round(minutes)} minutes ago.`);
         return;
       }
@@ -417,7 +419,7 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
       return tools.trigger_rebuild(run_path).then(function(){
         return packages.updateOne(
           { _id: doc['_id'] },
-          { "$set": {"_rebuild": now }}
+          { "$set": {"_rebuild_pending": now }}
         ).then(function(){
           res.send({
             run: run_path,
