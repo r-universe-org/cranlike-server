@@ -42,6 +42,23 @@ function get_registry_info(user){
   });
 }
 
+function get_submodule_hash(user, submodule){
+  const url = `https://api.github.com/repos/r-universe/${user}/git/trees/HEAD`
+  return axios.get(url, {
+    headers: {
+      'Authorization': 'token ' + token
+    }
+  }).then(function(res){
+    var info = res.data.tree.find(file => file.path == submodule);
+    if(info && info.sha){
+      return info.sha;
+    }
+  }).catch(err => {
+    const data = err.response.data;
+    throw "Failed to query GitHub: HTTP " + err.response.status + ": " + (data.message || data);
+  });
+}
+
 function trigger_rebuild(run_path){
   const rebuild_token = process.env.REBUILD_TOKEN;
   if(!rebuild_token)
@@ -62,5 +79,6 @@ function trigger_rebuild(run_path){
 module.exports = {
   test_if_universe_exists : test_if_universe_exists,
   get_registry_info : get_registry_info,
+  get_submodule_hash : get_submodule_hash,
   trigger_rebuild : trigger_rebuild
 };

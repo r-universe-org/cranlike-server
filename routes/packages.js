@@ -394,7 +394,7 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
     if(rebuild){
       const minutes = (now - rebuild) / 60000;
       if(minutes < 60){ /* Prevent abusive hammering of the GH API */
-        throw `A rebuild of ${package} ${version} was just triggered ${Math.round(minutes)} minutes ago. You can try again later.`;
+        throw `A rebuild of ${package} ${version} was already triggered ${Math.round(minutes)} minutes ago.`;
       }
     }
     var builder = doc['_builder'];
@@ -408,14 +408,20 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
       throw 'Did not recognize github action url'
     }
     const run_path = match[1];
-    return tools.trigger_rebuild(run_path).then(function(){
-      return packages.updateOne(
-        { _id: doc['_id'] },
-        { "$set": {"_rebuild": now }}
-      ).then(function(){
-        res.send({
-          run: run_path,
-          time: now
+    return tools.get_submodule_hash(user, package).then(function(sha){
+      if(sha !== doc['_builder'].commit.id){
+        throw `Commit sha for ${package} not match monorepo. Package may have been updated or removed` +
+          `\nr-universe/${user}: ${sha}\nThis build: ${doc['_builder'].commit.id}`
+      }
+      return tools.trigger_rebuild(run_path).then(function(){
+        return packages.updateOne(
+          { _id: doc['_id'] },
+          { "$set": {"_rebuild": now }}
+        ).then(function(){
+          res.send({
+            run: run_path,
+            time: now
+          });
         });
       });
     }); /* plain-text error to show in UI alert box */
