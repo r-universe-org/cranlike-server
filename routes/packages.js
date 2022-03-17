@@ -410,8 +410,8 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
     const run_path = match[1];
     return tools.get_submodule_hash(user, package).then(function(sha){
       if(sha !== doc['_builder'].commit.id){
-        throw `Commit sha for ${package} not match monorepo. Package may have been updated or removed` +
-          `\nr-universe/${user}: ${sha}\nThis build: ${doc['_builder'].commit.id}`
+        throw `Build version of ${package} not match ${user} monorepo. Package may have been updated or removed in the mean time.` +
+          `\nUpstream: ${sha}\nThis build: ${doc['_builder'].commit.id}`
       }
       return tools.trigger_rebuild(run_path).then(function(){
         return packages.updateOne(
