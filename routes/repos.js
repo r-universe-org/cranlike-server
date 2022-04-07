@@ -385,13 +385,20 @@ router.get('/:user/articles', function(req, res, next){
   }).catch(error_cb(400, next));
 });
 
-/* Extract single files */
+/* Send individual docs files */
 router.get('/:user/articles/:pkg/:file?', function(req, res, next){
   var pkg = req.params.pkg;
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
   var prefix = pkg + "/inst/doc/";
   var filename = req.params.file ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
   send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
+});
+
+/* Send 'citation.cff' file */
+router.get('/:user/cff/:pkg', function(req, res, next){
+  var pkg = req.params.pkg;
+  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
+  send_extracted_file(query, 'citation.cff', req, res, next).catch(error_cb(400, next));
 });
 
 router.get("/:user/stats/vignettes", function(req, res, next) {
