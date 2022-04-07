@@ -72,6 +72,7 @@ router.get('/:user/packages', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+/*
 router.get('/:user/packages/:package', function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package
@@ -79,18 +80,19 @@ router.get('/:user/packages/:package', function(req, res, next) {
     res.send(x);
   }).catch(error_cb(400, next));
 });
+*/
 
-router.get('/:user/packages/:package/:version/:type?/:built?', function(req, res, next) {
+router.get('/:user/packages/:package/:version?/:type?/:built?', function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   var query = {_user : user, Package : package};
-  if(req.params.version != "any")
+  if(req.params.version && req.params.version != "any")
     query.Version = req.params.version;
   if(req.params.type)
     query._type = req.params.type;
   if(req.params.built)
     query['Built.R'] = {$regex: '^' + req.params.built};
-  packages.find(query).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
+  packages.find(query).sort({"Built.R" : -1}).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
 });
 
 router.delete('/:user/packages/:package/:version?/:type?/:built?', function(req, res, next){
