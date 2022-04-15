@@ -945,7 +945,7 @@ router.get("/:user/stats/search", function(req, res, next) {
 /* Simple 1 package case; see above for aggregates */
 router.get('/:user/stats/usedby', function(req, res, next) {
   var package = req.query.package;
-  var q0 = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
+  var q0 = qf({_user: req.params.user, _type: 'src', _selfowned : true}, req.query.all);
   var q1 = Object.assign({}, q0, { '_hard_deps.package': package });
   var q2 = Object.assign({}, q0, { '_soft_deps.package': package });
   var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).toArray();
