@@ -941,6 +941,18 @@ router.get("/:user/stats/search", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+
+/* Simple 1 package case; see above for aggregates */
+router.get('/:user/revdeps/:package', function(req, res, next) {
+  var package = req.params.package;
+  var q0 = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
+  var q1 = Object.assign({}, q0, { '_hard_deps.package': package });
+  var q2 = Object.assign({}, q0, { '_soft_deps.package': package });
+  var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).toArray();
+  var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).toArray();
+  Promise.all([p1,p2]).then(data => res.send({hard: data[0], soft: data[1]})).catch(error_cb(400, next));
+});
+
 /* NB distinct() has memory limits, we may need to switch to aggregate everywhere */
 router.get('/:user/stats/summary', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);

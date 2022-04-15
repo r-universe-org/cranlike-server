@@ -379,7 +379,6 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
   });
 });
 
-
 /* HTTP PATCH does not require authentication, so this API is public */
 router.patch('/:user/packages/:package/:version/:type', function(req, res, next) {
   var user = req.params.user;
