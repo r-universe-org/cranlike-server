@@ -948,8 +948,8 @@ router.get('/:user/stats/usedby', function(req, res, next) {
   var q0 = qf({_user: req.params.user, _type: 'src', _selfowned : true}, req.query.all);
   var q1 = Object.assign({}, q0, { '_hard_deps.package': package });
   var q2 = Object.assign({}, q0, { '_soft_deps.package': package });
-  var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).toArray();
-  var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).toArray();
+  var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_builder.gitstats.stars': -1}).toArray();
+  var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_builder.gitstats.stars': -1}).toArray();
   Promise.all([p1,p2]).then(data => res.send({hard: data[0], soft: data[1]})).catch(error_cb(400, next));
 });
 
