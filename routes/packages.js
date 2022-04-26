@@ -224,6 +224,9 @@ function parse_builder_fields(x){
   if(builder.gitstats){
     builder.gitstats = from_base64_gzip(builder.gitstats);
   }
+  if(builder.harddeps){
+    builder.harddeps = from_base64_gzip(builder.harddeps);
+  }
   builder.commit = from_base64_gzip(builder.commit) || {};
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
   return builder;
