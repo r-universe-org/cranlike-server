@@ -964,8 +964,8 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
     {$match:query},
     {$group : {
       _id: "$_user",
-      packages : { $addToSet: { package: "$Package", maintainer :'$_builder.maintainer.login', stars: '$_builder.stars'}},
-      allstars: { $sum: '$_builder.stars'},
+      packages : { $addToSet: { package: "$Package", maintainer :'$_builder.maintainer.login', stars: '$_builder.gitstats.stars'}},
+      allstars: { $sum: '$_builder.gitstats.stars'},
     }},
     {$project:{_id: 0, owner: "$_id", packages: 1}},
     {$sort : {allstars : -1}},
