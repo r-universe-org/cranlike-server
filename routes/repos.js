@@ -945,7 +945,7 @@ router.get("/:user/stats/search", function(req, res, next) {
 });
 
 
-/* Simple 1 package case; see above for aggregates */
+/* Simple 1 package revdep cases; see above for aggregates */
 router.get('/:user/stats/usedby', function(req, res, next) {
   var package = req.query.package;
   var q0 = qf({_user: req.params.user, _type: 'src', _selfowned : true}, req.query.all);
@@ -954,6 +954,25 @@ router.get('/:user/stats/usedby', function(req, res, next) {
   var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_builder.gitstats.stars': -1}).toArray();
   var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_builder.gitstats.stars': -1}).toArray();
   Promise.all([p1,p2]).then(data => res.send({hard: data[0], soft: data[1]})).catch(error_cb(400, next));
+});
+
+router.get('/:user/stats/usedbyorg', function(req, res, next) {
+  var package = req.query.package;
+  var query = qf({_user: req.params.user, _type: 'src', _selfowned : true}, req.query.all);
+  query['$or'] = [{'_hard_deps.package': package},{ '_soft_deps.package': package }];
+  var cursor = packages.aggregate([
+    {$match:query},
+    {$group : {
+      _id: "$_user",
+      packages : { $addToSet: { package: "$Package", maintainer :'$_builder.maintainer.login', stars: '$_builder.stars'}},
+      allstars: { $sum: '$_builder.stars'},
+    }},
+    {$project:{_id: 0, owner: "$_id", packages: 1}},
+    {$sort : {allstars : -1}},
+  ]);
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
 });
 
 /* NB distinct() has memory limits, we may need to switch to aggregate everywhere */
