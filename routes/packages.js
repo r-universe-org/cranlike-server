@@ -227,6 +227,9 @@ function parse_builder_fields(x){
   if(builder.rundeps){
     builder.rundeps = from_base64_gzip(builder.rundeps);
   }
+  if(builder.assets){
+    builder.assets = from_base64_gzip(builder.assets);
+  }
   builder.commit = from_base64_gzip(builder.commit) || {};
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
   return builder;
