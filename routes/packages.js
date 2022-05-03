@@ -270,7 +270,7 @@ function get_repo_owner(description){
 }
 
 function calculate_score(description){
-  var score = 2 * description['_usedby'] + 1;
+  var score = 3 * description['_usedby'];
   var gitstats = description['_builder'].gitstats;
   if(gitstats){
     if(gitstats.stars)
@@ -280,7 +280,7 @@ function calculate_score(description){
     if(typeof gitstats.contributions === 'object')
       score += Object.keys(gitstats.contributions).length;
   }
-  return 1 + Math.log10(score);
+  return 1 + Math.log10(Math.max(1, score));
 }
 
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
