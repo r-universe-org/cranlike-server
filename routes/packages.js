@@ -269,6 +269,20 @@ function get_repo_owner(description){
   }
 }
 
+function calculate_score(description){
+  var score = 2 * description['_usedby'] + 1;
+  var gitstats = description['_builder'].gitstats;
+  if(gitstats){
+    if(gitstats.stars)
+      score += (gitstats.stars || 0);
+    if(Array.isArray(gitstats.updates))
+      score += (gitstats.updates.length || 0)
+    if(typeof gitstats.contributions === 'object')
+      score += Object.keys(gitstats.contributions).length;
+  }
+  return 1 + Math.log10(score);
+}
+
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
   var user = req.params.user;
   var package = req.params.package;
@@ -278,7 +292,11 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   var query = {_user : user, _type : type, Package : package};
   var filename = get_filename(package, version, type);
   crandb_store_file(req, md5, filename).then(function(){
-    //console.log("Successfully stored file: " + filename);
+    if(type == 'src'){
+      return packages.find({_type: 'src', _registered: true, '_builder.rundeps': package}).count();
+    }
+  }).then(function(usedby){
+    //console.log(`Successfully stored file ${filename} with ${runrevdeps} runreveps`);
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
       description['_user'] = user;
       description['_type'] = type;
@@ -295,7 +313,10 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['MD5sum'] = md5;
       description = merge_dependencies(description);
       validate_description(description, package, version, type);
-      if(type != "src"){
+      if(type == "src"){
+        description['_usedby'] = usedby;
+        description['_score'] = calculate_score(description);
+      } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
       return packages.findOneAndDelete(query).then(function(result) {
