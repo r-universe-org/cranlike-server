@@ -938,7 +938,7 @@ router.get("/:user/stats/search", function(req, res, next) {
   query['$text'] = { $search: req.query.q || "", $caseSensitive: false};
   var limit =  parseInt(req.query.limit) || 100;
   //todo: maybe combine textscore with popularity/activity?
-  var cursor = packages.find(query, {limit:limit}).project({score:{$meta: "textScore"}}).sort({score:{$meta:"textScore"}});
+  var cursor = packages.find(query, {limit:limit}).project({match:{$meta: "textScore"}}).sort({match:{$meta:"textScore"}});
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
