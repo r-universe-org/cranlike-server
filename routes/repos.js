@@ -828,7 +828,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 
 router.get("/:user/stats/sysdeps", function(req, res, next) {
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_builder.sysdeps': {$exists: true}})},
+    {$match: qf({_user: req.params.user, _type: 'src', '_builder.sysdeps': {$exists: true}}, req.query.all)},
     {$unwind: '$_builder.sysdeps'},
     {$group: {
       _id : '$_builder.sysdeps.name',
