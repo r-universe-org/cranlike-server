@@ -937,13 +937,27 @@ router.get("/:user/stats/search", function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
   query['$text'] = { $search: req.query.q || "", $caseSensitive: false};
   var limit =  parseInt(req.query.limit) || 100;
-  //todo: maybe combine textscore with popularity/activity?
   var cursor = packages.find(query, {limit:limit}).project({match:{$meta: "textScore"}}).sort({match:{$meta:"textScore"}});
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
+router.get("/:user/stats/ranksearch", function(req, res, next) {
+  var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
+  query['$text'] = { $search: req.query.q || "", $caseSensitive: false};
+  var limit =  parseInt(req.query.limit) || 100;
+  var cursor = packages.aggregate([
+    { $match: query},
+    { $project: {Package: 1, Title: 1, Description:1, _builder: 1, Maintainer: 1, _user:1, _score: 1,
+      match: {$meta: "textScore"}, rank: {$multiply:[{$meta: "textScore"}, '$_score']}}},
+    { $sort: {rank: -1}},
+    { $limit: limit }
+  ]);
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
 
 /* Simple 1 package revdep cases; see above for aggregates */
 router.get('/:user/stats/usedby', function(req, res, next) {
