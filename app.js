@@ -16,6 +16,7 @@ var packagesRouter = require('./routes/packages');
 var reposRouter = require('./routes/repos');
 var badgesRouter = require('./routes/badges');
 var feedsRouter = require('./routes/feeds');
+var craninfoRouter = require('./routes/craninfo');
 
 /* Connect to DB */
 const HOST = process.env.CRANLIKE_MONGODB_SERVER || 'localhost';
@@ -99,6 +100,7 @@ app.use('/', packagesRouter);
 app.use('/', reposRouter);
 app.use('/', badgesRouter);
 app.use('/', feedsRouter);
+app.use('/', craninfoRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

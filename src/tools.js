@@ -76,9 +76,71 @@ function trigger_rebuild(run_path){
   });
 }
 
+function parse_version(desc){
+  var version = desc.split("\n").find(x => x.match(/^Version:/));
+  var date = desc.split("\n").find(x => x.match(/^Date\/Publication:/));
+  return {
+    version: version ? version.substring(9) : "parse failure",
+    date: date ? date.substring(18) : "parse failure"
+  }
+}
+
+function get_cran_desc(package){
+  // try both mirros in case one is down/syncing
+  var url1 = `https://cran.r-project.org/web/packages/${package}/DESCRIPTION`;
+  var url2 = `https://cloud.r-project.org/web/packages/${package}/DESCRIPTION`;
+  return axios.get(url1).then(function(res){
+    return parse_version(res.data);
+  }).catch(function(err){
+    return axios.get(url2).then(function(res2){
+      return parse_version(res2.data);
+    });
+  }).catch(function(err){
+    if(err.response.status == 404){
+      var url3 = `https://cloud.r-project.org/src/contrib/Archive/${package}/`;
+      return axios.get(url3).then(function(res3){
+        return {
+          version: "archived"
+        };
+      }).catch(function(err){
+        if(err.response.status == 404){
+          return {
+            version: "available"
+          }
+        }
+        throw "Failed to lookup CRAN version";
+      });
+    }
+  });
+}
+
+function get_cran_url(package){
+  return axios.get('https://r-universe-org.github.io/cran-to-git/crantogit.csv').then(function(res){
+    var row = res.data.split("\n").find(x => x.match(`^${package},`));
+    return row ? row.split(",")[1] : null;
+  });
+}
+
+function get_cran_info(package){
+  var p1 = get_cran_desc(package);
+  var p2 = get_cran_url(package);
+  return Promise.all([p1,p2]).then(function(res){
+    var desc = res[0];
+    if(res[1]){
+      desc.url = res[1];
+    }
+    return Object.assign({}, {package:package}, desc);
+  });
+}
+
+//get_cran_info("curl").then(console.log)
+//get_cran_info("doesnotexist").then(console.log)
+//get_cran_info("Ohmage").then(console.log)
+
 module.exports = {
   test_if_universe_exists : test_if_universe_exists,
   get_registry_info : get_registry_info,
   get_submodule_hash : get_submodule_hash,
-  trigger_rebuild : trigger_rebuild
+  trigger_rebuild : trigger_rebuild,
+  get_cran_info : get_cran_info
 };
