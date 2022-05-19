@@ -99,14 +99,10 @@ function get_cran_desc(package){
     if(err.response.status == 404){
       var url3 = `https://cloud.r-project.org/src/contrib/Archive/${package}/`;
       return axios.get(url3).then(function(res3){
-        return {
-          version: "archived"
-        };
+        return {version: "archived"};
       }).catch(function(err){
         if(err.response.status == 404){
-          return {
-            version: "available"
-          }
+          return {version: null};
         }
         throw "Failed to lookup CRAN version";
       });
