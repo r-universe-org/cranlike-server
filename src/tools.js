@@ -121,12 +121,14 @@ function get_cran_url(package){
   });
 }
 
-function get_cran_info(package){
-  var p1 = get_cran_desc(package);
-  var p2 = get_cran_url(package);
-  return Promise.all([p1,p2]).then(function(res){
+function get_cran_info(package, show_url){
+  var promises = [get_cran_desc(package)];
+  if(show_url){
+    promises.push(get_cran_url(package));
+  }
+  return Promise.all(promises).then(function(res){
     var desc = res[0];
-    if(res[1]){
+    if(show_url && res[1]){
       desc.url = res[1];
     }
     return Object.assign({}, {package:package}, desc);
