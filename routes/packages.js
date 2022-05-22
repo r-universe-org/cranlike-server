@@ -273,6 +273,8 @@ function calculate_score(description){
   var score = 3 * description['_usedby'];
   var gitstats = description['_builder'].gitstats;
   if(gitstats){
+    if(gitstats.cranurl)
+      score += 5;
     if(gitstats.stars)
       score += (gitstats.stars || 0);
     if(Array.isArray(gitstats.updates))
