@@ -399,7 +399,7 @@ router.get('/:user/citation/:pkg.:type', function(req, res, next){
   var pkg = req.params.pkg;
   var type = req.params.type;
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  send_extracted_file(query, pkg + `/cite/citation.${type}`, req, res, next).catch(function(err){
+  send_extracted_file(query, pkg + `/.meta/citation.${type}`, req, res, next).catch(function(err){
     if(type == 'cff'){ // try the old location
       return send_extracted_file(query, pkg + `/citation.${type}`, req, res, next);
     }
