@@ -267,6 +267,12 @@ function get_repo_owner(description){
   if(url.indexOf("github.com/") > 0){
     return url.split('/').at(-2).toLowerCase();
   }
+  if(url.indexOf("gitlab.com/") > 0){
+    return 'gitlab-' + url.split('/').at(-2).toLowerCase();
+  }
+  if(url.indexOf("bitbucket.org/") > 0){
+    return 'bitbucket-' + url.split('/').at(-2).toLowerCase();
+  }
 }
 
 function calculate_score(description){
