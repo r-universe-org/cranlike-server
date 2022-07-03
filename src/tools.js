@@ -87,8 +87,8 @@ function parse_version(desc){
 
 function get_cran_desc(package){
   // try both mirros in case one is down/syncing
-  var url1 = `https://cran.r-project.org/web/packages/${package}/DESCRIPTION`;
-  var url2 = `https://cloud.r-project.org/web/packages/${package}/DESCRIPTION`;
+  var url1 = `https://cloud.r-project.org/web/packages/${package}/DESCRIPTION`;
+  var url2 = `http://cran.r-project.org/web/packages/${package}/DESCRIPTION`;
   return axios.get(url1).then(function(res){
     return parse_version(res.data);
   }).catch(function(err){
