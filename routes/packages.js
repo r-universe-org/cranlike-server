@@ -127,6 +127,19 @@ function read_description(stream){
   });
 }
 
+/* Not sure if this is needed, but drain the PUT request */
+function stream_to_null(stream){
+  return new Promise(function(resolve, reject) {
+    stream.pipe(fs.createWriteStream('/dev/null'))
+    .on('error', function(err){
+      reject("Error in stream_to_null(): " + err);
+    })
+    .on('finish', function(){
+      resolve();
+    });
+  });
+}
+
 function store_stream_file(stream, key, filename){
   //console.log("store_stream_file: " + filename)
   return new Promise(function(resolve, reject) {
@@ -159,6 +172,7 @@ function crandb_store_file(stream, key, filename){
   return bucket.find({_id : key}, {limit:1}).next().then(function(x){
     if(x){
       console.log(`Already have file ${key} (${filename})`);
+      return stream_to_null(stream);
     } else {
       return store_stream_file(stream, key, filename);
     }
