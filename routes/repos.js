@@ -394,14 +394,12 @@ router.get('/:user/articles/:pkg/:file?', function(req, res, next){
   send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
 });
 
-/* Send 'citation.cff' file */
+/* Send 'citation' files */
 router.get('/:user/citation/:pkg.:type', function(req, res, next){
   var pkg = req.params.pkg;
   var type = req.params.type;
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  send_extracted_file(query, pkg + `/extra/citation.${type}`, req, res, next).catch(function(err){
-    return send_extracted_file(query, pkg + `/.meta/citation.${type}`, req, res, next);
-  }).catch(error_cb(400, next));
+  send_extracted_file(query, pkg + `/extra/citation.${type}`, req, res, next).catch(error_cb(400, next));
 });
 
 /* Send pdf reference manual */
