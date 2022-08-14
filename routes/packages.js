@@ -175,7 +175,12 @@ function crandb_store_file(stream, key, filename){
       console.log(`Already have file ${key} (${filename})`);
       return stream_to_null(stream);
     } else {
-      return store_stream_file(stream, key, filename);
+      return store_stream_file(stream, key, filename).catch(function(error) {
+        //try deleting orphaned chunks
+        return gridfs.chunks.deleteMany({files_id: key}).then(function(){
+          throw error;
+        });
+      });
     }
   });
 }
