@@ -30,6 +30,7 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
   const db = client.db('cranlike');
   global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
   global.packages = db.collection('packages');
+  global.chunks = db.collection('files.chunks');
 
   /* Speed up common query fields */
   /* NB: Dont use indexes with low cardinality (few unique values) */

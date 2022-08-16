@@ -147,7 +147,10 @@ function store_stream_file(stream, key, filename){
     stream.pipe(bucket.openUploadStreamWithId(key, filename))
     .on('error', function(err){
       console.log("Error in openUploadStreamWithId()" + err);
-      reject("Error in openUploadStreamWithId(): " + err);
+      /* Clear possible orphaned chunks, then reject */
+      chunks.deleteMany({files_id: key}).finally(function(e){
+        reject("Error in openUploadStreamWithId(): " + err);
+      });
     })
     .on('finish', function(){
       bucket.find({_id : key}).project({md5:1}).next().then(function(doc){
