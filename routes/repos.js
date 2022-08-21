@@ -442,6 +442,28 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+/* List all datasets */
+router.get('/:user/stats/datasets', function(req, res, next){
+  var limit = parseInt(req.query.limit) || 500;
+  var cursor = packages.aggregate([
+    {$match: qf({_user: req.params.user, _type: 'src', '_contents.datasets' : {$exists: true}}, req.query.all)},
+    {$sort : {'_builder.commit.time' : -1}},
+    {$limit : limit},
+    {$project: {
+      _id: 0,
+      package: '$Package',
+      version: '$Version',
+      maintainer: '$Maintainer',
+      universe: '$_user',
+      dataset: '$_contents.datasets'
+    }},
+    {$unwind: '$dataset'}
+  ]);
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
+});
+
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
