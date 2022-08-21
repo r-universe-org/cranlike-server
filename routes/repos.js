@@ -1025,19 +1025,21 @@ router.get('/:user/stats/summary', function(req, res, next){
   var p1 = packages.distinct('Package', query);
   var p2 = packages.distinct('_builder.maintainer.email', query);
   var p3 = packages.distinct('_builder.vignettes.title', query);
-  var p4 = packages.aggregate([
+  var p4 = packages.distinct('_contents.datasets.title', query);
+  var p5 = packages.aggregate([
     {$match:query},
     {$project: {contrib: {$objectToArray:"$_builder.gitstats.contributions"}}},
     {$unwind: "$contrib"},
     {$group: {_id: "$contrib.k"}},
     {$count: "total"}
   ]).next();
-  Promise.all([p1, p2, p3, p4]).then((values) => {
+  Promise.all([p1, p2, p3, p4, p5]).then((values) => {
     const out = doc_to_ndjson({
       packages: values[0].length,
       maintainers: values[1].length,
       articles: values[2].length,
-      contributors: values[3].total
+      datasets: values[3].length,
+      contributors: values[4].total
     });
     res.type('text/plain').send(out);
   });
