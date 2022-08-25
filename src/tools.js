@@ -113,7 +113,7 @@ function get_cran_desc(package){
 function get_cran_url(package){
   return axios.get('https://r-universe-org.github.io/cran-to-git/crantogit.csv').then(function(res){
     var row = res.data.split("\n").find(x => x.match(`^${package},`));
-    return row ? row.split(",")[1] : null;
+    return row ? row.split(",") : null;
   });
 }
 
@@ -124,8 +124,15 @@ function get_cran_info(package, show_url){
   }
   return Promise.all(promises).then(function(res){
     var desc = res[0];
-    if(show_url && res[1]){
-      desc.url = res[1];
+    var regdata = res[1];
+    if(show_url && regdata){
+      desc.url = regdata[1];
+      if(regdata[2]){
+        desc.subdir = regdata[2];
+      }
+      if(regdata[3]){
+        desc.registry = regdata[3];
+      }
     }
     return Object.assign({}, {package:package}, desc);
   });
