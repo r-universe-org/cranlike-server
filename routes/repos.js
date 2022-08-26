@@ -545,6 +545,8 @@ router.get('/:user/stats/builds', function(req, res, next) {
       os_restriction: { $addToSet: '$OS_type'},
       sysdeps: { $addToSet: '$_builder.sysdeps'},
       pkgdocs: { $addToSet : '$_builder.pkgdocs' },
+      macbinary: { $addToSet : '$_builder.macbinary' },
+      winbinary: { $addToSet : '$_builder.winbinary' },
       runs : { $addToSet:
         { type: "$_type", built: '$Built', date:'$_published', url: '$_builder.url', status: '$_builder.status', distro: '$_builder.distro'}
       }
@@ -564,6 +566,8 @@ router.get('/:user/stats/builds', function(req, res, next) {
       upstream: 1,
       pkgdocs: { $first: "$pkgdocs" },
       sysdeps: { $first: "$sysdeps" },
+      macbinary: { $first: "$macbinary" },
+      winbinary: { $first: "$winbinary" },
       os_restriction:{ $first: "$os_restriction" }
     }}
   ]);
