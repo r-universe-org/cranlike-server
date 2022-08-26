@@ -10,6 +10,16 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+
+      - id: prep
+        name: find version
+        shell: bash
+        run: |
+          version=$(jq -r '.version' package.json)
+          echo "Found version: $version"
+          echo ::set-output name=version::$version
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
@@ -36,4 +46,6 @@ jobs:
           push: true
           tags: |
             runiverse/cranlike-server:latest
+            runiverse/cranlike-server:${{steps.prep.outputs.version}}
             ghcr.io/${{github.repository}}:latest
+            ghcr.io/${{github.repository}}:${{steps.prep.outputs.version}}
