@@ -79,6 +79,9 @@ function qf(x, query_by_user_or_maintainer){
     if(query_by_user_or_maintainer){
       x['_selfowned'] = true;
     }
+  } if(x._user == 'bioconductor' && query_by_user_or_maintainer){
+    delete x._user;
+    x['_builder.gitstats.bioconductor'] = {'$exists':1};
   } else if(query_by_user_or_maintainer) {
     delete x._user;
     x['$or'] = [
