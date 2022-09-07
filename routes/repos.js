@@ -388,11 +388,20 @@ router.get('/:user/articles', function(req, res, next){
   }).catch(error_cb(400, next));
 });
 
-/* Send individual docs files */
+/* Send individual vignette files */
 router.get('/:user/articles/:pkg/:file?', function(req, res, next){
   var pkg = req.params.pkg;
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
   var prefix = pkg + "/inst/doc/";
+  var filename = req.params.file ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
+  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
+});
+
+/* Send individual html docs */
+router.get('/:user/docs/:pkg/:file?', function(req, res, next){
+  var pkg = req.params.pkg;
+  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
+  var prefix = pkg + "/htmldocs/";
   var filename = req.params.file ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
   send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
 });
