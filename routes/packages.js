@@ -333,7 +333,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       var builder = parse_builder_fields(req.headers) || {};
       description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
-      description['_selfowned'] = description['_owner'] === user;
+      description['_selfowned'] = description['_owner'] === user || builder.maintainer.login === user;
       description['_registered'] = (builder.registered !== "false");
       //if(builder.gitstats && builder.gitstats.contributions){
       // description['_contributors'] = Object.keys(builder.gitstats.contributions);
