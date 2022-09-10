@@ -1000,6 +1000,7 @@ function build_query(query, str){
   }
   substitute('needs', '_builder.rundeps');
   substitute('topic', '_builder.gitstats.topics');
+  substitute('exports', '_contents.exports');
   str = str.trim();
   if(str){
     query['$text'] = { $search: str, $caseSensitive: false};
