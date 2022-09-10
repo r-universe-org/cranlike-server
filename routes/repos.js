@@ -1010,11 +1010,17 @@ function build_query(query, str){
 router.get("/:user/stats/ranksearch", function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
   var query = build_query(query, req.query.q || "");
+  var project = {Package: 1, Title: 1, Description:1, _builder: 1, Maintainer: 1, _user:1, _score: 1, _usedby: 1};
+  if(query['$text']){
+    project.match = {$meta: "textScore"};
+    project.rank = {$multiply:[{$meta: "textScore"}, '$_score']};
+  } else {
+    project.rank = '$_score';
+  }
   var limit =  parseInt(req.query.limit) || 100;
   var cursor = packages.aggregate([
     { $match: query},
-    { $project: {Package: 1, Title: 1, Description:1, _builder: 1, Maintainer: 1, _user:1, _score: 1, _usedby: 1,
-      match: {$meta: "textScore"}, rank: {$multiply:[{$meta: "textScore"}, '$_score']}}},
+    { $project: project},
     { $sort: {rank: -1}},
     { $limit: limit }
   ]);
