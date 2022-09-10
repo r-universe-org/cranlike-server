@@ -989,9 +989,27 @@ router.get("/:user/stats/search", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+function build_query(query, str){
+  function substitute(name, field){
+    var re = new RegExp(`${name}:(\\S+)`);
+    var found = str.match(re);
+    if(found && found[1]){
+      query[field] = found[1];
+      str = str.replace(re, "");
+    }
+  }
+  substitute('needs', '_builder.rundeps');
+  substitute('topic', '_builder.gitstats.topics');
+  str = str.trim();
+  if(str){
+    query['$text'] = { $search: str, $caseSensitive: false};
+  }
+  return query;
+}
+
 router.get("/:user/stats/ranksearch", function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
-  query['$text'] = { $search: req.query.q || "", $caseSensitive: false};
+  var query = build_query(query, req.query.q || "");
   var limit =  parseInt(req.query.limit) || 100;
   var cursor = packages.aggregate([
     { $match: query},
