@@ -552,7 +552,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
       upstream: { $first : "$_builder.upstream" },
       registered: { $first: "$_registered" },
       os_restriction: { $addToSet: '$OS_type'},
-      sysdeps: { $addToSet: '$_builder.sysdeps'},
+      sysdeps: { $addToSet: '$_contents.sysdeps'},
       pkgdocs: { $addToSet : '$_builder.pkgdocs' },
       macbinary: { $addToSet : '$_builder.macbinary' },
       winbinary: { $addToSet : '$_builder.winbinary' },
@@ -874,15 +874,15 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 
 router.get("/:user/stats/sysdeps", function(req, res, next) {
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_builder.sysdeps': {$exists: true}}, req.query.all)},
-    {$unwind: '$_builder.sysdeps'},
+    {$match: qf({_user: req.params.user, _type: 'src', '_contents.sysdeps': {$exists: true}}, req.query.all)},
+    {$unwind: '$_contents.sysdeps'},
     {$group: {
-      _id : '$_builder.sysdeps.name',
-      packages: { $addToSet: '$_builder.sysdeps.package'},
-      headers: { $addToSet: '$_builder.sysdeps.headers'},
-      version: { $first: '$_builder.sysdeps.version'},
-      homepage: { $addToSet: '$_builder.sysdeps.homepage'},
-      description: { $addToSet: '$_builder.sysdeps.description'},
+      _id : '$_contents.sysdeps.name',
+      packages: { $addToSet: '$_contents.sysdeps.package'},
+      headers: { $addToSet: '$_contents.sysdeps.headers'},
+      version: { $first: '$_contents.sysdeps.version'},
+      homepage: { $addToSet: '$_contents.sysdeps.homepage'},
+      description: { $addToSet: '$_contents.sysdeps.description'},
       distro : { $addToSet: '$_builder.distro'},
       usedby : { $addToSet: {owner: '$_owner', package:'$Package'}}
     }},

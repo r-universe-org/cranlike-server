@@ -58,7 +58,7 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
     '_contents.vignettes.title': "text",
     '_builder.maintainer.name': "text",
     '_builder.gitstats.topics': "text",
-    '_builder.sysdeps.name': "text",
+    '_contents.sysdeps.name': "text",
     '_contents.exports' : "text",
     '_contents.datasets.title' : "text"
   },{
@@ -71,7 +71,7 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
       '_contents.vignettes.title': 5,
       '_builder.maintainer.name': 10,
       '_builder.gitstats.topics': 10,
-      '_builder.sysdeps.name': 20,
+      '_contents.sysdeps.name': 20,
       '_contents.exports' : 3,
       '_contents.datasets.title' : 3
     },
