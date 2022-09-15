@@ -43,7 +43,7 @@ router.get('/:user/feed.xml', function(req, res, next) {
         version: '$Version',
         description: '$Description',
         updated: '$_builder.commit.time',
-        vignettes: '$_builder.vignettes',
+        vignettes: '$_contents.vignettes',
         status: '$_builder.status',
         upstream: '$_builder.upstream',
         buildlog: '$_builder.url',

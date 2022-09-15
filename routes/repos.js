@@ -382,7 +382,7 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 
 /* For now articles are only vignettes */
 router.get('/:user/articles', function(req, res, next){
-  var query = qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : { $exists: true }}, req.query.all);
+  var query = qf({_user: req.params.user, _type: 'src', '_contents.vignettes' : { $exists: true }}, req.query.all);
   packages.distinct('Package', query).then(function(x){
     res.send(x);
   }).catch(error_cb(400, next));
@@ -431,7 +431,7 @@ router.get('/:user/readme/:pkg.html', function(req, res, next){
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_builder.vignettes' : {$exists: true}}, req.query.all)},
+    {$match: qf({_user: req.params.user, _type: 'src', '_contents.vignettes' : {$exists: true}}, req.query.all)},
     {$sort : {'_builder.commit.time' : -1}},
     {$limit : limit},
     {$project: {
@@ -445,7 +445,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       upstream: '$_builder.upstream',
       login: '$_builder.maintainer.login',
       published: '$_builder.commit.time',
-      vignette: '$_builder.vignettes'
+      vignette: '$_contents.vignettes'
     }},
     {$unwind: '$vignette'}
   ]);
@@ -1066,7 +1066,7 @@ router.get('/:user/stats/summary', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
   var p1 = packages.distinct('Package', query);
   var p2 = packages.distinct('_builder.maintainer.email', query);
-  var p3 = packages.distinct('_builder.vignettes.title', query);
+  var p3 = packages.distinct('_contents.vignettes.title', query);
   var p4 = packages.distinct('_contents.datasets.title', query);
   var p5 = packages.aggregate([
     {$match:query},
