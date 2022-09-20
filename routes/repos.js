@@ -998,7 +998,7 @@ function build_query(query, str){
       str = str.replace(re, "");
     }
   }
-  substitute('needs', '_builder.rundeps');
+  substitute('needs', '_contents.rundeps');
   substitute('topic', '_builder.gitstats.topics');
   substitute('exports', '_contents.exports');
   substitute('package', 'Package');

@@ -319,7 +319,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   var filename = get_filename(package, version, type);
   crandb_store_file(req, md5, filename).then(function(){
     if(type == 'src'){
-      var p1 = packages.find({_type: 'src', _registered: true, '_builder.rundeps': package}).count();
+      var p1 = packages.find({_type: 'src', _registered: true, '_contents.rundeps': package}).count();
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
       return Promise.all([p1, p2]);
     }
