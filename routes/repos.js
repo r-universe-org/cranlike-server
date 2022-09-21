@@ -989,8 +989,8 @@ router.get("/:user/stats/search", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-function build_query(query, str, insensitive){
-  function substitute(name, field){
+function build_query(query, str){
+  function substitute(name, field, insensitive){
     var re = new RegExp(`${name}:(\\S+)`);
     var found = str.match(re);
     if(found && found[1]){
