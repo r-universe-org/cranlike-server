@@ -1018,7 +1018,8 @@ function build_query(query, str){
     var re = new RegExp(`${name}:(\\S+)`, "i");
     var found = str.match(re);
     if(found && found[1]){
-      query[`${field}.${found[1]}`] = { $exists: true };
+      var findfield = found[1].toLowerCase(); //GH logins are normalized to lowercase
+      query[`${field}.${findfield}`] = { $exists: true };
       str = str.replace(re, "");
     }
   }
