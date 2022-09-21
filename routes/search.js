@@ -109,13 +109,19 @@ router.get("/:user/stats/powersearch", function(req, res, next) {
     { $sort: {rank: -1}},
     { $facet: {
         results: [{ $skip: skip }, { $limit: limit }],
-        total: [{$count: 'count'}]
+        stat: [{$count: 'total'}]
       }
     }
   ]);
   cursor.next().then(function(out){
     out.query = query;
-    return res.type('application/json').send(out);
+    out.skip = skip;
+    out.limit = limit;
+    if(out.stat && out.stat.length){
+      out.total = out.stat[0].total;
+    }
+    delete out.stat;
+    return res.send(out);
   }).catch(error_cb(400, next));
 });
 
