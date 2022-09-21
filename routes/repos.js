@@ -990,18 +990,44 @@ router.get("/:user/stats/search", function(req, res, next) {
 });
 
 function build_query(query, str){
-  function substitute(name, field, insensitive){
-    var re = new RegExp(`${name}:(\\S+)`);
+  function substitute(name, field, insensitive, partial){
+    var re = new RegExp(`${name}:(\\S+)`, "i"); //the name is insensitive e.g.: "Package:jsonlite"
     var found = str.match(re);
     if(found && found[1]){
-      query[field] = insensitive ? {$regex: `^${found[1]}$`, $options:'i'} : found[1];
+      if(insensitive || partial){
+        var regex = partial ? found[1] : `^${found[1]}$`;
+        var opt = insensitive ? 'i' : '';
+        query[field] = {$regex: regex, $options: opt}
+      } else {
+        query[field] = found[1];
+      }
       str = str.replace(re, "");
     }
   }
-  substitute('needs', '_contents.rundeps');
-  substitute('topic', '_contents.gitstats.topics', true);
-  substitute('exports', '_contents.exports', true);
-  substitute('package', 'Package', true);
+  function match_exact(name, field){
+    substitute(name, field)
+  }
+  function match_insensitive(name, field){
+    substitute(name, field, true)
+  }
+  function match_partial(name, field){
+    substitute(name, field, true, true)
+  }
+  function match_exists(name, field){
+    var re = new RegExp(`${name}:(\\S+)`, "i");
+    var found = str.match(re);
+    if(found && found[1]){
+      query[`${field}.${found[1]}`] = { $exists: true };
+      str = str.replace(re, "");
+    }
+  }
+  match_partial('author', 'Author');
+  match_partial('maintainer', 'Maintainer');
+  match_exact('needs', '_contents.rundeps');
+  match_exists('contributor', '_contents.gitstats.contributions');
+  match_insensitive('topic', '_contents.gitstats.topics');
+  match_insensitive('exports', '_contents.exports');
+  match_insensitive('package', 'Package');
   str = str.trim();
   if(str){
     query['$text'] = { $search: str, $caseSensitive: false};
