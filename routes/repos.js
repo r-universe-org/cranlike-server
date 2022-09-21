@@ -1012,7 +1012,21 @@ function build_query(query, str){
 router.get("/:user/stats/ranksearch", function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
   var query = build_query(query, req.query.q || "");
-  var project = {Package: 1, Title: 1, Description:1, _builder: 1, Maintainer: 1, _user:1, _score: 1, _usedby: 1, _owner: 1};
+  var project = {
+    Package: 1,
+    Title: 1,
+    Description:1,
+    _user:1,
+    _owner: 1,
+    _score: 1,
+    _usedby: 1,
+    maintainer: '$_builder.maintainer',
+    updated: '$_builder.commit.time',
+    stars: '$_contents.gitstats.stars',
+    topics: '$_contents.gitstats.topics',
+    sysdeps: '$_contents.sysdeps.name',
+    rundeps: '$_contents.rundeps'
+  };
   if(query['$text']){
     project.match = {$meta: "textScore"};
     project.rank = {$multiply:[{$meta: "textScore"}, '$_score']};
