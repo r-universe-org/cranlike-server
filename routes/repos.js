@@ -989,19 +989,19 @@ router.get("/:user/stats/search", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-function build_query(query, str){
+function build_query(query, str, insensitive){
   function substitute(name, field){
     var re = new RegExp(`${name}:(\\S+)`);
     var found = str.match(re);
     if(found && found[1]){
-      query[field] = found[1];
+      query[field] = insensitive ? {$regex: `^${found[1]}$`, $options:'i'} : found[1];
       str = str.replace(re, "");
     }
   }
   substitute('needs', '_contents.rundeps');
-  substitute('topic', '_contents.gitstats.topics');
-  substitute('exports', '_contents.exports');
-  substitute('package', 'Package');
+  substitute('topic', '_contents.gitstats.topics', true);
+  substitute('exports', '_contents.exports', true);
+  substitute('package', 'Package', true);
   str = str.trim();
   if(str){
     query['$text'] = { $search: str, $caseSensitive: false};
