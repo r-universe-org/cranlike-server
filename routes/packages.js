@@ -295,10 +295,12 @@ function get_repo_owner(description){
 
 function calculate_score(description){
   var score = 3 * description['_usedby'];
-  var gitstats = description['_builder'].gitstats;
+  var gitstats = description['_contents'].gitstats;
+  var cranurl = description['_contents'].cranurl;
+  if(cranurl){
+    score += 5;
+  }
   if(gitstats){
-    if(gitstats.cranurl)
-      score += 5;
     if(gitstats.stars)
       score += (gitstats.stars || 0);
     if(Array.isArray(gitstats.updates))
@@ -335,9 +337,6 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = description['_owner'] === user || builder.maintainer.login === user;
       description['_registered'] = (builder.registered !== "false");
-      //if(builder.gitstats && builder.gitstats.contributions){
-      // description['_contributors'] = Object.keys(builder.gitstats.contributions);
-      //}
       description['MD5sum'] = md5;
       description = merge_dependencies(description);
       validate_description(description, package, version, type);
