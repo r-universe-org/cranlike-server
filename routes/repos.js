@@ -994,12 +994,13 @@ function build_query(query, str){
     var re = new RegExp(`${name}:(\\S+)`, "i"); //the name is insensitive e.g.: "Package:jsonlite"
     var found = str.match(re);
     if(found && found[1]){
+      var search = found[1].replace("+", " "); //search for: "author:van+buuren"
       if(insensitive || partial){
-        var regex = partial ? found[1] : `^${found[1]}$`;
+        var regex = partial ? search : `^${search}$`;
         var opt = insensitive ? 'i' : '';
         query[field] = {$regex: regex, $options: opt}
       } else {
-        query[field] = found[1];
+        query[field] = search;
       }
       str = str.replace(re, "");
     }
