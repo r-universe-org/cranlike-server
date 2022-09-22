@@ -70,6 +70,8 @@ function build_query(query, str){
   match_insensitive('topic', '_contents.gitstats.topics');
   match_insensitive('exports', '_contents.exports');
   match_insensitive('package', 'Package');
+  match_insensitive('owner', '_owner');
+  match_insensitive('universe', '_user');
   str = str.trim();
   if(str){
     query['$text'] = { $search: str, $caseSensitive: false};
