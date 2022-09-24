@@ -34,8 +34,9 @@ function build_query(query, str){
     var re = new RegExp(`${name}:(\\S+)`, "i"); //the name is insensitive e.g.: "Package:jsonlite"
     var found = str.match(re);
     if(found && found[1]){
-      var search = found[1].replace("+", " "); //search for: "author:van+buuren"
+      var search = found[1];
       if(insensitive || partial){
+        search = search.replace("+", "."); //search for: "author:van+buuren" or "topic:open+data"
         var regex = partial ? search : `^${search}$`;
         var opt = insensitive ? 'i' : '';
         query[field] = {$regex: regex, $options: opt}
