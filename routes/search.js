@@ -36,7 +36,7 @@ function build_query(query, str){
     if(found && found[1]){
       var search = found[1];
       if(insensitive || partial){
-        search = search.replace("+", "."); //search for: "author:van+buuren" or "topic:open+data"
+        search = search.replaceAll("+", "."); //search for: "author:van+buuren" or "topic:open+data"
         var regex = partial ? search : `^${search}$`;
         var opt = insensitive ? 'i' : '';
         query[field] = {$regex: regex, $options: opt}
