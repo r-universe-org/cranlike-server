@@ -123,6 +123,10 @@ router.get("/:user/stats/powersearch", function(req, res, next) {
     if(out.stat && out.stat.length){
       out.total = out.stat[0].total;
     }
+    //remove fields unrelated to the search
+    delete out.query._type;
+    delete out.query._registered;
+    delete out.query._selfowned;
     delete out.stat;
     return res.send(out);
   }).catch(error_cb(400, next));
