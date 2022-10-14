@@ -18,7 +18,7 @@ jobs:
         run: |
           version=$(jq -r '.version' package.json)
           echo "Found version: $version"
-          echo ::set-output name=version::$version
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
