@@ -183,12 +183,12 @@ function crandb_store_file(stream, key, filename){
   });
 }
 
-function get_filename(package, version, type){
+function get_filename(package, version, type, distro){
   const ext = {
     src : '.tar.gz',
     mac : '.tgz',
     win : '.zip',
-    linux: '_R_x86_64-pc-linux-gnu.tar.gz'
+    linux: `-${distro || "linux"}.tar.gz`
   }
   return package + "_" + version + ext[type];
 }
@@ -323,7 +323,8 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   var type = req.params.type;
   var md5 = req.params.md5;
   var query = {_user : user, _type : type, Package : package};
-  var filename = get_filename(package, version, type);
+  var builder = parse_builder_fields(req.headers) || {};
+  var filename = get_filename(package, version, type, builder.distro);
   crandb_store_file(req, md5, filename).then(function(){
     if(type == 'src'){
       var p1 = packages.find({_type: 'src', _registered: true, '_contents.rundeps': package}).count();
@@ -337,7 +338,6 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_type'] = type;
       description['_file'] = filename;
       description['_published'] = new Date();
-      var builder = parse_builder_fields(req.headers) || {};
       description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = description['_owner'] === user || builder.maintainer.login === user;
