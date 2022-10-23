@@ -187,14 +187,15 @@ function get_filename(package, version, type){
   const ext = {
     src : '.tar.gz',
     mac : '.tgz',
-    win : '.zip'
+    win : '.zip',
+    linux: '_R_x86_64-pc-linux-gnu.tar.gz'
   }
   return package + "_" + version + ext[type];
 }
 
 function validate_description(data, package, version, type){
-  if(['src', 'win', 'mac'].indexOf(type) < 0){
-    throw "Parameter 'type' must be one of src, win, mac";
+  if(['src', 'win', 'mac', 'linux'].indexOf(type) < 0){
+    throw "Parameter 'type' must be one of src, win, mac, linux";
   } 
   if(data.Package != package || data.Version != version) {
     throw 'Package name or version does not match upload';
@@ -202,7 +203,7 @@ function validate_description(data, package, version, type){
   if(type == 'src' && data.Built) {
     throw 'Source package has a "built" field (binary pkg?)';
   } 
-  if((type == 'win' || type == 'mac') && !data.Built) {
+  if((type == 'win' || type == 'mac' || type == 'linux') && !data.Built) {
     throw 'Binary package is does not have valid Built field';
   } 
   if(type == 'win' && data.Built.OStype != 'windows') {
@@ -211,6 +212,10 @@ function validate_description(data, package, version, type){
   if(type == 'mac' && data.Built.OStype != 'unix') {
     throw 'MacOS Binary package has unexpected OStype:' + data.Built.OStype;
   } 
+  if(type == 'linux' && data.Built.Platform && data.Built.Platform != 'x86_64-pc-linux-gnu') {
+    //Built.Platform is missing for binary pkgs without copiled code
+    throw 'Linux Binary package has unexpected Platform:' + data.Built.Platform;
+  }
   if(type == 'mac' && data.Built.Platform && !data.Built.Platform.match('apple')) {
     //Built.Platform is missing for binary pkgs without copiled code
     throw 'MacOS Binary package has unexpected Platform:' + data.Built.Platform;
