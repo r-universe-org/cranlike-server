@@ -458,9 +458,7 @@ router.get('/:user/docs/:pkg/help/:topic', function(req, res, next){
       return packages.findOne(query, {project: {'_contents.help': 1}}).then(function(altdocs){
         if(altdocs){
           // redirect to other universe if found
-          // absolute redirect helps nginx rewrite (should we hardcode FQDN instead?)
-          res.redirect(`${req.protocol}://${req.get('host')}/${altdocs['_user']}/docs/${pkg}/help/${topic}`);
-          /* res.redirect(`/${altdocs['_user']}/docs/${pkg}/help/${topic}`); */
+          res.redirect(`https://${altdocs['_user']}.r-universe.dev/docs/${pkg}/help/${topic}`);
         } else if(basepkgs.includes(pkg)){
           // redirect to CRAN for base package manuals
           res.redirect(`https://stat.ethz.ch/R-manual/R-patched/library/${pkg}/help/${topic}.html`);
