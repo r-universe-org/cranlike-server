@@ -8,7 +8,7 @@ EXPOSE 3000
 ENV CRANLIKE_MONGODB_SERVER="mongo" \
     VCAP_APP_HOST="0.0.0.0"
 
-RUN mkdir /app && cd /app && npm install cranlike@0.11.60
+RUN mkdir /app && cd /app && npm install cranlike@0.11.61
 
 WORKDIR /app/node_modules/cranlike
 

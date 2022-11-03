@@ -6,6 +6,11 @@ const tar = require('tar-stream');
 const mime = require('mime');
 const router = express.Router();
 
+/* https://stat.ethz.ch/R-manual/R-patched/library/ */
+const basepkgs = ["base","boot","class","cluster","codetools","compiler","datasets","foreign","graphics",
+  "grDevices","grid","KernSmooth","lattice","MASS","Matrix","methods","mgcv","nlme","nnet","parallel",
+  "rcompgen","rpart","spatial","splines","stats","stats4","survival","tcltk","tools","translations","utils"];
+
 /* Fields included in PACKAGES indices */
 /* To do: once DB is repopulated, we can remove Imports, Suggests, etc in favor of _dependencies */
 const pkgfields = {_id: 1, _hard_deps: 1, _soft_deps: 1, Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
@@ -427,18 +432,32 @@ router.get('/:user/docs/:pkg/html/:file?', function(req, res, next){
 /* Send documentation topics */
 router.get('/:user/docs/:pkg/help/:topic', function(req, res, next){
   var pkg = req.params.pkg;
+  var topic = req.params.topic.replace('.html', '');
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg, '_contents.help' : { $exists: true }});
   packages.findOne(query, {project: {'_contents.help': 1}}).then(function(docs){
-    if(!docs){
-      next(createError(404, `No help files found for ${pkg}`));
-    } else {
-      var topic = req.params.topic.replace('.html', '');
+    if(docs){
       var page = docs['_contents'].help.find(page => page.topics.includes(topic));
       if(page){
         res.redirect(`../html/${page.page}`);
       } else {
-        next(createError(404, 'Unknown topic'));
+        next(createError(404, 'Unknown topic in this package'));
       }
+    } else {
+      /* look for the package in another universe */
+      delete query['_user'];
+      query['_selfowned'] = true;
+      //query['_contents.cranurl'] = true;
+      return packages.findOne(query, {project: {'_contents.help': 1}}).then(function(altdocs){
+        if(altdocs){
+          // redirect to other universe if found (should we hardcode FQDN instead?)
+          res.redirect(`/${altdocs['_user']}/docs/${pkg}/help/${topic}`);
+        } else if(basepkgs.includes(pkg)){
+          // redirect to CRAN for base package manuals
+          res.redirect(`https://stat.ethz.ch/R-manual/R-patched/library/${pkg}/help/${topic}.html`);
+        } else {
+          next(createError(404, `No package ${pkg} with help files not found`));
+        }
+      });
     }
   }).catch(error_cb(400, next));
 });
