@@ -245,7 +245,7 @@ function tar_stream_file(hash, res, filename){
         res.send(matches);
         resolve(matches);
       } else if(!hassent){
-        reject(`No such file: ${filename}`);
+        reject(`File not found: ${filename}`);
       }
     }
 
@@ -265,7 +265,7 @@ function tar_stream_file(hash, res, filename){
 function send_extracted_file(query, filename, req, res, next){
   return packages.findOne(query).then(function(x){
     if(!x){
-      next(createError(404, 'Package not found'));
+      throw `Package ${query.Package} not found in ${query['_user']}`;
     } else {
       var hash = x.MD5sum;
       var etag = etagify(hash);
@@ -426,7 +426,15 @@ router.get('/:user/docs/:pkg/html/:file?', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
   var prefix = pkg + "/htmldocs/";
   var filename = req.params.file ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
+  send_extracted_file(query, filename, req, res, next).catch(function(err){
+    if(err && err.includes("not found")){
+      // Maybe help file was renamed or package has been moved.
+      // Try to find by topic...
+      return res.redirect(`../help/${req.params.file.replace('.html', '')}`);
+    } else {
+      throw err;
+    }
+  }).catch(error_cb(400, next));
 });
 
 /* Send documentation topics */
@@ -457,7 +465,7 @@ router.get('/:user/docs/:pkg/help/:topic', function(req, res, next){
           // redirect to CRAN for base package manuals
           res.redirect(`https://stat.ethz.ch/R-manual/R-patched/library/${pkg}/help/${topic}.html`);
         } else {
-          next(createError(404, `No package ${pkg} with help files not found`));
+          next(createError(404, `No package ${pkg} (with help files) found`));
         }
       });
     }
