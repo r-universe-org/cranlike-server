@@ -21,7 +21,7 @@ var craninfoRouter = require('./routes/craninfo');
 var scienceMinerRouter = require('./routes/scienceminer');
 
 /* Connect to DB */
-const HOST = process.env.CRANLIKE_MONGODB_SERVER || 'localhost';
+const HOST = process.env.CRANLIKE_MONGODB_SERVER || '127.0.0.1';
 const PORT = process.env.CRANLIKE_MONGODB_PORT || 27017;
 const USER = process.env.CRANLIKE_MONGODB_USERNAME || 'root';
 const PASS = process.env.CRANLIKE_MONGODB_PASSWORD;
