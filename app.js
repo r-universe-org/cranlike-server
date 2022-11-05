@@ -27,8 +27,8 @@ const USER = process.env.CRANLIKE_MONGODB_USERNAME || 'root';
 const PASS = process.env.CRANLIKE_MONGODB_PASSWORD;
 const AUTH = PASS ? (USER + ':' + PASS + "@") : "";
 const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
-mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(error, client) {
-  assert.ifError(error);
+const connection = mongodb.MongoClient.connect(URL, {useUnifiedTopology: true});
+connection.then(async function(client) {
   const db = client.db('cranlike');
   global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
   global.packages = db.collection('packages');
@@ -84,6 +84,9 @@ mongodb.MongoClient.connect(URL, {useUnifiedTopology: true}, async function(erro
     console.log("Current indexes() for packages:")
     console.log(x);
   });
+}).catch(function(error){
+  // not sure what this would solve, maybe remove it?
+  assert.ifError(error);
 });
 
 /* Start App */
