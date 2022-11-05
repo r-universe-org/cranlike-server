@@ -142,7 +142,6 @@ function stream_to_null(stream){
 }
 
 function store_stream_file(stream, key, filename){
-  //console.log("store_stream_file: " + filename)
   return new Promise(function(resolve, reject) {
     stream.pipe(bucket.openUploadStreamWithId(key, filename))
     .on('error', function(err){
@@ -153,7 +152,7 @@ function store_stream_file(stream, key, filename){
       });
     })
     .on('finish', function(){
-      bucket.find({_id : key}).project({md5:1}).next().then(function(doc){
+      bucket.find({_id : key}).project({"md5":1, "length":1}).next().then(function(doc){
         if(!doc){
           console.log("Upload success but key not found?")
           reject("Upload success but key not found?")
@@ -165,7 +164,7 @@ function store_stream_file(stream, key, filename){
             reject("md5 did not match key");
           });
         } else {
-          resolve();
+          resolve(doc);
         }
       });
     });
@@ -176,7 +175,7 @@ function crandb_store_file(stream, key, filename){
   return bucket.find({_id : key}, {limit:1}).next().then(function(x){
     if(x){
       console.log(`Already have file ${key} (${filename})`);
-      return stream_to_null(stream);
+      return stream_to_null(stream).then(() => x);
     } else {
       return store_stream_file(stream, key, filename);
     }
@@ -325,18 +324,23 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   var query = {_user : user, _type : type, Package : package};
   var builder = parse_builder_fields(req.headers) || {};
   var filename = get_filename(package, version, type, builder.distro);
-  crandb_store_file(req, md5, filename).then(function(){
+  crandb_store_file(req, md5, filename).then(function(filedata){
     if(type == 'src'){
       var p1 = packages.find({_type: 'src', _registered: true, '_contents.rundeps': package}).count();
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
-      return Promise.all([p1, p2]);
+      return Promise.all([filedata, p1, p2]);
+    } else {
+      return [filedata];
     }
   }).then(function(metadata){
     //console.log(`Successfully stored file ${filename} with ${runrevdeps} runreveps`);
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
+      const filedata = metadata[0];
       description['_user'] = user;
       description['_type'] = type;
       description['_file'] = filename;
+      description['_fileid'] = filedata['_id'];
+      description['_filesize'] = filedata.length;
       description['_published'] = new Date();
       description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
@@ -346,8 +350,8 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description = merge_dependencies(description);
       validate_description(description, package, version, type);
       if(type == "src"){
-        description['_usedby'] = metadata[0];
-        description['_contents'] = metadata[1];
+        description['_usedby'] = metadata[1];
+        description['_contents'] = metadata[2];
         description['_score'] = calculate_score(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
