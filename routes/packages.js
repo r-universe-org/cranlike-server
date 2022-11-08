@@ -402,25 +402,37 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
   var filepath = req.files.file[0].path;
   var filename = req.files.file[0].originalname;
   var md5 = md5file.sync(filepath);
+  var builder = parse_builder_fields(req.body);
   var stream = fs.createReadStream(filepath);
-  crandb_store_file(stream, md5, filename).then(function(){
+  crandb_store_file(stream, md5, filename).then(function(filedata){
+    if(type == 'src'){
+      var p1 = packages.find({_type: 'src', _registered: true, '_contents.rundeps': package}).count();
+      var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
+      return Promise.all([filedata, p1, p2]);
+    } else {
+      return [filedata];
+    }
+  }).then(function(metadata){
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
+      const filedata = metadata[0];
       description['_user'] = user;
       description['_type'] = type;
       description['_file'] = filename;
+      description['_fileid'] = filedata['_id'];
+      description['_filesize'] = filedata.length;
       description['_published'] = new Date();
-      var builder = parse_builder_fields(req.body);
       description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
-      description['_selfowned'] = description['_owner'] === user;
+      description['_selfowned'] = description['_owner'] === user || builder.maintainer.login === user;
       description['_registered'] = (builder.registered !== "false");
-      if(builder.gitstats && builder.gitstats.contributions){
-        description['_contributors'] = Object.keys(builder.gitstats.contributions);
-      }
       description['MD5sum'] = md5;
       description = merge_dependencies(description);
       validate_description(description, package, version, type);
-      if(type != "src"){
+      if(type == "src"){
+        description['_usedby'] = metadata[1];
+        description['_contents'] = metadata[2];
+        description['_score'] = calculate_score(description);
+      } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
       return packages.findOneAndDelete(query).then(function(result) {
