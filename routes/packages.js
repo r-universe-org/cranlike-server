@@ -6,6 +6,7 @@ const md5file = require('md5-file');
 const rdesc = require('rdesc-parser');
 const fs = require('fs');
 const zlib = require('zlib');
+const gunzip = require('gunzip-maybe');
 const tar = require('tar-stream');
 const hard_dep_types = require('r-constants').essential_dependency_types;
 const soft_dep_types = require('r-constants').optional_dependency_types;
@@ -122,8 +123,11 @@ function sanitize_keys(data){
 function read_description(stream){
   return new Promise(function(resolve, reject) {
     rdesc.parse_stream(stream, function(err, data){
-      if(err) reject(err);
-      resolve(sanitize_keys(data));
+      if(err) {
+        reject(err);
+      } else {
+        resolve(sanitize_keys(data));
+      }
     });
   });
 }
@@ -515,7 +519,6 @@ function extract_json_metadata(input, package){
 }
 
 function extract_file(input, filename){
-  var gunzip = zlib.createGunzip();
   var extract = tar.extract();
   var done = false;
 
@@ -547,8 +550,7 @@ function extract_file(input, filename){
       reject(err);
       extract.destroy();
     });
-
-    return input.pipe(gunzip).pipe(extract);
+    return input.pipe(gunzip()).pipe(extract);
   });
 }
 
