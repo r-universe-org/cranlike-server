@@ -444,16 +444,16 @@ router.get('/:user/docs/:pkg/DESCRIPTION', function(req, res, next){
   send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
 });
 
-router.get('/:user/docs/:pkg/html/:file?', function(req, res, next){
+router.get('/:user/docs/:pkg/html/(:file)?', function(req, res, next){
   var pkg = req.params.pkg;
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
   var prefix = pkg + "/htmldocs/";
-  var filename = req.params.file ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
+  var filename = prefix + (req.params.file || "00Index.html");
   send_extracted_file(query, filename, req, res, next).catch(function(err){
     if(err && err.includes("not found")){
       // Maybe help file was renamed or package has been moved.
       // Try to find by topic...
-      return res.redirect(`../help/${req.params.file.replace('.html', '')}`);
+      return res.redirect(`../help/${filename.replace('.html', '')}`);
     } else {
       throw err;
     }
@@ -461,17 +461,21 @@ router.get('/:user/docs/:pkg/html/:file?', function(req, res, next){
 });
 
 /* Send documentation topics */
-router.get('/:user/docs/:pkg/help/:topic', function(req, res, next){
+router.get('/:user/docs/:pkg/help/(:topic)?', function(req, res, next){
   var pkg = req.params.pkg;
-  var topic = req.params.topic.replace('.html', '');
+  var topic = req.params.topic && req.params.topic.replace('.html', '');
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg, '_contents.help' : { $exists: true }});
   packages.findOne(query, {project: {'_contents.help': 1}}).then(function(docs){
     if(docs){
-      var page = docs['_contents'].help.find(page => page.topics.includes(topic));
-      if(page){
-        res.redirect(`../html/${page.page}`);
+      if(!topic){
+        res.redirect(`../html/`);
       } else {
-        next(createError(404, 'Unknown topic in this package'));
+        var page = docs['_contents'].help.find(page => page.topics.includes(topic));
+        if(page){
+          res.redirect(`../html/${page.page}`);
+        } else {
+          next(createError(404, 'Unknown topic in this package'));
+        }
       }
     } else {
       /* look for the package in another universe */
