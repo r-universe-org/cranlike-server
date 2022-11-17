@@ -512,6 +512,13 @@ router.get('/:user/manual/:pkg.pdf', function(req, res, next){
   send_extracted_file(query, pkg + '/manual.pdf', req, res, next).catch(error_cb(400, next));
 });
 
+/* Send HTML reference manual */
+router.get('/:user/manual/:pkg.html', function(req, res, next){
+  var pkg = req.params.pkg;
+  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
+  send_extracted_file(query, pkg + `/extra/${pkg}.html`, req, res, next).catch(error_cb(400, next));
+});
+
 /* Send readme html snippet */
 router.get('/:user/readme/:pkg.html', function(req, res, next){
   var pkg = req.params.pkg;
