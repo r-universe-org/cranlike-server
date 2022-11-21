@@ -34,7 +34,7 @@ connection.then(async function(client) {
   await packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1, "_builder.commit.time":1});
 
   /* The text search index (only one is allowed) */
-  //await packages.dropIndex("textsearch").catch(console.log);
+  await packages.dropIndex("textsearch").catch(console.log);
   await packages.createIndex({
     _type:1,
     Package: "text",
@@ -47,6 +47,7 @@ connection.then(async function(client) {
     '_contents.gitstats.topics': "text",
     '_contents.sysdeps.name': "text",
     '_contents.exports' : "text",
+    '_contents.help.title' : "text",
     '_contents.datasets.title' : "text"
   },{
     weights: {
@@ -60,6 +61,7 @@ connection.then(async function(client) {
       '_contents.gitstats.topics': 10,
       '_contents.sysdeps.name': 20,
       '_contents.exports' : 3,
+      '_contents.help.title' : 3,
       '_contents.datasets.title' : 3
     },
     name: "textsearch"
