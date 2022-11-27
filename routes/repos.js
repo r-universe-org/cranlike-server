@@ -1216,15 +1216,15 @@ router.get('/:user/stats/summary', function(req, res, next){
     {$count: "total"}
   ]).next();
   Promise.all([p1, p2, p3, p4, p5]).then((values) => {
-    const out = doc_to_ndjson({
+    const out = {
       packages: values[0].length,
       maintainers: values[1].length,
       articles: values[2].length,
       datasets: values[3].length,
-      contributors: values[4].total
-    });
-    res.type('text/plain').send(out);
-  });
+      contributors: values[4] && values[4].total
+    };
+    res.send(out);
+  }).catch(error_cb(400, next));
 });
 
 module.exports = router;
