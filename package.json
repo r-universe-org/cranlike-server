@@ -1,6 +1,6 @@
 {
   "name": "cranlike",
-  "version": "0.12.6",
+  "version": "0.12.7",
   "description": "High-performance R package server",
   "author": "Jeroen Ooms <jeroen@berkeley.edu>",
   "license": "MIT",
@@ -28,7 +28,7 @@
     "multer": "^1.4.2",
     "pug": "^3.0.0",
     "r-constants": "^1.0.0",
-    "rdesc-parser": "^3.0.1",
+    "rdesc-parser": "^3.0.2",
     "tar-stream": "^2.1.4",
     "xmlbuilder": "^15.1.1"
   }
