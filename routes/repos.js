@@ -1019,7 +1019,7 @@ router.get("/:user/stats/files", function(req, res, next) {
     query['_type'] = req.query.type;
   }
   if(req.query.before){
-    query['_published'] = {'$lt': new Date(req.query.before)};
+    query['_created'] = {'$lt': new Date(req.query.before)};
   }
   var projection = {
     _id: 0,
@@ -1028,7 +1028,7 @@ router.get("/:user/stats/files", function(req, res, next) {
     package: '$Package',
     version: '$Version',
     r: '$Built.R',
-    published: { $dateToString: { format: "%Y-%m-%d", date: "$_published" } }
+    published: { $dateToString: { format: "%Y-%m-%d", date: "$_created" } }
   }
   if(req.query.fields){
     req.query.fields.split(",").forEach(function (f) {
