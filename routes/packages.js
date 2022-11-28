@@ -400,6 +400,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   description['_owner'] = get_repo_owner(description);
   description['_selfowned'] = description['_owner'] === user;
   description['_registered'] = (description['_builder'].registered !== "false");
+  description['_created'] = new Date();
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
     .catch(error_cb(400, next))
