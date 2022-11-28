@@ -301,6 +301,16 @@ function get_repo_owner(description){
   }
 }
 
+function get_created(x){
+  if(x.Built && x.Built.Date){
+    return new Date(x.Built.Date); //binary pkg date
+  } else if(x.Packaged && x.Packaged.Date){
+    return new Date(x.Packaged.Date); //source pkg date
+  } else {
+    return new Date(); //neither; only for 'error' uploads
+  }
+}
+
 function calculate_score(description){
   var score = 3 * description['_usedby'];
   var gitstats = description['_contents'].gitstats;
@@ -345,6 +355,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_file'] = filename;
       description['_fileid'] = filedata['_id'];
       description['_filesize'] = filedata.length;
+      description['_created'] = get_created(description);
       description['_published'] = new Date();
       description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
@@ -424,6 +435,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_file'] = filename;
       description['_fileid'] = filedata['_id'];
       description['_filesize'] = filedata.length;
+      description['_created'] = get_created(description);
       description['_published'] = new Date();
       description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
