@@ -1,4 +1,4 @@
-FROM node:16-alpine
+FROM node:18-alpine
 
 RUN apk add --no-cache bash tini
 
@@ -8,7 +8,7 @@ EXPOSE 3000
 ENV CRANLIKE_MONGODB_SERVER="mongo" \
     VCAP_APP_HOST="0.0.0.0"
 
-RUN mkdir /app && cd /app && npm install cranlike@0.12.10
+RUN mkdir /app && cd /app && npm install cranlike@0.13.0
 
 WORKDIR /app/node_modules/cranlike
 
