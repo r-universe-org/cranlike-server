@@ -110,37 +110,46 @@ function get_cran_desc(package){
   });
 }
 
-function get_cran_url(package){
+function get_cran_url(packages){
   return axios.get('https://r-universe-org.github.io/cran-to-git/crantogit.csv').then(function(res){
-    var row = res.data.split("\n").find(x => x.match(`^${package},`));
-    return row ? row.split(",") : null;
+    var rows = res.data.split("\n");
+    return packages.map(function(pkg){
+      var row = rows.find(x => x.match(`^${pkg},`));
+      return row ? row.split(",") : null;
+    });
   });
 }
 
-function get_cran_info(package, show_url){
-  var promises = [get_cran_desc(package)];
+function get_cran_info(packages, show_url){
+  var promises = [Promise.all(packages.map(get_cran_desc))];
   if(show_url){
-    promises.push(get_cran_url(package));
+    promises.push(get_cran_url(packages));
   }
   return Promise.all(promises).then(function(res){
     var desc = res[0];
     var regdata = res[1];
-    if(show_url && regdata){
-      desc.url = regdata[1];
-      if(regdata[2]){
-        desc.subdir = regdata[2];
-      }
-      if(regdata[3]){
-        desc.registry = regdata[3];
-      }
-    }
-    return Object.assign({}, {package:package}, desc);
+    return packages.map(function(pkg, i){
+      var desc = res[0][i];
+      var regdata = show_url ? res[1][i] : null;
+      return combine_results(pkg, desc, regdata);
+    });
   });
 }
 
-//get_cran_info("curl").then(console.log)
-//get_cran_info("doesnotexist").then(console.log)
-//get_cran_info("Ohmage").then(console.log)
+function combine_results(package, desc, regdata){
+  if(regdata){
+    desc.url = regdata[1];
+    if(regdata[2]){
+      desc.subdir = regdata[2];
+    }
+    if(regdata[3]){
+      desc.registry = regdata[3];
+    }
+  }
+  return Object.assign({}, {package:package}, desc);
+}
+
+//get_cran_info(["curl", "doesnotexist", "Ohmage", "openssl"]).then(console.log)
 
 module.exports = {
   test_if_universe_exists : test_if_universe_exists,
