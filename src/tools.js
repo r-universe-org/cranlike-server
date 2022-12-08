@@ -110,9 +110,29 @@ function get_cran_desc(package){
   });
 }
 
+/* Fetch at most once per minute
+ * Fetch requires node 18! */
+const cran_to_git = (function () {
+  var date;
+  var promise;
+  return function(){
+    var now = new Date();
+    if(!date || (now-date > 60000)){
+      console.log("Fetching cran-to-git data...")
+      promise = fetch('https://r-universe-org.github.io/cran-to-git/crantogit.csv').then((response) => {
+        if (!response.ok) {
+          throw new Error('Network response was not OK');
+        }
+        date = now;
+        return response.text().then(str => str.split("\n"));
+      });
+    }
+    return promise;
+  }
+})();
+
 function get_cran_url(packages){
-  return axios.get('https://r-universe-org.github.io/cran-to-git/crantogit.csv').then(function(res){
-    var rows = res.data.split("\n");
+  return cran_to_git().then(function(rows){
     return packages.map(function(pkg){
       var row = rows.find(x => x.match(`^${pkg},`));
       return row ? row.split(",") : null;
