@@ -76,12 +76,18 @@ function trigger_rebuild(run_path){
   });
 }
 
-function parse_version(desc){
-  var version = desc.split("\n").find(x => x.match(/^Version:/));
-  var date = desc.split("\n").find(x => x.match(/^Date\/Publication:/));
+function parse_description(desc){
+  var fields = desc.replace(/\n[\t ]+/g, ' ').split("\n")
+  var version = fields.find(x => x.match(/^Version:/i));
+  var date = fields.find(x => x.match(/^Date\/Publication:/i));
+  var urls = fields.find(x => x.match(/^URL:/i));
+  var bugreports = fields.find(x => x.match(/^BugReports:/i));
+  var strings = `${urls} ${bugreports}`.trim().split(/[,\s]+/);
+  var urlarray = strings.filter(x => x.match("https?://(github|gitlab|bitbucket)"));
   return {
     version: version ? version.substring(9) : "parse failure",
-    date: date ? date.substring(18) : "parse failure"
+    date: date ? date.substring(18) : "parse failure",
+    urls: [...new Set(urlarray.map(x => x.replace(/\/issues$/, "")))]
   }
 }
 
@@ -90,10 +96,11 @@ function get_cran_desc(package){
   var url1 = `https://cloud.r-project.org/web/packages/${package}/DESCRIPTION`;
   var url2 = `http://cran.r-project.org/web/packages/${package}/DESCRIPTION`;
   return axios.get(url1).then(function(res){
-    return parse_version(res.data);
+    return parse_description(res.data);
   }).catch(function(err){
+    console.log(err)
     return axios.get(url2).then(function(res2){
-      return parse_version(res2.data);
+      return parse_description(res2.data);
     });
   }).catch(function(err){
     if(err.response.status == 404){
@@ -110,71 +117,12 @@ function get_cran_desc(package){
   });
 }
 
-/* Fetch at most once per minute
- * Fetch requires node 18! */
-const cran_to_git = (function () {
-  var date;
-  var promise;
-  return function(){
-    var now = new Date();
-    if(!date || (now-date > 60000)){
-      console.log("Fetching cran-to-git data...")
-      promise = fetch('https://r-universe-org.github.io/cran-to-git/crantogit.csv').then((response) => {
-        if (!response.ok) {
-          throw new Error('Network response was not OK');
-        }
-        date = now;
-        return response.text().then(str => str.split("\n"));
-      });
-    }
-    return promise;
-  }
-})();
-
-function get_cran_url(packages){
-  return cran_to_git().then(function(rows){
-    return packages.map(function(pkg){
-      var row = rows.find(x => x.match(`^${pkg},`));
-      return row ? row.split(",") : null;
-    });
-  });
-}
-
-function get_cran_info(packages, show_url){
-  var promises = [Promise.all(packages.map(get_cran_desc))];
-  if(show_url){
-    promises.push(get_cran_url(packages));
-  }
-  return Promise.all(promises).then(function(res){
-    var desc = res[0];
-    var regdata = res[1];
-    return packages.map(function(pkg, i){
-      var desc = res[0][i];
-      var regdata = show_url ? res[1][i] : null;
-      return combine_results(pkg, desc, regdata);
-    });
-  });
-}
-
-function combine_results(package, desc, regdata){
-  if(regdata){
-    desc.url = regdata[1];
-    if(regdata[2]){
-      desc.subdir = regdata[2];
-    }
-    if(regdata[3]){
-      desc.registry = regdata[3];
-    }
-  }
-  return Object.assign({}, {package:package}, desc);
-}
-
-//get_cran_info(["curl", "doesnotexist", "Ohmage", "openssl"]).then(console.log)
+//get_cran_info("curl").then(console.log)
 
 module.exports = {
   test_if_universe_exists : test_if_universe_exists,
   get_registry_info : get_registry_info,
   get_submodule_hash : get_submodule_hash,
   trigger_rebuild : trigger_rebuild,
-  get_cran_info : get_cran_info
+  get_cran_desc : get_cran_desc
 };
