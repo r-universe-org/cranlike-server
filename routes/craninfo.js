@@ -10,8 +10,7 @@ function error_cb(status, next) {
   }
 }
 
-/* new global single-package api */
-router.get('/cranstatus/:package', function(req, res, next) {
+router.get('/shared/cranstatus/:package', function(req, res, next) {
   tools.get_cran_desc(req.params.package).then(function(info){
     res.set('Cache-Control', 'max-age=3600, public').send(info);
   }).catch(error_cb(400, next));

@@ -56,9 +56,9 @@ function find_citations(package){
   });
 }
 
-router.get('/scienceminer/:package', function(req, res, next) {
+router.get('/shared/scienceminer/:package', function(req, res, next) {
   find_package(req.params.package).then(function(info){
-    res.send(info);
+    res.set('Cache-Control', 'max-age=3600, public').send(info);
   }).catch(error_cb(400, next));
 });
 
