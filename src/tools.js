@@ -91,29 +91,36 @@ function parse_description(desc){
   }
 }
 
+function fetch_text(url){
+  return fetch(url).then(function(response){
+    if (!response.ok) {
+      throw new Error(`Failed to download ${url}`);
+    }
+    return response.text();
+  });
+}
+
 function get_cran_desc(package){
   // try both mirros in case one is down/syncing
   var url1 = `https://cloud.r-project.org/web/packages/${package}/DESCRIPTION`;
   var url2 = `http://cran.r-project.org/web/packages/${package}/DESCRIPTION`;
-  return axios.get(url1).then(function(res){
-    return parse_description(res.data);
+  return fetch_text(url1).then(function(res){
+    return parse_description(res);
   }).catch(function(err){
-    console.log(err)
-    return axios.get(url2).then(function(res2){
-      return parse_description(res2.data);
+    return fetch_text(url2).then(function(res2){
+      return parse_description(res2);
     });
   }).catch(function(err){
-    if(err.response.status == 404){
-      var url3 = `https://cloud.r-project.org/src/contrib/Archive/${package}/`;
-      return axios.get(url3).then(function(res3){
+    var url3 = `https://cloud.r-project.org/src/contrib/Archive/${package}/`;
+    return fetch(url3).then(function(response){
+      if(response.ok){
         return {version: "archived"};
-      }).catch(function(err){
-        if(err.response.status == 404){
-          return {version: null};
-        }
-        throw "Failed to lookup CRAN version";
-      });
-    }
+      }
+      if(response.status == 404){
+        return {version: null};
+      }
+      throw "Failed to lookup CRAN version";
+    });
   });
 }
 
