@@ -1,16 +1,6 @@
 /* dummy token for GH api limits */
 const token = Buffer.from('Z2hwX2IxR2RLZGN0cEZGSXZYSHUyWnlpZ0dXNmxGcHNzbTBxNGJ0Vg==', 'base64').toString();
 
-function fetch_text(url, opt = {}){
-  return fetch(url, opt).then(function(response){
-    if (!response.ok) {
-      response.message = "fetch_text error: http " + response.status;
-      return Promise.reject(response);
-    }
-    return response.text();
-  });
-}
-
 function fetch_github(url, opt = {}){
   opt.headers = opt.headers || {'Authorization': 'token ' + token};
   return fetch(url, opt).then(function(response){
@@ -66,6 +56,7 @@ function trigger_rebuild(run_path){
 
 function parse_description(desc){
   var fields = desc.replace(/\n[\t ]+/g, ' ').split("\n")
+  var package = fields.find(x => x.match(/^Package:/i));
   var version = fields.find(x => x.match(/^Version:/i));
   var date = fields.find(x => x.match(/^Date\/Publication:/i));
   var urls = fields.find(x => x.match(/^URL:/i));
@@ -73,6 +64,7 @@ function parse_description(desc){
   var strings = `${urls} ${bugreports}`.trim().split(/[,\s]+/);
   var urlarray = strings.filter(x => x.match("https?://.*(github|gitlab|bitbucket)")).map(x => x.replace('http://', 'https://'));
   return {
+    package: package ? package.substring(9) : "parse failure",
     version: version ? version.substring(9) : "parse failure",
     date: date ? date.substring(18) : "parse failure",
     urls: [...new Set(urlarray.map(x => x.replace(/\/issues$/, "")))]
@@ -80,26 +72,23 @@ function parse_description(desc){
 }
 
 function get_cran_desc(package){
-  // try both mirros in case one is down/syncing
-  var url1 = `https://cloud.r-project.org/web/packages/${package}/DESCRIPTION`;
-  var url2 = `http://cran.r-project.org/web/packages/${package}/DESCRIPTION`;
-  return fetch_text(url1).then(function(res){
-    return parse_description(res);
-  }).catch(function(err){
-    return fetch_text(url2).then(function(res2){
-      return parse_description(res2);
-    });
-  }).catch(function(err){
-    var url3 = `https://cloud.r-project.org/src/contrib/Archive/${package}/`;
-    return fetch(url3).then(function(response){
-      if(response.ok){
-        return {version: "archived"};
-      }
-      if(response.status == 404){
-        return {version: null};
-      }
-      throw "Failed to lookup CRAN version";
-    });
+  var url = `https://cloud.r-project.org/web/packages/${package}/DESCRIPTION`;
+  var fallbackurl = `http://cran.r-project.org/web/packages/${package}/DESCRIPTION`;
+  var archiveurl = `https://cloud.r-project.org/src/contrib/Archive/${package}/`;
+  return fetch(url).catch((err) => fetch(fallbackurl)).then(function(response){
+    if (response.ok) {
+      return response.text().then(parse_description);
+    } else if(response.status == 404) {
+      return fetch(archiveurl).then(function(res2){
+        if(res2.ok){
+          return {package:package, version: "archived"};
+        }
+        if(res2.status == 404){
+          return {package:package, version: null};
+        }
+      });
+    }
+    throw "Failed to lookup CRAN version";
   });
 }
 
