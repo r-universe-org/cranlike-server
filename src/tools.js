@@ -62,7 +62,9 @@ function parse_description(desc){
   var urls = fields.find(x => x.match(/^URL:/i));
   var bugreports = fields.find(x => x.match(/^BugReports:/i));
   var strings = `${urls} ${bugreports}`.trim().split(/[,\s]+/);
-  var urlarray = strings.filter(x => x.match("https?://.*(github|gitlab|bitbucket)")).map(x => x.replace('http://', 'https://'));
+  var urlarray = strings.filter(x => x.match("https?://.*(github|gitlab|bitbucket)"))
+    .map(x => x.replace('http://', 'https://'))
+    .map(x => x.replace(/#.*/, ''));
   return {
     package: package ? package.substring(9) : "parse failure",
     version: version ? version.substring(9) : "parse failure",
@@ -71,15 +73,26 @@ function parse_description(desc){
   }
 }
 
+function get_cran_url(path){
+  var mirror1 = `https://cloud.r-project.org/${path}`;
+  var mirror2 = `http://cran.r-project.org/${path}`;
+  return fetch(mirror1).then(function(res){
+    if(res.status == 200 || res.status == 404){
+      return res;
+    }
+    throw("Unexpected response from cran mirror; trying fallback");
+  }).catch(function(){
+    // Fallback when something is wrong with cloud mirror
+    return fetch(mirror2);
+  });
+}
+
 function get_cran_desc(package){
-  var url = `https://cloud.r-project.org/web/packages/${package}/DESCRIPTION`;
-  var fallbackurl = `http://cran.r-project.org/web/packages/${package}/DESCRIPTION`;
-  var archiveurl = `https://cloud.r-project.org/src/contrib/Archive/${package}/`;
-  return fetch(url).catch((err) => fetch(fallbackurl)).then(function(response){
+  return get_cran_url(`/web/packages/${package}/DESCRIPTION`).then(function(response){
     if (response.ok) {
       return response.text().then(parse_description);
     } else if(response.status == 404) {
-      return fetch(archiveurl).then(function(res2){
+      return get_cran_url(`/src/contrib/Archive/${package}/`).then(function(res2){
         if(res2.ok){
           return {package:package, version: "archived"};
         }
