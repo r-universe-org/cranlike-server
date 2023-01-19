@@ -62,10 +62,4 @@ router.get('/shared/scienceminer/:package', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-router.get('/:user/scienceminer', function(req, res, next) {
-  find_package(req.query.package).then(function(info){
-    res.send(info);
-  }).catch(error_cb(400, next));
-});
-
 module.exports = router;
