@@ -6,11 +6,6 @@ const tar = require('tar-stream');
 const mime = require('mime');
 const router = express.Router();
 
-/* https://stat.ethz.ch/R-manual/R-patched/library/ */
-const basepkgs = ["base","boot","class","cluster","codetools","compiler","datasets","foreign","graphics",
-  "grDevices","grid","KernSmooth","lattice","MASS","Matrix","methods","mgcv","nlme","nnet","parallel",
-  "rcompgen","rpart","spatial","splines","stats","stats4","survival","tcltk","tools","translations","utils"];
-
 /* Fields included in PACKAGES indices */
 /* To do: once DB is repopulated, we can remove Imports, Suggests, etc in favor of _dependencies */
 const pkgfields = {_id: 1, _hard_deps: 1, _soft_deps: 1, Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
