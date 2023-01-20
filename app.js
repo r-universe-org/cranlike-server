@@ -15,6 +15,7 @@ var badgesRouter = require('./routes/badges');
 var feedsRouter = require('./routes/feeds');
 var craninfoRouter = require('./routes/craninfo');
 var scienceMinerRouter = require('./routes/scienceminer');
+var v2Router = require('./routes/v2');
 
 /* Start App */
 var app = express();
@@ -40,6 +41,8 @@ app.use('/', badgesRouter);
 app.use('/', feedsRouter);
 app.use('/', craninfoRouter);
 app.use('/', scienceMinerRouter);
+app.use('/', v2Router);
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
