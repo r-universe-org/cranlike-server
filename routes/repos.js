@@ -2,9 +2,9 @@
 const express = require('express');
 const createError = require('http-errors');
 const zlib = require('zlib');
-const tar = require('tar-stream');
-const mime = require('mime');
 const router = express.Router();
+const tools = require("../src/tools.js");
+const send_extracted_file = tools.send_extracted_file;
 
 /* Fields included in PACKAGES indices */
 /* To do: once DB is repopulated, we can remove Imports, Suggests, etc in favor of _dependencies */
@@ -204,77 +204,6 @@ function send_binary(query, filename, req, res, next){
       }
     }
   }).catch(error_cb(400, next));  
-}
-
-/* See https://www.npmjs.com/package/tar-stream#Extracting */
-function tar_stream_file(hash, res, filename){
-  var input = bucket.openDownloadStream(hash);
-  var gunzip = zlib.createGunzip();
-  return new Promise(function(resolve, reject) {
-
-    /* callback to extract single file from tarball */
-    function process_entry(header, filestream, next_file) {
-      if(!dolist && !hassent && header.name === filename){
-        filestream.on('end', function(){
-          hassent = true;
-          resolve(filename);
-          input.destroy(); // close mongo stream prematurely, is this safe?
-        }).pipe(
-          res.type(mime.getType(filename) || 'text/plain').set("ETag", hash).set('Content-Length', header.size)
-        );
-      } else {
-        if(dolist && header.name){
-          let m = header.name.match(filename);
-          if(m && m.length){
-            matches.push(m.pop());
-          }
-        }
-        filestream.resume(); //drain the file
-      }
-      next_file(); //ready for next entry
-    }
-
-    /* callback at end of tarball */
-    function finish_stream(){
-      if(dolist){
-        res.send(matches);
-        resolve(matches);
-      } else if(!hassent){
-        reject(`File not found: ${filename}`);
-      }
-    }
-
-    var dolist = filename instanceof RegExp;
-    var matches = [];
-    var hassent = false;
-    var extract = tar.extract()
-      .on('entry', process_entry)
-      .on('finish', finish_stream);
-    input.pipe(gunzip).pipe(extract);
-  }).finally(function(){
-    gunzip.destroy();
-    input.destroy();
-  });
-}
-
-function send_extracted_file(query, filename, req, res, next){
-  return packages.findOne(query).then(function(x){
-    if(!x){
-      throw `Package ${query.Package} not found in ${query['_user']}`;
-    } else {
-      var hash = x.MD5sum;
-      var etag = etagify(hash);
-      if(etag === req.header('If-None-Match')){
-        res.status(304).send();
-      } else {
-        return bucket.find({_id: hash}, {limit:1}).hasNext().then(function(x){
-          if(!x)
-            throw `Failed to locate file in gridFS: ${hash}`;
-          return tar_stream_file(hash, res, filename);
-        });
-      }
-    }
-  });
 }
 
 function find_by_user(_user, _type){
