@@ -65,6 +65,16 @@ router.get('/v2/:user/:package/NEWS:ext?', function(req, res, next){
 });
 
 /* Match CRAN */
+router.get('/v2/:user/:package/:file.pdf', function(req, res, next){
+  var package = req.params.package;
+  if(package != req.params.file){
+    return res.status(404).send(`Did you mean ${package}.pdf`)
+  }
+  var query = {_user: req.params.user, _type: 'src', Package: package};
+  send_extracted_file(query, `${package}/manual.pdf`, req, res, next).catch(error_cb(400, next));
+});
+
+/* Match CRAN */
 router.get('/v2/:user/:package/citation:ext?', function(req, res, next){
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
@@ -81,9 +91,7 @@ function doc_path(file, package){
       return `${package}/readme.html`;
     case "readme.md":
       return `${package}/readme.md`;
-    case `${package}-manual.pdf`:
-      return `${package}/manual.pdf`
-    case `${package}-manual.html`:
+    case `manual.html`:
       return `${package}/extra/${package}.html`;
     default:
       return `${package}/inst/doc/${file}`;
