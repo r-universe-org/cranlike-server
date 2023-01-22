@@ -1,9 +1,10 @@
+const path = require('path');
 const express = require('express');
 const createError = require('http-errors');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
-
+const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'feed.xml'];
 
 /* Error generator */
 function error_cb(status, next) {
@@ -11,6 +12,15 @@ function error_cb(status, next) {
     console.log("[Debug] HTTP " + status + ": " + err)
     next(createError(status, err));
   }
+}
+
+function proxy_url(url, res){
+  return fetch(url).then(function(response){
+    var type = response.headers.get("Content-Type");
+    return response.text().then(function(txt){
+      return res.type(type).status(response.status).send(txt);
+    });
+  })
 }
 
 //TODO: unify with /landing ?
@@ -21,7 +31,8 @@ router.get("/v2/:user", function(req, res, next) {
     if(req.path.substr(-1) != '/'){
       res.redirect(`/v2/${user}/`);
     } else {
-      res.type('text/plain').send(`Universe homepage ${user} here...`);
+      //res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
+      return proxy_url('https://jeroen.github.io/dashboard-v2/homepage.html', res);
     }
   }).catch(error_cb(404, next));
 });
@@ -30,13 +41,18 @@ router.get("/v2/:user", function(req, res, next) {
 router.get("/v2/:user/:package*", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
-  find_package(user, package).then(function(x){
-    if(x.Package != package){
-      res.redirect(req.path.replace(`/v2/${user}/${package}`, `/v2/${user}/${x.Package}`));
-    } else {
-      next();
-    }
-  }).catch(error_cb(404, next));
+  if(tablist.includes(package)) {
+    //res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
+    return proxy_url('https://jeroen.github.io/dashboard-v2/homepage.html', res);
+  } else {
+    find_package(user, package).then(function(x){
+      if(x.Package != package){
+        res.redirect(req.path.replace(`/v2/${user}/${package}`, `/v2/${user}/${x.Package}`));
+      } else {
+        next();
+      }
+    }).catch(error_cb(404, next));
+  }
 });
 
 router.get("/v2/:user/:package", function(req, res, next) {
@@ -46,7 +62,8 @@ router.get("/v2/:user/:package", function(req, res, next) {
     if(req.path.substr(-1) == '/'){
       res.redirect(`/v2/${user}/${package}`);
     } else {
-      res.type('text/plain').send(`Package homepage ${user}/${package} here...`);
+    //res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
+    return proxy_url('https://jeroen.github.io/dashboard-v2/homepage.html', res);
     }
   }).catch(error_cb(400, next));
 });
