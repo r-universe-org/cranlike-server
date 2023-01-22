@@ -26,16 +26,29 @@ router.get("/v2/:user", function(req, res, next) {
   }).catch(error_cb(404, next));
 });
 
+//Middleware: test if package exists, possibly fix case mismatch, otherwise 404
+router.get("/v2/:user/:package*", function(req, res, next) {
+  var user = req.params.user;
+  var package = req.params.package;
+  find_package(user, package).then(function(x){
+    if(x.Package != package){
+      res.redirect(req.path.replace(`/v2/${user}/${package}`, `/v2/${user}/${x.Package}`));
+    } else {
+      next();
+    }
+  }).catch(error_cb(404, next));
+});
+
 router.get("/v2/:user/:package", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
-  find_package(user, package).then(function(){
-    if(req.path.substr(-1) != '/'){
-      res.redirect(`/v2/${user}/${package}/`);
+  find_package(user, package).then(function(x){
+    if(req.path.substr(-1) == '/'){
+      res.redirect(`/v2/${user}/${package}`);
     } else {
       res.type('text/plain').send(`Package homepage ${user}/${package} here...`);
     }
-  }).catch(error_cb(404, next));
+  }).catch(error_cb(400, next));
 });
 
 router.get("/v2/:user/:package/json", function(req, res, next) {
@@ -107,12 +120,15 @@ router.get('/v2/:user/:package/doc/:file?', function(req, res, next){
 });
 
 function find_package(user, package){
-  const query = {'_user': user, 'Package': package, '_type': 'src'};
+  var query = {'_user': user, 'Package': package, '_type': 'src'};
   return packages.findOne(query).then(function(x){
-    if(!x) {
+    if(x) return x;
+    /* try case insensitive */
+    query.Package = {$regex: `^${package}$`, $options: 'i'};
+    return packages.findOne(query).then(function(x){
+      if(x) return x;
       throw `Package ${user}/${package} not found`;
-    }
-    return x;
+    });
   });
 }
 
