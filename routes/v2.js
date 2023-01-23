@@ -23,6 +23,11 @@ function proxy_url(url, res){
   })
 }
 
+function send_dashboard_html(res){
+  //res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
+  return proxy_url('https://jeroen.github.io/dashboard-v2/homepage.html', res);
+}
+
 //TODO: unify with /landing ?
 router.get("/v2/:user", function(req, res, next) {
   var user = req.params.user;
@@ -31,9 +36,16 @@ router.get("/v2/:user", function(req, res, next) {
     if(req.path.substr(-1) != '/'){
       res.redirect(`/v2/${user}/`);
     } else {
-      //res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
-      return proxy_url('https://jeroen.github.io/dashboard-v2/homepage.html', res);
+      send_dashboard_html(res);
     }
+  }).catch(error_cb(404, next));
+});
+
+//TODO: is there a better way
+router.get("/v2/:user/articles*", function(req, res, next) {
+  var user = req.params.user;
+  tools.test_if_universe_exists(user).then(function(x){
+    res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
   }).catch(error_cb(404, next));
 });
 
@@ -42,8 +54,7 @@ router.get("/v2/:user/:package*", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   if(tablist.includes(package)) {
-    //res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
-    return proxy_url('https://jeroen.github.io/dashboard-v2/homepage.html', res);
+    send_dashboard_html(res);
   } else {
     find_package(user, package).then(function(x){
       if(x.Package != package){
@@ -62,8 +73,7 @@ router.get("/v2/:user/:package", function(req, res, next) {
     if(req.path.substr(-1) == '/'){
       res.redirect(`/v2/${user}/${package}`);
     } else {
-    //res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
-    return proxy_url('https://jeroen.github.io/dashboard-v2/homepage.html', res);
+      send_dashboard_html(res);
     }
   }).catch(error_cb(400, next));
 });
@@ -76,6 +86,12 @@ router.get("/v2/:user/:package/json", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+router.get("/v2/:user/:package/files", function(req, res, next) {
+  var user = req.params.user;
+  var package = req.params.package;
+  var query = {_user : user, Package : package};
+  packages.find(query).sort({"Built.R" : -1}).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
+});
 
 /* Match CRAN / R dynamic help */
 router.get("/v2/:user/:package/DESCRIPTION", function(req, res, next) {
