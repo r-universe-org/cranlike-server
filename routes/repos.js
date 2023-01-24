@@ -318,70 +318,6 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
   send_binary(query, `${req.params.pkg}-${req.params.distro}.tar.gz`, req, res, next);
 });
 
-/* For now articles are only vignettes */
-router.get('/:user/articles', function(req, res, next){
-  if((req.headers['accept'] || "").includes("html")){
-    return next(); //fall through to virtual dashboard
-  }
-  var query = qf({_user: req.params.user, _type: 'src', '_contents.vignettes' : { $exists: true }}, req.query.all);
-  packages.distinct('Package', query).then(function(x){
-    res.send(x);
-  }).catch(error_cb(400, next));
-});
-
-/* TODO: merge docs with /articles API above! */
-router.get('/:user/docs/:pkg/doc/:file?', function(req, res, next){
-  var pkg = req.params.pkg;
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  var prefix = pkg + "/inst/doc/";
-  var filename = req.params.file && req.params.file != 'index.html' ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
-});
-
-router.get('/:user/docs/:pkg/NEWS:ext?', function(req, res, next){
-  var pkg = req.params.pkg;
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  var ext = req.params.ext || '.html';
-  var filename = `${pkg}/extra/NEWS${ext}`
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
-});
-
-router.get('/:user/docs/:pkg/DESCRIPTION', function(req, res, next){
-  var pkg = req.params.pkg;
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  var filename = `${pkg}/DESCRIPTION`;
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
-});
-
-/* Send 'citation' files */
-router.get('/:user/citation/:pkg.:type', function(req, res, next){
-  var pkg = req.params.pkg;
-  var type = req.params.type;
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  send_extracted_file(query, pkg + `/extra/citation.${type}`, req, res, next).catch(error_cb(400, next));
-});
-
-/* Send pdf reference manual */
-router.get('/:user/manual/:pkg.pdf', function(req, res, next){
-  var pkg = req.params.pkg;
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  send_extracted_file(query, pkg + '/manual.pdf', req, res, next).catch(error_cb(400, next));
-});
-
-/* Send HTML reference manual */
-router.get('/:user/manual/:pkg.html', function(req, res, next){
-  var pkg = req.params.pkg;
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  send_extracted_file(query, pkg + `/extra/${pkg}.html`, req, res, next).catch(error_cb(400, next));
-});
-
-/* Send readme html snippet */
-router.get('/:user/readme/:pkg.html', function(req, res, next){
-  var pkg = req.params.pkg;
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  send_extracted_file(query, pkg + '/readme.html', req, res, next).catch(error_cb(400, next));
-});
-
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
@@ -1081,6 +1017,35 @@ router.get('/:user/stats/summary', function(req, res, next){
     };
     res.send(out);
   }).catch(error_cb(400, next));
+});
+
+/* Legacy redirects */
+router.get('/:user/docs/:pkg/NEWS:ext?', function(req, res, next){
+  res.redirect(301, `/${req.params.user}/${req.params.pkg}/NEWS${req.params.ext || ""}`);
+});
+
+router.get('/:user/docs/:pkg/DESCRIPTION', function(req, res, next){
+  res.redirect(301, `/${req.params.user}/${req.params.pkg}/DESCRIPTION`);
+});
+
+router.get('/:user/docs/:pkg/doc/:file?', function(req, res, next){
+ res.redirect(301, `/${req.params.user}/${req.params.pkg}/doc/${req.params.file || ""}`);
+});
+
+router.get('/:user/citation/:pkg.:type', function(req, res, next){
+  res.redirect(301, `/${req.params.user}/${req.params.pkg}/citation.${req.params.type || ""}`);
+});
+
+router.get('/:user/manual/:pkg.pdf', function(req, res, next){
+  res.redirect(301, `/${req.params.user}/${req.params.pkg}/${req.params.pkg}.pdf`);
+});
+
+router.get('/:user/manual/:pkg.html', function(req, res, next){
+  res.redirect(301, `/${req.params.user}/${req.params.pkg}/doc/manual.html`);
+});
+
+router.get('/:user/readme/:pkg.html', function(req, res, next){
+  res.redirect(301, `/${req.params.user}/${req.params.pkg}/doc/readme.html`);
 });
 
 module.exports = router;

@@ -31,7 +31,17 @@ router.get('/:user', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-//HACK for virtual article paths in dashboard
+/* Articles is now a fake endpoint for the front-end only */
+router.get('/:user/articles', function(req, res, next){
+  if((req.headers['accept'] || "").includes("html")){
+    return next(); //fall through to virtual dashboard
+  }
+  var query = qf({_user: req.params.user, _type: 'src', '_contents.vignettes' : { $exists: true }}, req.query.all);
+  packages.distinct('Package', query).then(function(x){
+    res.send(x);
+  }).catch(error_cb(400, next));
+});
+
 router.get("/:user/articles/:package?/:filename?", function(req, res, next) {
   //should we check for existence here?
   send_frontend_html(req, res);
@@ -61,7 +71,7 @@ router.get("/:user/:package*", function(req, res, next) {
   } else {
     find_package(user, package).then(function(x){
       if(x.Package != package){
-        res.redirect(req.path.replace(`/v2/${user}/${package}`, `/v2/${user}/${x.Package}`));
+        res.redirect(req.path.replace(`/${user}/${package}`, `/${user}/${x.Package}`));
       } else {
         next();
       }
@@ -74,7 +84,7 @@ router.get("/:user/:package", function(req, res, next) {
   var package = req.params.package;
   var accept = req.headers['accept'] || "";
   if(req.path.substr(-1) == '/'){
-    res.redirect(`/v2/${user}/${package}`);
+    res.redirect(`/${user}/${package}`);
   } else {
     send_frontend_html(req, res);
   }

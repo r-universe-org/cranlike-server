@@ -51,23 +51,6 @@ function delete_by_query(query){
   });
 }
 
-router.get('/:user/landing', function(req, res, next) {
-  const user = req.params.user;
-  const url = 'https://github.com/r-universe/' + user;
-  tools.test_if_universe_exists(user).then(function(exists){
-    if(exists){
-      const accept = req.headers['accept'];
-      if(accept && accept.includes('html')){
-        res.redirect("/ui");
-      } else {
-        res.send("Welcome to the " + user + " universe!");
-      }
-    } else {
-      res.status(404).type('text/plain').send("No universe found for user: " + user);
-    }
-  }).catch(error_cb(400, next));
-});
-
 router.get('/:user/packages', function(req, res, next) {
   if((req.headers['accept'] || "").includes("html")){
     return next(); //fall through to virtual dashboard
