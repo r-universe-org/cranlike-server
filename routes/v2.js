@@ -19,8 +19,9 @@ function error_cb(status, next) {
 router.get("/v2/:user", function(req, res, next) {
   var user = req.params.user;
   tools.test_if_universe_exists(user).then(function(x){
-    if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
-    if(req.path.substr(-1) != '/'){
+    if(!x) {
+      res.type('text/plain').status(404).send('No universe for: ' + user);
+    } else if(req.path.substr(-1) != '/'){
       res.redirect(`/v2/${user}/`);
     } else {
       send_frontend_html(req, res);
@@ -28,8 +29,9 @@ router.get("/v2/:user", function(req, res, next) {
   }).catch(error_cb(404, next));
 });
 
-//TODO: is there a better way
-router.get("/v2/:user/articles*", function(req, res, next) {
+//HACK for virtual paths in dashboard
+router.get("/v2/:user/articles/:package?/:filename?", function(req, res, next) {
+  //should we check for existence here
   send_frontend_html(req, res);
 });
 
@@ -42,12 +44,18 @@ router.get("/frontend/frontend.js", function(req, res, next) {
   send_frontend_js(req, res);
 });
 
-//Middleware: test if package exists, possibly fix case mismatch, otherwise 404
+// Pre-middleware for all requests:
+// validate that universe or package exists, possibly fix case mismatch, otherwise 404
 router.get("/v2/:user/:package*", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   if(tablist.includes(package)) {
-    send_frontend_html(req, res);
+    tools.test_if_universe_exists(user).then(function(x){
+      if(!x) {
+        throw `No universe for user: ${user}`;
+      }
+      next();
+    }).catch(error_cb(404, next));
   } else {
     find_package(user, package).then(function(x){
       if(x.Package != package){
@@ -62,13 +70,16 @@ router.get("/v2/:user/:package*", function(req, res, next) {
 router.get("/v2/:user/:package", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
-  find_package(user, package).then(function(x){
-    if(req.path.substr(-1) == '/'){
-      res.redirect(`/v2/${user}/${package}`);
-    } else {
-      send_frontend_html(req, res);
-    }
-  }).catch(error_cb(400, next));
+  var accept = req.headers['accept'] || "";
+  if(req.path.substr(-1) == '/'){
+    res.redirect(`/v2/${user}/${package}`);
+  } else if(accept.includes("html")) {
+    send_frontend_html(req, res);
+  } else if(tablist.includes(package)) {
+    next(); //Fall back on APIs for /packages /articles etc
+  } else {
+    res.redirect(`/v2/${user}/${package}/json`);
+  }
 });
 
 router.get("/v2/:user/:package/json", function(req, res, next) {
