@@ -220,15 +220,6 @@ function arch_to_built(xcode){
   return (xcode && xcode.match("arm64")) ? {$not : /x86_64/} : {$not : /aarch64/ };
 }
 
-/* Copied from api.js */
-router.get('/', function(req, res, next) {
-  count_by_user().pipe(res);
-});
-
-router.get('/:user', function(req, res, next) {
-  count_by_type(req.params.user).pipe(res);
-});
-
 router.get('/:user/src', function(req, res, next) {
   res.redirect('/' + req.params.user + '/src/contrib');
 });
@@ -329,19 +320,13 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
 
 /* For now articles are only vignettes */
 router.get('/:user/articles', function(req, res, next){
+  if((req.headers['accept'] || "").includes("html")){
+    return next(); //fall through to virtual dashboard
+  }
   var query = qf({_user: req.params.user, _type: 'src', '_contents.vignettes' : { $exists: true }}, req.query.all);
   packages.distinct('Package', query).then(function(x){
     res.send(x);
   }).catch(error_cb(400, next));
-});
-
-/* Send individual vignette files */
-router.get('/:user/articles/:pkg/:file?', function(req, res, next){
-  var pkg = req.params.pkg;
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg});
-  var prefix = pkg + "/inst/doc/";
-  var filename = req.params.file && req.params.file != 'index.html' ? (prefix + req.params.file) : new RegExp('^' + prefix + "(.+)$");
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
 });
 
 /* TODO: merge docs with /articles API above! */

@@ -5,7 +5,7 @@ const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
 const send_frontend_html = tools.send_frontend_html;
 const send_frontend_js = tools.send_frontend_js;
-const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'feed.xml'];
+const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges'];
 
 /* Error generator */
 function error_cb(status, next) {
@@ -15,27 +15,29 @@ function error_cb(status, next) {
   }
 }
 
-//TODO: unify with /landing ?
-router.get("/v2/:user", function(req, res, next) {
-  var user = req.params.user;
-  tools.test_if_universe_exists(user).then(function(x){
-    if(!x) {
-      res.type('text/plain').status(404).send('No universe for: ' + user);
-    } else if(req.path.substr(-1) != '/'){
-      res.redirect(`/v2/${user}/`);
+router.get('/:user', function(req, res, next) {
+  const user = req.params.user;
+  tools.test_if_universe_exists(user).then(function(exists){
+    if(exists){
+      const accept = req.headers['accept'];
+      if(accept && accept.includes('html')){
+        res.redirect(`/${user}/builds`);
+      } else {
+        res.send("Welcome to the " + user + " universe!");
+      }
     } else {
-      send_frontend_html(req, res);
+      res.status(404).type('text/plain').send("No universe found for user: " + user);
     }
-  }).catch(error_cb(404, next));
+  }).catch(error_cb(400, next));
 });
 
-//HACK for virtual paths in dashboard
-router.get("/v2/:user/articles/:package?/:filename?", function(req, res, next) {
-  //should we check for existence here
+//HACK for virtual article paths in dashboard
+router.get("/:user/articles/:package?/:filename?", function(req, res, next) {
+  //should we check for existence here?
   send_frontend_html(req, res);
 });
 
-router.get("/v2/:user/frontend/frontend.js", function(req, res, next) {
+router.get("/:user/frontend/frontend.js", function(req, res, next) {
   send_frontend_js(req, res);
 });
 
@@ -46,7 +48,7 @@ router.get("/frontend/frontend.js", function(req, res, next) {
 
 // Pre-middleware for all requests:
 // validate that universe or package exists, possibly fix case mismatch, otherwise 404
-router.get("/v2/:user/:package*", function(req, res, next) {
+router.get("/:user/:package*", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   if(tablist.includes(package)) {
@@ -67,22 +69,18 @@ router.get("/v2/:user/:package*", function(req, res, next) {
   }
 });
 
-router.get("/v2/:user/:package", function(req, res, next) {
+router.get("/:user/:package", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   var accept = req.headers['accept'] || "";
   if(req.path.substr(-1) == '/'){
     res.redirect(`/v2/${user}/${package}`);
-  } else if(accept.includes("html")) {
-    send_frontend_html(req, res);
-  } else if(tablist.includes(package)) {
-    next(); //Fall back on APIs for /packages /articles etc
   } else {
-    res.redirect(`/v2/${user}/${package}/json`);
+    send_frontend_html(req, res);
   }
 });
 
-router.get("/v2/:user/:package/json", function(req, res, next) {
+router.get("/:user/:package/json", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   find_package(user, package).then(function(x){
@@ -90,7 +88,7 @@ router.get("/v2/:user/:package/json", function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-router.get("/v2/:user/:package/files", function(req, res, next) {
+router.get("/:user/:package/files", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   var query = {_user : user, Package : package};
@@ -98,7 +96,7 @@ router.get("/v2/:user/:package/files", function(req, res, next) {
 });
 
 /* Match CRAN / R dynamic help */
-router.get("/v2/:user/:package/DESCRIPTION", function(req, res, next) {
+router.get("/:user/:package/DESCRIPTION", function(req, res, next) {
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
   var filename = `${package}/DESCRIPTION`;
@@ -106,7 +104,7 @@ router.get("/v2/:user/:package/DESCRIPTION", function(req, res, next) {
 });
 
 /* Match CRAN / R dynamic help */
-router.get('/v2/:user/:package/NEWS:ext?', function(req, res, next){
+router.get('/:user/:package/NEWS:ext?', function(req, res, next){
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
   var ext = req.params.ext || '.html';
@@ -115,7 +113,7 @@ router.get('/v2/:user/:package/NEWS:ext?', function(req, res, next){
 });
 
 /* Match CRAN */
-router.get('/v2/:user/:package/:file.pdf', function(req, res, next){
+router.get('/:user/:package/:file.pdf', function(req, res, next){
   var package = req.params.package;
   if(package != req.params.file){
     return res.status(404).send(`Did you mean ${package}.pdf`)
@@ -125,7 +123,7 @@ router.get('/v2/:user/:package/:file.pdf', function(req, res, next){
 });
 
 /* Match CRAN */
-router.get('/v2/:user/:package/citation:ext?', function(req, res, next){
+router.get('/:user/:package/citation:ext?', function(req, res, next){
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
   var ext = req.params.ext || '.html';
@@ -148,7 +146,7 @@ function doc_path(file, package){
   }
 }
 
-router.get('/v2/:user/:package/doc/:file?', function(req, res, next){
+router.get('/:user/:package/doc/:file?', function(req, res, next){
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
   var file = req.params.file;

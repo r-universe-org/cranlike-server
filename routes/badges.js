@@ -20,6 +20,9 @@ function send_badge(badge, user, res, linkto){
 }
 
 router.get('/:user/badges', function(req, res, next) {
+  if((req.headers['accept'] || "").includes("html")){
+    return next(); //fall through to virtual dashboard
+  }
   packages.distinct('Package', {_user : req.params.user, '_builder.registered' : {$ne: 'false'}}).then(function(x){
     x.push(":name");
     x.push(":registry");

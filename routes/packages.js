@@ -69,6 +69,9 @@ router.get('/:user/landing', function(req, res, next) {
 });
 
 router.get('/:user/packages', function(req, res, next) {
+  if((req.headers['accept'] || "").includes("html")){
+    return next(); //fall through to virtual dashboard
+  }
   packages.distinct('Package', {_user : req.params.user}).then(function(x){
     res.send(x);
   }).catch(error_cb(400, next));
