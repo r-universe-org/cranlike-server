@@ -204,10 +204,10 @@ function send_frontend_js(req, res){
 function send_dashboard(req, res, file){
   if(req.hostname.includes("localhost")){
     res.set('Cache-control', `no-store`)
-    res.sendFile(path.join(__dirname, `../../dashboard-v2/frontend/${file}`));
+    res.sendFile(path.join(__dirname, `../../dashboard/frontend/${file}`));
   } else {
     res.set('Cache-control', 'public, max-age=300');
-    proxy_url(`https://jeroen.github.io/dashboard-v2/frontend/${file}`, res);
+    proxy_url(`https://r-universe-org.github.io/dashboard/frontend/${file}?nocache=${req.query.nocache}`, res);
   }
 }
 
