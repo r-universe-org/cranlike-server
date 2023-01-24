@@ -3,8 +3,8 @@ const createError = require('http-errors');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
-const send_dashboard_html = tools.send_dashboard_html;
-const send_dashboard_js = tools.send_dashboard_js;
+const send_frontend_html = tools.send_frontend_html;
+const send_frontend_js = tools.send_frontend_js;
 const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'feed.xml'];
 
 /* Error generator */
@@ -23,18 +23,23 @@ router.get("/v2/:user", function(req, res, next) {
     if(req.path.substr(-1) != '/'){
       res.redirect(`/v2/${user}/`);
     } else {
-      send_dashboard_html(req, res);
+      send_frontend_html(req, res);
     }
   }).catch(error_cb(404, next));
 });
 
 //TODO: is there a better way
 router.get("/v2/:user/articles*", function(req, res, next) {
-  send_dashboard_html(req, res);
+  send_frontend_html(req, res);
 });
 
-router.get("/v2/:user/homepage.js", function(req, res, next) {
-  send_dashboard_js(req, res);
+router.get("/v2/:user/frontend/frontend.js", function(req, res, next) {
+  send_frontend_js(req, res);
+});
+
+//hack to support <base href="/"> locally
+router.get("/frontend/frontend.js", function(req, res, next) {
+  send_frontend_js(req, res);
 });
 
 //Middleware: test if package exists, possibly fix case mismatch, otherwise 404
@@ -42,7 +47,7 @@ router.get("/v2/:user/:package*", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   if(tablist.includes(package)) {
-    send_dashboard_html(req, res);
+    send_frontend_html(req, res);
   } else {
     find_package(user, package).then(function(x){
       if(x.Package != package){
@@ -61,7 +66,7 @@ router.get("/v2/:user/:package", function(req, res, next) {
     if(req.path.substr(-1) == '/'){
       res.redirect(`/v2/${user}/${package}`);
     } else {
-      send_dashboard_html(req, res);
+      send_frontend_html(req, res);
     }
   }).catch(error_cb(400, next));
 });

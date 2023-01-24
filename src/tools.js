@@ -193,25 +193,27 @@ function proxy_url(url, res){
   })
 }
 
-function send_dashboard_html(req, res){
-  send_dashboard(req, res, 'homepage.html')
+function send_frontend_html(req, res){
+  send_dashboard(req, res, 'frontend.html')
 }
 
-function send_dashboard_js(req, res){
-  send_dashboard(req, res, 'homepage.js')
+function send_frontend_js(req, res){
+  send_dashboard(req, res, 'frontend.js')
 }
 
 function send_dashboard(req, res, file){
   if(req.hostname.includes("localhost")){
-    res.sendFile(path.join(__dirname, `../../dashboard-v2/homepage/${file}`));
-  } else{
-    proxy_url(`https://jeroen.github.io/dashboard-v2/homepage/${file}`, res);
+    res.set('Cache-control', `no-store`)
+    res.sendFile(path.join(__dirname, `../../dashboard-v2/frontend/${file}`));
+  } else {
+    res.set('Cache-control', 'public, max-age=300');
+    proxy_url(`https://jeroen.github.io/dashboard-v2/frontend/${file}`, res);
   }
 }
 
 module.exports = {
-  send_dashboard_js : send_dashboard_js,
-  send_dashboard_html : send_dashboard_html,
+  send_frontend_js : send_frontend_js,
+  send_frontend_html : send_frontend_html,
   send_extracted_file : send_extracted_file,
   test_if_universe_exists : test_if_universe_exists,
   get_registry_info : get_registry_info,
