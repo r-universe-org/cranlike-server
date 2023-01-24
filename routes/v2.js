@@ -1,9 +1,10 @@
-const path = require('path');
 const express = require('express');
 const createError = require('http-errors');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
+const send_dashboard_html = tools.send_dashboard_html;
+const send_dashboard_js = tools.send_dashboard_js;
 const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'feed.xml'];
 
 /* Error generator */
@@ -14,20 +15,6 @@ function error_cb(status, next) {
   }
 }
 
-function proxy_url(url, res){
-  return fetch(url).then(function(response){
-    var type = response.headers.get("Content-Type");
-    return response.text().then(function(txt){
-      return res.type(type).status(response.status).send(txt);
-    });
-  })
-}
-
-function send_dashboard_html(res){
-  //res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
-  return proxy_url('https://jeroen.github.io/dashboard-v2/homepage.html', res);
-}
-
 //TODO: unify with /landing ?
 router.get("/v2/:user", function(req, res, next) {
   var user = req.params.user;
@@ -36,17 +23,18 @@ router.get("/v2/:user", function(req, res, next) {
     if(req.path.substr(-1) != '/'){
       res.redirect(`/v2/${user}/`);
     } else {
-      send_dashboard_html(res);
+      send_dashboard_html(req, res);
     }
   }).catch(error_cb(404, next));
 });
 
 //TODO: is there a better way
 router.get("/v2/:user/articles*", function(req, res, next) {
-  var user = req.params.user;
-  tools.test_if_universe_exists(user).then(function(x){
-    res.sendFile(path.join(__dirname, '../homepage/homepage.html'));
-  }).catch(error_cb(404, next));
+  send_dashboard_html(req, res);
+});
+
+router.get("/v2/:user/homepage.js", function(req, res, next) {
+  send_dashboard_js(req, res);
 });
 
 //Middleware: test if package exists, possibly fix case mismatch, otherwise 404
@@ -54,7 +42,7 @@ router.get("/v2/:user/:package*", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   if(tablist.includes(package)) {
-    send_dashboard_html(res);
+    send_dashboard_html(req, res);
   } else {
     find_package(user, package).then(function(x){
       if(x.Package != package){
@@ -73,7 +61,7 @@ router.get("/v2/:user/:package", function(req, res, next) {
     if(req.path.substr(-1) == '/'){
       res.redirect(`/v2/${user}/${package}`);
     } else {
-      send_dashboard_html(res);
+      send_dashboard_html(req, res);
     }
   }).catch(error_cb(400, next));
 });

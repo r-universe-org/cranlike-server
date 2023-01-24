@@ -3,6 +3,7 @@ const token = Buffer.from('Z2hwX2IxR2RLZGN0cEZGSXZYSHUyWnlpZ0dXNmxGcHNzbTBxNGJ0V
 const zlib = require('zlib');
 const tar = require('tar-stream');
 const mime = require('mime');
+const path = require('path');
 
 function fetch_github(url, opt = {}){
   opt.headers = opt.headers || {'Authorization': 'token ' + token};
@@ -183,7 +184,34 @@ function send_extracted_file(query, filename, req, res, next){
   });
 }
 
+function proxy_url(url, res){
+  return fetch(url).then(function(response){
+    var type = response.headers.get("Content-Type");
+    return response.text().then(function(txt){
+      return res.type(type).status(response.status).send(txt);
+    });
+  })
+}
+
+function send_dashboard_html(req, res){
+  send_dashboard(req, res, 'homepage.html')
+}
+
+function send_dashboard_js(req, res){
+  send_dashboard(req, res, 'homepage.js')
+}
+
+function send_dashboard(req, res, file){
+  if(req.hostname.includes("localhost")){
+    res.sendFile(path.join(__dirname, `../../dashboard-v2/homepage/${file}`));
+  } else{
+    proxy_url(`https://jeroen.github.io/dashboard-v2/homepage/${file}`, res);
+  }
+}
+
 module.exports = {
+  send_dashboard_js : send_dashboard_js,
+  send_dashboard_html : send_dashboard_html,
   send_extracted_file : send_extracted_file,
   test_if_universe_exists : test_if_universe_exists,
   get_registry_info : get_registry_info,
