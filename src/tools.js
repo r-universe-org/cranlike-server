@@ -184,13 +184,23 @@ function send_extracted_file(query, filename, req, res, next){
   });
 }
 
+
+var store = {};
 function proxy_url(url, res){
-  return fetch(url).then(function(response){
+  var key = url.replace(/.*\//, "");
+  var now = new Date();
+  var cache = store[key] || {};
+  if((now - cache.time) < 300 * 1000){
+    return res.type(cache.type).status(cache.status).send(cache.txt);
+  }
+  return fetch(url + '?nocache=' + Math.random()).then(function(response){
+    console.log(`Updating cache: ${key}`);
     var type = response.headers.get("Content-Type");
     return response.text().then(function(txt){
+      store[key] = {time: now, type: type, status: response.status, txt: txt};
       return res.type(type).status(response.status).send(txt);
     });
-  })
+  });
 }
 
 function send_frontend_html(req, res){
@@ -207,7 +217,7 @@ function send_dashboard(req, res, file){
     res.sendFile(path.join(__dirname, `../../dashboard/frontend/${file}`));
   } else {
     res.set('Cache-control', 'public, max-age=300');
-    proxy_url(`https://r-universe-org.github.io/dashboard/frontend/${file}?nocache=${req.query.nocache}`, res);
+    proxy_url(`https://r-universe-org.github.io/dashboard/frontend/${file}`, res);
   }
 }
 
