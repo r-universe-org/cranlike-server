@@ -1,5 +1,6 @@
 const express = require('express');
 const createError = require('http-errors');
+const xmlbuilder = require('xmlbuilder');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
@@ -174,6 +175,39 @@ router.get('/:user/:package/doc/:file?', function(req, res, next){
   var file = req.params.file;
   var filename = file ? doc_path(file, package) : new RegExp(`^${package}/inst/doc/(.+)$`);
   send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
+});
+
+router.get('/:user/:package/sitemap.xml', function(req, res, next) {
+  find_package(req.params.user, req.params.package).then(function(x){
+    var xml = xmlbuilder.create('urlset', {encoding:"UTF-8"});
+    xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
+    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}`);
+    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/json`);
+    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/${x.Package}.pdf`);
+    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/manual.html`);
+    var assets = x['_contents'] && x['_contents'].assets || [];
+    if(assets.includes('extra/NEWS.html')){
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/NEWS`);
+    }
+    if(assets.includes('extra/NEWS.txt')){
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/NEWS.txt`);
+    }
+    if(assets.includes('extra/citation.html')){
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/citation`);
+    }
+    if(assets.includes('extra/citation.txt')){
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/citation.txt`);
+    }
+    if(assets.includes('extra/citation.cff')){
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/citation.cff`);
+    }
+    var vignettes = x['_contents'] && x['_contents'].vignettes || [];
+    vignettes.map(function(vignette){
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/${vignette.source}`);
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/${vignette.filename}`);
+    });
+    res.type('application/xml').send(xml.end({ pretty: true}));
+  }).catch(error_cb(400, next));
 });
 
 function find_package(user, package){

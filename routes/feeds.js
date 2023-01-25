@@ -122,6 +122,25 @@ router.get('/:user/feed.xml', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+router.get('/:user/sitemap_index.xml', function(req, res, next) {
+  var user = req.params.user;
+  var query = qf({_user: user, _registered: true, _type: 'src'}, true);
+  return packages.find(query).sort({'Package' : 1}).project({
+    _id: 0,
+    package: '$Package',
+    user: '$_user'
+  }).toArray().then(function(docs){
+    if(docs.length){
+      var xml = xmlbuilder.create('sitemapindex', {encoding:"UTF-8"});
+      xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
+      docs.forEach(x => xml.ele('sitemap').ele('loc', `https://${x.user}.r-universe.dev/${x.package}/sitemap.xml`));
+      res.type('application/xml').send(xml.end({ pretty: true}));
+    } else {
+      res.status(404, 'No packages found');
+    }
+  }).catch(error_cb(400, next));
+});
+
 function convert_date(timestamp){
   if(!timestamp) return;
   const date = new Date(parseInt(timestamp)*1000);
