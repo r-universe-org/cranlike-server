@@ -190,16 +190,27 @@ function proxy_url(url, res){
   var key = url.replace(/.*\//, "");
   var now = new Date();
   var cache = store[key] || {};
-  if((now - cache.time) < 300 * 1000){
+  if((now - cache.time) < 300000){
     return res.type(cache.type).status(cache.status).send(cache.txt);
   }
   return fetch(url + '?nocache=' + Math.random()).then(function(response){
+    if(response.status > 399){
+      throw `GitHub pages sent HTTP ${response.status}`;
+    }
     console.log(`Updating cache: ${key}`);
     var type = response.headers.get("Content-Type");
     return response.text().then(function(txt){
       store[key] = {time: now, type: type, status: response.status, txt: txt};
       return res.type(type).status(response.status).send(txt);
     });
+  }).catch(function(err){
+    console.log(`Failed to update ${key}: ${err.cause || err}`)
+    if(cache.status){
+      store[key].time = now; //keep cache another round
+      return res.type(cache.type).status(cache.status).send(cache.txt);
+    } else {
+      res.status(500).send(err);
+    }
   });
 }
 
