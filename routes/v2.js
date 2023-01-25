@@ -93,8 +93,20 @@ router.get("/:user/:package", function(req, res, next) {
 router.get("/:user/:package/json", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
-  find_package(user, package).then(function(x){
-    res.send(x);
+  packages.find({_user : user, Package : package}).toArray().then(function(docs){
+    var src = docs.find(x => x['_type'] == 'src');
+    src.binaries = docs.filter(x => x.Built).map(function(x){
+      return {
+        r: x.Built.R,
+        os: x['_type'],
+        version: x.Version,
+        date: x._created,
+        distro: (x['_type'] == 'linux' ? x['_builder'].distro : undefined),
+        commit: (x['_builder'] && x['_builder'].commit && x['_builder'].commit.id),
+        fileid: x['_fileid']
+      }
+    });
+    return res.send(src);
   }).catch(error_cb(400, next));
 });
 
