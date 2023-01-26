@@ -20,6 +20,7 @@ router.get('/:user', function(req, res, next) {
   const user = req.params.user;
   tools.test_if_universe_exists(user).then(function(exists){
     if(exists){
+      res.set('Cache-control', 'private'); //html or json
       const accept = req.headers['accept'];
       if(accept && accept.includes('html')){
         res.redirect(`/${user}/builds`);
@@ -34,6 +35,7 @@ router.get('/:user', function(req, res, next) {
 
 /* Articles is now a fake endpoint for the front-end only */
 router.get('/:user/articles', function(req, res, next){
+  res.set('Cache-control', 'private'); //html or json
   if((req.headers['accept'] || "").includes("html")){
     return next(); //fall through to virtual dashboard
   }

@@ -52,6 +52,7 @@ function delete_by_query(query){
 }
 
 router.get('/:user/packages', function(req, res, next) {
+  res.set('Cache-control', 'private'); //html or json
   if((req.headers['accept'] || "").includes("html")){
     return next(); //fall through to virtual dashboard
   }
