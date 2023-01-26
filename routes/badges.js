@@ -11,6 +11,20 @@ function error_cb(status, next) {
   }
 }
 
+function qf(x, query_by_user_or_maintainer){
+  const user = x._user;
+  if(user == ":any"){
+    delete x._user;
+  } else if(query_by_user_or_maintainer) {
+    delete x._user;
+    x['$or'] = [
+      {'_user': user},
+      {'_builder.maintainer.login': user, '_selfowned': true}
+    ];
+  }
+  return x;
+}
+
 function send_badge(badge, user, res, linkto){
   var svg = badgen.badgen(badge);
   var url = linkto || 'https://' + user + '.r-universe.dev';
@@ -46,7 +60,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
       badge.status = user;
       send_badge(badge, user, res);
     } else if(req.params.meta == 'total'){
-      return packages.distinct('Package', {_user : user, _type: 'src', '_builder.registered' : {$ne: 'false'}}).then(function(x){
+      return packages.distinct('Package', qf({_user : user, _type: 'src', '_builder.registered' : {$ne: 'false'}}, true)).then(function(x){
         badge.status = x.length + " packages";
         send_badge(badge, user, res);
       });
