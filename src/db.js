@@ -23,6 +23,7 @@ connection.then(async function(client) {
   /* Speed up common query fields */
   /* NB: Dont use indexes with low cardinality (few unique values) */
   await packages.createIndex("MD5sum");
+  await packages.createIndex("Package");
   await packages.createIndex("_user");
   await packages.createIndex("_published");
   await packages.createIndex("_builder.commit.time");
