@@ -73,7 +73,10 @@ router.get("/:user/:package*", function(req, res, next) {
     }).catch(error_cb(404, next));
   } else {
     find_package(user, package).then(function(x){
-      if(x.Package != package){
+      if(x._user != user){
+        /* nginx does not understand cross-domain redirect with relative path */
+        res.redirect(req.path.replace(`/${user}/${package}`, `https://${x._user}.r-universe.dev/${x.Package}`));
+      } else if(x.Package != package){
         res.redirect(req.path.replace(`/${user}/${package}`, `/${user}/${x.Package}`));
       } else {
         next();
@@ -217,7 +220,14 @@ function find_package(user, package){
   return packages.findOne(query).then(function(x){
     if(x) return x;
     /* try case insensitive */
-    query.Package = {$regex: `^${package}$`, $options: 'i'};
+    query = {
+      Package : {$regex: `^${package}$`, $options: 'i'},
+      '_type' : 'src',
+      '$or' : [
+        {'_user': user},
+        {'_builder.maintainer.login': user, '_selfowned': true}
+      ]
+    };
     return packages.findOne(query).then(function(x){
       if(x) return x;
       throw `Package ${user}/${package} not found`;
