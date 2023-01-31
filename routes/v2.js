@@ -101,6 +101,15 @@ router.get("/:user/:package/json", function(req, res, next) {
   var package = req.params.package;
   packages.find({_user : user, Package : package}).toArray().then(function(docs){
     var src = docs.find(x => x['_type'] == 'src');
+    var failure = docs.find(x => x['_type'] == 'failure');
+    if(failure){
+      var failbuild = failure['_builder'] || {};
+      src.failure = {
+        commit: failbuild.commit,
+        url: failbuild.url,
+        date: failure._created
+      }
+    }
     src.binaries = docs.filter(x => x.Built).map(function(x){
       return {
         r: x.Built.R,
