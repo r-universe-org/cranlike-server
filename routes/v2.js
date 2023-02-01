@@ -33,6 +33,11 @@ router.get('/:user', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+/* robot.txt is not a package */
+router.get('/:user/robots.txt', function(req, res, next) {
+  res.type('text/plain').send(`Sitemap: https://${req.params.user}.r-universe.dev/sitemap_index.xml\n`);
+});
+
 /* Articles is now a fake endpoint for the front-end only */
 router.get('/:user/articles', function(req, res, next){
   res.set('Cache-control', 'private'); //html or json
