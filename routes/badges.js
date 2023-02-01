@@ -34,6 +34,7 @@ function send_badge(badge, user, res, linkto){
 }
 
 router.get('/:user/badges', function(req, res, next) {
+  res.set('Cache-control', 'private'); //html or json
   if((req.headers['accept'] || "").includes("html")){
     return next(); //fall through to virtual dashboard
   }
