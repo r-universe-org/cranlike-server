@@ -1,6 +1,8 @@
 const express = require('express');
 const createError = require('http-errors');
 const xmlbuilder = require('xmlbuilder');
+const cheerio = require('cheerio');
+const hljs = require('highlight.js');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
@@ -192,6 +194,16 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
   tools.get_extracted_file(query, `${package}/readme.html`).then(function(html){
+    if(req.query.highlight === 'hljs'){
+      const $ = cheerio.load(html, null, false);
+      $('[class^="language-"]').each(function(i, el){
+        var el = $(el)
+        var lang = el.attr('class').substring(9);
+        var out = hljs.highlight(el.text(), {language: lang}).value
+        el.empty().append(out);
+      });
+      html = $.html();
+    }
     res.send(html);
   }).catch(error_cb(400, next));
 });
