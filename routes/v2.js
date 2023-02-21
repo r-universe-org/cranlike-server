@@ -196,11 +196,13 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
   tools.get_extracted_file(query, `${package}/readme.html`).then(function(html){
     if(req.query.highlight === 'hljs'){
       const $ = cheerio.load(html, null, false);
-      $('[class^="language-"]').each(function(i, el){
-        var el = $(el)
-        var lang = el.attr('class').substring(9);
-        var out = hljs.highlight(el.text(), {language: lang}).value
-        el.empty().append(out);
+      $('code[class^="language-"]').each(function(i, el){
+        try { //hljs errors for unsupported languages
+          var el = $(el)
+          var lang = el.attr('class').substring(9);
+          var out = hljs.highlight(el.text(), {language: lang}).value
+          el.addClass("hljs").empty().append(out);
+        } catch (e) { }
       });
       html = $.html();
     }
