@@ -1,7 +1,7 @@
 /* dummy token for GH api limits */
 const token = Buffer.from('Z2hwX2IxR2RLZGN0cEZGSXZYSHUyWnlpZ0dXNmxGcHNzbTBxNGJ0Vg==', 'base64').toString();
-const zlib = require('zlib');
 const tar = require('tar-stream');
+const gunzip = require('gunzip-maybe');
 const mime = require('mime');
 const path = require('path');
 
@@ -116,7 +116,6 @@ function etagify(x){
 /* See https://www.npmjs.com/package/tar-stream#Extracting */
 function tar_stream_file(hash, res, filename){
   var input = bucket.openDownloadStream(hash);
-  var gunzip = zlib.createGunzip();
   return new Promise(function(resolve, reject) {
 
     /* callback to extract single file from tarball */
@@ -157,9 +156,8 @@ function tar_stream_file(hash, res, filename){
     var extract = tar.extract()
       .on('entry', process_entry)
       .on('finish', finish_stream);
-    input.pipe(gunzip).pipe(extract);
+    input.pipe(gunzip()).pipe(extract);
   }).finally(function(){
-    gunzip.destroy();
     input.destroy();
   });
 }
@@ -184,6 +182,63 @@ function send_extracted_file(query, filename, req, res, next){
   });
 }
 
+function extract_file(input, filename){
+  var extract = tar.extract();
+  var done = false;
+
+  return new Promise(function(resolve, reject) {
+    extract.on('entry', function(header, file_stream, next_entry) {
+      if (!done && header.name === filename) {
+        done = true;
+        streamToString(file_stream).then(function(buf){
+          resolve(buf);
+        }).catch(function(err){
+          reject(err);
+        }).finally(function(){
+          extract.destroy();
+        });
+      } else {
+        next_entry();
+      }
+      file_stream.resume();
+    });
+
+    extract.on('finish', function() {
+      if (!done) {
+        reject(`file "${filename}" not found in tarball`);
+        extract.destroy();
+      }
+    });
+
+    extract.on('error', function(err) {
+      reject(err);
+      extract.destroy();
+    });
+    return input.pipe(gunzip()).pipe(extract);
+  });
+}
+
+function get_extracted_file(query, filename){
+  return packages.findOne(query).then(function(x){
+    if(!x){
+      throw `Package ${query.Package} not found in ${query['_user']}`;
+    }
+    var hash = x.MD5sum;
+    return bucket.find({_id: hash}, {limit:1}).hasNext().then(function(x){
+      if(!x)
+        throw `Failed to locate file in gridFS: ${hash}`;
+      return extract_file(bucket.openDownloadStream(hash), filename);
+    });
+  });
+}
+
+async function streamToString(stream) {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString("utf-8");
+}
 
 var store = {};
 function proxy_url(url, res){
@@ -236,6 +291,8 @@ module.exports = {
   send_frontend_js : send_frontend_js,
   send_frontend_html : send_frontend_html,
   send_extracted_file : send_extracted_file,
+  extract_file : extract_file,
+  get_extracted_file: get_extracted_file,
   test_if_universe_exists : test_if_universe_exists,
   get_registry_info : get_registry_info,
   get_submodule_hash : get_submodule_hash,

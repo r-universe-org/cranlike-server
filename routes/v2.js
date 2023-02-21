@@ -176,7 +176,6 @@ router.get('/:user/:package/citation:ext?', function(req, res, next){
 // TODO: move all these files under /inst/doc at build time?
 function doc_path(file, package){
   switch(file.toLowerCase()) {
-    case "readme":
     case "readme.html":
       return `${package}/readme.html`;
     case "readme.md":
@@ -187,6 +186,15 @@ function doc_path(file, package){
       return `${package}/inst/doc/${file}`;
   }
 }
+
+/* processed html-snipped (not a full doc) */
+router.get('/:user/:package/doc/readme', function(req, res, next){
+  var package = req.params.package;
+  var query = {_user: req.params.user, _type: 'src', Package: package};
+  tools.get_extracted_file(query, `${package}/readme.html`).then(function(html){
+    res.send(html);
+  }).catch(error_cb(400, next));
+});
 
 router.get('/:user/:package/doc/:file?', function(req, res, next){
   var package = req.params.package;

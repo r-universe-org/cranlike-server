@@ -6,7 +6,6 @@ const md5file = require('md5-file');
 const rdesc = require('rdesc-parser');
 const fs = require('fs');
 const zlib = require('zlib');
-const gunzip = require('gunzip-maybe');
 const tar = require('tar-stream');
 const hard_dep_types = require('r-constants').essential_dependency_types;
 const soft_dep_types = require('r-constants').optional_dependency_types;
@@ -513,53 +512,9 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
 });
 
 function extract_json_metadata(input, package){
-  return extract_file(input, `${package}/extra/contents.json`).then(function(str){
+  return tools.extract_file(input, `${package}/extra/contents.json`).then(function(str){
     return JSON.parse(str);
   }).catch(function(e){return {}});
-}
-
-function extract_file(input, filename){
-  var extract = tar.extract();
-  var done = false;
-
-  return new Promise(function(resolve, reject) {
-    extract.on('entry', function(header, file_stream, next_entry) {
-      if (!done && header.name === filename) {
-        done = true;
-        streamToString(file_stream).then(function(buf){
-          resolve(buf);
-        }).catch(function(err){
-          reject(err);
-        }).finally(function(){
-          extract.destroy();
-        });
-      } else {
-        next_entry();
-      }
-      file_stream.resume();
-    });
-
-    extract.on('finish', function() {
-      if (!done) {
-        reject(`file "${filename}" not found in tarball`);
-        extract.destroy();
-      }
-    });
-
-    extract.on('error', function(err) {
-      reject(err);
-      extract.destroy();
-    });
-    return input.pipe(gunzip()).pipe(extract);
-  });
-}
-
-async function streamToString(stream) {
-  const chunks = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks).toString("utf-8");
 }
 
 module.exports = router;
