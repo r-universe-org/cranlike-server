@@ -122,6 +122,15 @@ router.get('/:user/feed.xml', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
+router.get('/shared/sitemap_index.xml', function(req, res, next) {
+  packages.distinct('_user', {_registered: true, _type: 'src'}).then(function(users){
+    var xml = xmlbuilder.create('sitemapindex', {encoding:"UTF-8"});
+    xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
+    users.forEach(x => xml.ele('sitemap').ele('loc', `https://${x}.r-universe.dev/sitemap_index.xml`));
+    res.type('application/xml').send(xml.end({ pretty: true}));
+  }).catch(error_cb(400, next));
+});
+
 router.get('/:user/sitemap_index.xml', function(req, res, next) {
   var user = req.params.user;
   var query = qf({_user: user, _registered: true, _type: 'src'}, true);
