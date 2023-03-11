@@ -315,6 +315,14 @@ function calculate_score(description){
   return 1 + Math.log10(Math.max(1, score));
 }
 
+function is_self_owned(description, builder, user){
+  if(description['_owner'] === user || builder.maintainer.login === user){
+    return true;
+  }
+  var URL = description.URL || "";
+  return URL.includes(`${user}.r-universe.dev`);
+}
+
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
   var user = req.params.user;
   var package = req.params.package;
@@ -345,7 +353,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_published'] = new Date();
       description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
-      description['_selfowned'] = description['_owner'] === user || builder.maintainer.login === user;
+      description['_selfowned'] = is_self_owned(description, builder, user);
       description['_registered'] = (builder.registered !== "false");
       description['MD5sum'] = md5;
       description = merge_dependencies(description);
@@ -426,7 +434,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_published'] = new Date();
       description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
-      description['_selfowned'] = description['_owner'] === user || builder.maintainer.login === user;
+      description['_selfowned'] = is_self_owned(description, builder, user);
       description['_registered'] = (builder.registered !== "false");
       description['MD5sum'] = md5;
       description = merge_dependencies(description);
