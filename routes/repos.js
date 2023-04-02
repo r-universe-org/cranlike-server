@@ -280,6 +280,10 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/', function(req, res, ne
   packages_index(query, 'json', req, res, next);
 });
 
+router.get('/:user/bin/linux/:distro/:built', function(req, res, next) {
+  res.redirect(req.path + '/src/contrib');
+});
+
 /* Index available R builds for binary pkgs */
 router.get('/:user/bin/windows/contrib', function(req, res, next) {
   count_by_built(req.params.user, 'win').pipe(res);
