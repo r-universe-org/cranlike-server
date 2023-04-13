@@ -113,6 +113,15 @@ function etagify(x){
   return 'W/"' +  x + '"';
 }
 
+function stream2buffer(stream) {
+    return new Promise((resolve, reject) => {
+        const _buf = [];
+        stream.on("data", (chunk) => _buf.push(chunk));
+        stream.on("end", () => resolve(Buffer.concat(_buf)));
+        stream.on("error", (err) => reject(err));
+    });
+}
+
 /* See https://www.npmjs.com/package/tar-stream#Extracting */
 function tar_stream_file(hash, res, filename){
   var input = bucket.openDownloadStream(hash);
@@ -218,6 +227,30 @@ function extract_file(input, filename){
   });
 }
 
+function extract_multi_files(input, files){
+  var output = Array(files.length);
+  return new Promise(function(resolve, reject) {
+    function process_entry(header, filestream, next_file) {
+      var index = files.indexOf(header.name);
+      if(index > -1){
+        stream2buffer(filestream).then(function(buf){
+          output[index] = buf;
+        });
+      } else {
+        filestream.resume();
+      }
+      next_file(); //ready for next entry
+    }
+    function finish_stream(){
+      resolve(output);
+    }
+    var extract = tar.extract().on('entry', process_entry).on('finish', finish_stream);
+    input.pipe(gunzip()).pipe(extract);
+  }).finally(function(){
+    input.destroy();
+  });
+}
+
 function get_extracted_file(query, filename){
   return packages.findOne(query).then(function(x){
     if(!x){
@@ -227,7 +260,11 @@ function get_extracted_file(query, filename){
     return bucket.find({_id: hash}, {limit:1}).hasNext().then(function(x){
       if(!x)
         throw `Failed to locate file in gridFS: ${hash}`;
-      return extract_file(bucket.openDownloadStream(hash), filename);
+      if(Array.isArray(filename)){
+        return extract_multi_files(bucket.openDownloadStream(hash), filename);
+      } else {
+        return extract_file(bucket.openDownloadStream(hash), filename);
+      }
     });
   });
 }
