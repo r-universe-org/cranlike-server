@@ -26,8 +26,6 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       if(!format){
         return res.redirect(req.path.replace(/\/$/, '') + '/csv');
       }
-      if(format != 'csv')
-        throw "Only csv format is supported for now";
       var ds = datasets.find(x => x.name == name);
       if(!ds)
         throw `No data "${name}" found in ${package}`;
@@ -42,9 +40,17 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       await session.FS.writeFile('Rdata.rdx', rdx);
       await session.FS.writeFile('Rdata.rdb', rdb);
       await session.evalR(`lazyLoad('Rdata', filter = function(x) x=='${name}')`);
-      await session.evalR(`write.csv(${name}, "output.csv")`)
-      var csvdata = await session.FS.readFile("output.csv");
-      res.attachment(`${name}.csv`).send(Buffer.from(csvdata, 'binary'));
+      if(format == 'csv'){
+        await session.evalR(`write.csv(${name}, "output.csv")`)
+        var outbuf = await session.FS.readFile("output.csv");
+        res.attachment(`${name}.csv`).send(Buffer.from(outbuf, 'binary'));
+      } else if(format == 'rda') {
+        await session.evalR(`save(${name}, file="output.rda")`);
+        var outbuf = await session.FS.readFile("output.rda");
+        res.attachment(`${name}.RData`).send(Buffer.from(outbuf, 'binary'));
+      } else {
+        throw "Only csv and rda format is supported for now";
+      }
     }
   }).catch(error_cb(400, next)).finally(function(){
     session.close();
