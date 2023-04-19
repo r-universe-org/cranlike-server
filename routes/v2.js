@@ -210,6 +210,26 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
   }).catch(error_cb(400, next));
 });
 
+/* extract single page from manual */
+router.get('/:user/:package/doc/page/:id', function(req, res, next){
+  var page = req.params.id;
+  var package = req.params.package;
+  var query = {_user: req.params.user, _type: 'src', Package: package};
+  tools.get_extracted_file(query, `${package}/extra/${package}.html`).then(function(html){
+    const $ = cheerio.load(html, null, false);
+    const el = $(`#${page}`);
+    el.find(".help-page-title").replaceWith(el.find(".help-page-title h2"));
+    el.find('a').each(function(i, elm) {
+      var link = $(this).attr("href");
+      if(link && link.charAt(0) == '#'){
+        $(this).attr("href", "../manual.html" + link);
+      }
+    });
+    el.find('hr').remove();
+    res.send(el.html());
+  }).catch(error_cb(400, next));
+});
+
 router.get('/:user/:package/doc/:file?', function(req, res, next){
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
