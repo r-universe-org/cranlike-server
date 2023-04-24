@@ -145,7 +145,7 @@ router.get('/:user/sitemap_index.xml', function(req, res, next) {
       docs.forEach(x => xml.ele('sitemap').ele('loc', `https://${x.user}.r-universe.dev/${x.package}/sitemap.xml`));
       res.type('application/xml').send(xml.end({ pretty: true}));
     } else {
-      res.status(404, 'No packages found');
+      res.status(404).send('No packages found');
     }
   }).catch(error_cb(400, next));
 });
