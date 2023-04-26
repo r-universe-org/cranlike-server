@@ -3,6 +3,13 @@ const createError = require('http-errors');
 const webr = require("@r-wasm/webr");
 const router = express.Router();
 const tools = require("../src/tools.js");
+const webr_options = {
+  REnv: {
+    R_HOME: '/usr/lib/R',
+    R_DEFAULT_PACKAGES: 'NULL',
+    R_ENABLE_JIT: '0'
+  }
+};
 
 function error_cb(status, next) {
   return function(err){
@@ -17,7 +24,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   var name = req.params.name;
   var format = req.params.format;
   var query = {'_user': user, 'Package': package, '_type': 'src'};
-  var session = new webr.WebR();
+  var session = new webr.WebR(webr_options);
   return packages.findOne(query).then(async function(x){
     var datasets = x['_contents'] && x['_contents'].datasets || [];
     if(!name) {
@@ -41,7 +48,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       await session.FS.writeFile('Rdata.rdb', rdb);
       await session.evalR(`lazyLoad('Rdata', filter = function(x) x=='${name}')`);
       if(format == 'csv'){
-        await session.evalR(`write.csv(${name}, "output.csv")`)
+        await session.evalR(`utils::write.csv(${name}, "output.csv", row.names=FALSE)`)
         var outbuf = await session.FS.readFile("output.csv");
         res.attachment(`${name}.csv`).send(Buffer.from(outbuf, 'binary'));
       } else if(format == 'rda') {
