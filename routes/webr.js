@@ -19,7 +19,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   var name = req.params.name;
   var format = req.params.format;
   var query = {'_user': user, 'Package': package, '_type': 'src'};
-  var key = `${package}_${name}`
+  var key = `${package}_${name}`.replace(/\W+/g, "");
   return packages.findOne(query).then(async function(x){
     var datasets = x['_contents'] && x['_contents'].datasets || [];
     if(!name) {
@@ -41,13 +41,14 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       await session.init();
       await session.FS.writeFile(`${key}.rdx`, rdx);
       await session.FS.writeFile(`${key}.rdb`, rdb);
-      await session.evalR(`lazyLoad('${key}', filter = function(x) x=='${name}')`);
+      await session.evalRVoid(`${key} <- new.env()`);
+      await session.evalRVoid(`lazyLoad('${key}', envir=${key}, filter=function(x) x=='${name}')`);
       if(format == 'csv'){
-        await session.evalR(`utils::write.csv(${name}, "${key}.out", row.names=FALSE)`)
+        await session.evalRVoid(`utils::write.csv(${key}$${name}, "${key}.out", row.names=FALSE)`)
         var outbuf = await session.FS.readFile(`${key}.out`);
         res.attachment(`${name}.csv`).send(Buffer.from(outbuf, 'binary'));
       } else if(format == 'rda') {
-        await session.evalR(`save(${name}, file="${key}.out")`);
+        await session.evalRVoid(`save(${name}, envir=${key}, file="${key}.out")`);
         var outbuf = await session.FS.readFile(`${key}.out`);
         res.attachment(`${name}.RData`).send(Buffer.from(outbuf, 'binary'));
       } else {
