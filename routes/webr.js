@@ -59,6 +59,10 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
         await session.evalRVoid(`save(${name}, envir=${key}, file="${key}.out")`);
         var outbuf = await session.FS.readFile(`${key}.out`);
         res.attachment(`${name}.RData`).send(Buffer.from(outbuf, 'binary'));
+      } else if(format == 'rds') {
+        await session.evalRVoid(`saveRDS(${key}$${name}, file="${key}.out")`);
+        var outbuf = await session.FS.readFile(`${key}.out`);
+        res.attachment(`${name}.rds`).send(Buffer.from(outbuf, 'binary'));
       } else if(format == 'json') {
         var out = await session.evalR(`jsonlite::toJSON(${key}$${name})`);
         var jsontxt = await out.toString();
