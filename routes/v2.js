@@ -217,7 +217,7 @@ router.get('/:user/:package/doc/page/:id', function(req, res, next){
   var query = {_user: req.params.user, _type: 'src', Package: package};
   tools.get_extracted_file(query, `${package}/extra/${package}.html`).then(function(html){
     const $ = cheerio.load(html, null, false);
-    const el = $(`#${page}`);
+    const el = $(`#${page.replace(".", "\\.")}`);
     el.find(".help-page-title").replaceWith(el.find(".help-page-title h2"));
     el.find('a').each(function(i, elm) {
       var link = $(this).attr("href");
