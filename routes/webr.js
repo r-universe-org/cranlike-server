@@ -6,8 +6,13 @@ const tools = require("../src/tools.js");
 
 /* Start webr and download some packages */
 const session = new webr.WebR();
-session.init();
-session.installPackages(['jsonlite', 'writexl']);
+session.init().then(function(){
+  return session.installPackages(['jsonlite', 'writexl']);
+}).then(function(){
+  console.log("webR is ready!");
+}).catch(function(e){
+  console.log("ERROR: problem starting webr! " + e);
+});
 
 function error_cb(status, next) {
   return function(err){
@@ -72,8 +77,8 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       }
     }
   }).catch(error_cb(400, next)).finally(function(){
-    session.evalR(`unlink(c('${key}.rdx', '${key}.rdb', '${key}.out'))`);
-    session.evalR(`rm(${key})`);
+    session.evalRVoid(`unlink(c('${key}.rdx', '${key}.rdb', '${key}.out'))`);
+    session.evalRVoid(`rm(${key})`);
     //session.close();
   });
 });
