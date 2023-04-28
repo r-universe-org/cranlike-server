@@ -3,11 +3,11 @@ const createError = require('http-errors');
 const webr = require("@r-wasm/webr");
 const router = express.Router();
 const tools = require("../src/tools.js");
+
+/* Start webr and download some packages */
 const session = new webr.WebR();
-session.init().then(function(){
-  session.evalRVoid(`webr::install("jsonlite")`)
-  session.evalRVoid(`webr::install("writexl", repos='https://moonlit-chimera-8d3e09.netlify.app/repo')`)
-});
+session.init();
+session.installPackages(['jsonlite', 'writexl']);
 
 function error_cb(status, next) {
   return function(err){
