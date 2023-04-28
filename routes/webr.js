@@ -4,7 +4,10 @@ const webr = require("@r-wasm/webr");
 const router = express.Router();
 const tools = require("../src/tools.js");
 const session = new webr.WebR();
-session.init();
+session.init().then(function(){
+  session.evalRVoid(`webr::install("jsonlite")`)
+  session.evalRVoid(`webr::install("writexl", repos='https://moonlit-chimera-8d3e09.netlify.app/repo')`)
+});
 
 function error_cb(status, next) {
   return function(err){
@@ -51,8 +54,21 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
         await session.evalRVoid(`save(${name}, envir=${key}, file="${key}.out")`);
         var outbuf = await session.FS.readFile(`${key}.out`);
         res.attachment(`${name}.RData`).send(Buffer.from(outbuf, 'binary'));
+      } else if(format == 'json') {
+        var out = await session.evalR(`jsonlite::toJSON(${key}$${name})`);
+        var jsontxt = await out.toString();
+        session.destroy(out);
+        res.type("application/json").send(jsontxt);
+      } else if(format == 'ndjson') {
+        var out = await session.evalRVoid(`jsonlite::stream_out(${key}$${name}, file("${key}.out"))`);
+        var outbuf = await session.FS.readFile(`${key}.out`);
+        res.type("text/plain").send(Buffer.from(outbuf, 'binary'));
+      } else if(format == 'xlsx') {
+        var out = await session.evalRVoid(`writexl::write_xlsx(${key}$${name}, "${key}.out")`);
+        var outbuf = await session.FS.readFile(`${key}.out`);
+        res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").attachment(`${name}.xslx`).send(Buffer.from(outbuf, 'binary'));
       } else {
-        throw "Only csv and rda format is supported for now";
+        throw "Only csv, json, xlsx, rda format is supported";
       }
     }
   }).catch(error_cb(400, next)).finally(function(){
