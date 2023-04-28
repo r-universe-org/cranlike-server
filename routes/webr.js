@@ -75,7 +75,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       } else if(format == 'xlsx') {
         var out = await session.evalRVoid(`writexl::write_xlsx(${key}$${name}, "${key}.out")`);
         var outbuf = await session.FS.readFile(`${key}.out`);
-        res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").attachment(`${name}.xslx`).send(Buffer.from(outbuf, 'binary'));
+        res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").attachment(`${name}.xlsx`).send(Buffer.from(outbuf, 'binary'));
       } else {
         throw "Only csv, json, xlsx, rda format is supported";
       }
