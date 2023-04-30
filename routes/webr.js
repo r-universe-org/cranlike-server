@@ -1,14 +1,12 @@
 const express = require('express');
 const createError = require('http-errors');
-const webr = require("@r-wasm/webr");
+const webr = require("@r-universe/webr");
 const router = express.Router();
 const tools = require("../src/tools.js");
 
 /* Start webr and download some packages */
 const session = new webr.WebR();
 session.init().then(function(){
-  return session.installPackages(['jsonlite', 'writexl']);
-}).then(function(){
   console.log("webR is ready!");
 }).catch(function(e){
   console.log("ERROR: problem starting webr! " + e);
