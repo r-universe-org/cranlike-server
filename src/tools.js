@@ -252,7 +252,8 @@ function extract_multi_files(input, files){
 }
 
 function get_extracted_file(query, filename){
-  return packages.findOne(query).then(function(x){
+  // try to get most recent build to avoid binaries for old versions
+  return packages.find(query, {limit:1}).sort({"_created" : -1}).next().then(function(x){
     if(!x){
       throw `Package ${query.Package} not found in ${query['_user']}`;
     }
