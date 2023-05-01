@@ -50,9 +50,13 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       await session.evalRVoid(`${key} <- new.env()`);
       await session.evalRVoid(`lazyLoad('${key}', envir=${key}, filter=function(x) x=='${name}')`);
       if(format == 'csv'){
-        await session.evalRVoid(`utils::write.csv(${key}$${name}, "${key}.out", row.names=FALSE)`)
+        await session.evalRVoid(`data.table::fwrite(${key}$${name}, "${key}.out")`)
         var outbuf = await session.FS.readFile(`${key}.out`);
         res.attachment(`${name}.csv`).send(Buffer.from(outbuf, 'binary'));
+      } else if(format == 'csv.gz'){
+        await session.evalRVoid(`data.table::fwrite(${key}$${name}, "${key}.out", compress='gzip')`)
+        var outbuf = await session.FS.readFile(`${key}.out`);
+        res.attachment(`${name}.csv.gz`).send(Buffer.from(outbuf, 'binary'));
       } else if(format == 'rda') {
         await session.evalRVoid(`save(${name}, envir=${key}, file="${key}.out")`);
         var outbuf = await session.FS.readFile(`${key}.out`);
