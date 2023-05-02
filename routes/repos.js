@@ -1023,6 +1023,19 @@ router.get('/:user/stats/summary', function(req, res, next){
   }).catch(error_cb(400, next));
 });
 
+router.get('/:user/stats/everyone', function(req, res, next){
+  var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
+  var p1 = packages.distinct('_user', query);
+  var p2 = packages.distinct('_builder.maintainer.login', query);
+  Promise.all([p1, p2]).then((values) => {
+    const out = {
+      universes: values[0].sort(),
+      maintainers: values[1].sort()
+    };
+    res.send(out);
+  }).catch(error_cb(400, next));
+});
+
 /* Legacy redirects */
 router.get('/:user/docs/:pkg/NEWS:ext?', function(req, res, next){
   res.redirect(301, `/${req.params.user}/${req.params.pkg}/NEWS${req.params.ext || ""}`);
