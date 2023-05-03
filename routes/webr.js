@@ -4,10 +4,14 @@ const webr = require("@r-universe/webr");
 const router = express.Router();
 const tools = require("../src/tools.js");
 
-/* Start webr and download some packages */
+/* Start or restart webr */
 var session;
-function reset_webr(){
-  if(session) session.close();
+function reset_webr(if_older_than = 0){
+  const now = new Date();
+  if(session && (now - session.started < if_older_than)){
+    return;
+  }
+  const oldsession = session;
   session = new webr.WebR();
   session.started = new Date();
   session.init().then(function(){
@@ -15,6 +19,17 @@ function reset_webr(){
   }).catch(function(e){
     console.log("ERROR: problem starting webr! " + e);
   });
+  if(oldsession){
+    var timer = setTimeout(function(){
+      console.log("Timeout: closing hung R session");
+      oldsession.close();
+    }, 60*1000);
+    oldsession.evalRVoid(`1+1`).finally(function(){
+      clearTimeout(timer);
+      console.log('Closing old R session');
+      oldsession.close();
+    });
+  }
 }
 
 reset_webr();
@@ -84,13 +99,14 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   }).catch(function(err){
     next(createError(400, err));
     const now = new Date();
-    if(err.stack && (now - session.started > 60000)){
-      console.log("Got an R error. Restarting R...")
-      reset_webr(); //restart for R errors, but at most once per minute
+    if(err.stack){
+      console.log("Got an R error. Restarting R...");
+      reset_webr(60*1000); //restart R after error (but at most once per minute)
     }
   }).finally(function(){
     session.evalRVoid(`unlink(c('${key}.rdx', '${key}.rdb', '${key}.out'))`);
     session.evalRVoid(`rm(${key})`);
+    reset_webr(3600*1000); //restart R once per hour
   });
 });
 
