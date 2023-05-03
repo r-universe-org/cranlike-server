@@ -66,16 +66,15 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
         var outbuf = await session.FS.readFile(`${key}.out`);
         res.attachment(`${name}.rds`).send(Buffer.from(outbuf, 'binary'));
       } else if(format == 'json') {
-        var out = await session.evalR(`jsonlite::toJSON(${key}$${name})`);
-        var jsontxt = await out.toString();
-        session.destroy(out);
-        res.type("application/json").send(jsontxt);
+        await session.evalRVoid(`jsonlite::write_json(${key}$${name}, "${key}.out")`);
+        var outbuf = await session.FS.readFile(`${key}.out`);
+        res.type("application/json").send(Buffer.from(outbuf, 'binary'));
       } else if(format == 'ndjson') {
-        var out = await session.evalRVoid(`jsonlite::stream_out(${key}$${name}, file("${key}.out"))`);
+        await session.evalRVoid(`jsonlite::stream_out(${key}$${name}, file("${key}.out"), verbose=FALSE)`);
         var outbuf = await session.FS.readFile(`${key}.out`);
         res.type("text/plain").send(Buffer.from(outbuf, 'binary'));
       } else if(format == 'xlsx') {
-        var out = await session.evalRVoid(`writexl::write_xlsx(${key}$${name}, "${key}.out")`);
+        await session.evalRVoid(`writexl::write_xlsx(${key}$${name}, "${key}.out")`);
         var outbuf = await session.FS.readFile(`${key}.out`);
         res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").attachment(`${name}.xlsx`).send(Buffer.from(outbuf, 'binary'));
       } else {
