@@ -5,19 +5,19 @@ const router = express.Router();
 const tools = require("../src/tools.js");
 
 /* Start webr and download some packages */
-const session = new webr.WebR();
-session.init().then(function(){
-  console.log("webR is ready!");
-}).catch(function(e){
-  console.log("ERROR: problem starting webr! " + e);
-});
-
-function error_cb(status, next) {
-  return function(err){
-    console.log("[Debug] HTTP " + status + ": " + err)
-    next(createError(status, err));
-  }
+var session;
+function reset_webr(){
+  if(session) session.close();
+  session = new webr.WebR();
+  session.started = new Date();
+  session.init().then(function(){
+    console.log("webR is ready!");
+  }).catch(function(e){
+    console.log("ERROR: problem starting webr! " + e);
+  });
 }
+
+reset_webr();
 
 router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   var user =  req.params.user;
@@ -82,10 +82,16 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
         throw "Only csv, json, xlsx, rda format is supported";
       }
     }
-  }).catch(error_cb(400, next)).finally(function(){
+  }).catch(function(err){
+    next(createError(400, err));
+    const now = new Date();
+    if(err.stack && (now - session.started > 60000)){
+      console.log("Got an R error. Restarting R...")
+      reset_webr(); //restart for R errors, but at most once per minute
+    }
+  }).finally(function(){
     session.evalRVoid(`unlink(c('${key}.rdx', '${key}.rdb', '${key}.out'))`);
     session.evalRVoid(`rm(${key})`);
-    //session.close();
   });
 });
 
