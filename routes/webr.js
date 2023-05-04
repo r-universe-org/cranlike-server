@@ -42,6 +42,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   var query = {'_user': user, 'Package': package, '_type': 'src'};
   var key = `${package}_${name}`.replace(/\W+/g, "");
   return packages.findOne(query).then(async function(x){
+    var lazydata = ['yes', 'true'].includes((x['LazyData'] || "").toLowerCase());
     var datasets = x['_contents'] && x['_contents'].datasets || [];
     if(!name) {
       return res.send(datasets);
@@ -52,49 +53,45 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       var ds = datasets.find(x => x.name == name);
       if(!ds)
         throw `No data "${name}" found in ${package}`;
-      var files = [`${package}/data/Rdata.rdb`, `${package}/data/Rdata.rdx`];
-      query['_type'] = {'$in' : ['mac', 'linux']}
-      var buffers = await tools.get_extracted_file(query, files);
-      if(!buffers[0] || !buffers[1])
-        throw "Failed to load Rdata.rdb/dbx";
-      var rdb = new Uint8Array(buffers[0]);
-      var rdx = new Uint8Array(buffers[1]);
-      await session.init();
-      await session.FS.writeFile(`${key}.rdx`, rdx);
-      await session.FS.writeFile(`${key}.rdb`, rdb);
-      await session.evalRVoid(`${key} <- new.env()`);
-      await session.evalRVoid(`lazyLoad('${key}', envir=${key}, filter=function(x) x=='${name}')`);
-      if(format == 'csv'){
-        await session.evalRVoid(`data.table::fwrite(${key}$${name}, "${key}.out")`)
-        var outbuf = await session.FS.readFile(`${key}.out`);
-        res.attachment(`${name}.csv`).send(Buffer.from(outbuf, 'binary'));
-      } else if(format == 'csv.gz'){
-        await session.evalRVoid(`data.table::fwrite(${key}$${name}, "${key}.out", compress='gzip')`)
-        var outbuf = await session.FS.readFile(`${key}.out`);
-        res.attachment(`${name}.csv.gz`).send(Buffer.from(outbuf, 'binary'));
-      } else if(format == 'rda') {
-        await session.evalRVoid(`save(${name}, envir=${key}, file="${key}.out")`);
-        var outbuf = await session.FS.readFile(`${key}.out`);
-        res.attachment(`${name}.RData`).send(Buffer.from(outbuf, 'binary'));
-      } else if(format == 'rds') {
-        await session.evalRVoid(`saveRDS(${key}$${name}, file="${key}.out")`);
-        var outbuf = await session.FS.readFile(`${key}.out`);
-        res.attachment(`${name}.rds`).send(Buffer.from(outbuf, 'binary'));
-      } else if(format == 'json') {
-        await session.evalRVoid(`jsonlite::write_json(${key}$${name}, "${key}.out")`);
-        var outbuf = await session.FS.readFile(`${key}.out`);
-        res.type("application/json").send(Buffer.from(outbuf, 'binary'));
-      } else if(format == 'ndjson') {
-        await session.evalRVoid(`jsonlite::stream_out(${key}$${name}, file("${key}.out"), verbose=FALSE)`);
-        var outbuf = await session.FS.readFile(`${key}.out`);
-        res.type("text/plain").send(Buffer.from(outbuf, 'binary'));
-      } else if(format == 'xlsx') {
-        await session.evalRVoid(`writexl::write_xlsx(${key}$${name}, "${key}.out")`);
-        var outbuf = await session.FS.readFile(`${key}.out`);
-        res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").attachment(`${name}.xlsx`).send(Buffer.from(outbuf, 'binary'));
+      query['_type'] = {'$in' : ['mac', 'linux']};
+      if(lazydata){
+        var files = [`${package}/data/Rdata.rdb`, `${package}/data/Rdata.rdx`];
+        var buffers = await tools.get_extracted_file(query, files);
+        if(!buffers[0] || !buffers[1])
+          throw "Failed to load Rdata.rdb/dbx";
+        var rdb = new Uint8Array(buffers[0]);
+        var rdx = new Uint8Array(buffers[1]);
+        var inputfile = `${key}.rdb`;
+        await session.FS.writeFile(`${key}.rdx`, rdx);
+        await session.FS.writeFile(`${key}.rdb`, rdb);
       } else {
-        throw "Only csv, json, xlsx, rda format is supported";
+        // copy input file here
+        throw "Package does not use lazydata";
       }
+      await session.evalRVoid(`datatool::convert("${inputfile}", "${name}", "${format}", "${key}.out")`);
+      var outbuf = await session.FS.readFile(`${key}.out`);
+      switch(format) {
+        case 'csv':
+        case 'csv.gz':
+        case 'rds':
+          res.attachment(`${name}.${format}`);
+          break;
+        case 'rda':
+          res.attachment(`${name}.RData`);
+          break;
+        case 'xlsx':
+          res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").attachment(`${name}.xlsx`);
+          break;
+        case 'json':
+          res.type('application/json');
+          break;
+        case 'ndjson':
+          res.type("text/plain");
+          break;
+        default:
+          throw "Only csv, json, xlsx, rda format is supported";
+      }
+      return res.send(Buffer.from(outbuf, 'binary'));
     }
   }).catch(function(err){
     next(createError(400, err));
@@ -104,8 +101,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       reset_webr(60*1000); //restart R after error (but at most once per minute)
     }
   }).finally(function(){
-    session.evalRVoid(`unlink(c('${key}.rdx', '${key}.rdb', '${key}.out'))`);
-    session.evalRVoid(`rm(${key})`);
+    session.evalRVoid(`unlink('${key}.*')`);
     reset_webr(3600*1000); //restart R once per hour
   });
 });
