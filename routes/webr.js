@@ -68,7 +68,8 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
         // copy input file here
         throw "Package does not use lazydata";
       }
-      await session.evalRVoid(`datatool::convert("${inputfile}", "${name}", "${format}", "${key}.out")`);
+      await session.evalRVoid(`datatool::convert("${inputfile}", "${name}", "${format}", "${key}.out")`,
+        {captureConditions: false, captureStreams: false});
       var outbuf = await session.FS.readFile(`${key}.out`);
       switch(format) {
         case 'csv':
