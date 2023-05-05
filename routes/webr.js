@@ -55,20 +55,19 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
         throw `No data "${name}" found in ${package}`;
       query['_type'] = {'$in' : ['mac', 'linux']};
       if(lazydata){
-        var paths = [`${package}/data/Rdata.rdb`, `${package}/data/Rdata.rdx`];
+        var files = [`Rdata.rdb`, `Rdata.rdx`];
       } else if(ds.file) {
-        var paths = [`${package}/data/${ds.file}`];
+        var files = [ ds.file ];
       } else {
         throw "Unable to extract this data";
       }
-      var buffers = await tools.get_extracted_file(query, paths);
-      for (var i = 0; i < paths.length; i++) {
-        if(!buffers[i])
-          throw `Failed to extract ${paths[i]}`;
-        var ext = paths[i].match(/\..*$/)[0];
-        var array = new Uint8Array(buffers[i]);
+      var buffers = await tools.get_extracted_file(query, files.map(x => `${package}/data/${x}`));
+      for (var i = 0; i < files.length; i++) {
+        if(!buffers[i] || !buffers[i].length)
+          throw `Failed to extract ${files[i]}`;
+        var ext = files[i].match(/\..*$/)[0];
         var inputfile = `${key}${ext}`;
-        await session.FS.writeFile(`${inputfile}`, array);
+        await session.FS.writeFile(`${inputfile}`, (new Uint8Array(buffers[i])));
       }
       await session.evalRVoid(`datatool::convert("${inputfile}", "${name}", "${format}", "${key}.out")`,
         {captureConditions: false, captureStreams: false});
