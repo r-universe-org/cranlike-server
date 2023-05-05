@@ -70,7 +70,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
         await session.FS.writeFile(`${inputfile}`, (new Uint8Array(buffers[i])));
       }
       await session.evalRVoid(`datatool::convert("${inputfile}", "${name}", "${format}", "${key}.out")`,
-        {captureConditions: false, captureStreams: false});
+        {captureStreams: false});
       var outbuf = await session.FS.readFile(`${key}.out`);
       switch(format) {
         case 'csv':
