@@ -73,6 +73,7 @@ function build_query(query, str){
   match_insensitive('package', 'Package');
   match_insensitive('owner', '_owner');
   match_insensitive('universe', '_user');
+  match_partial('data', '_contents.datasets.title');
   str = str.trim();
   if(str){
     query['$text'] = { $search: str, $caseSensitive: false};
