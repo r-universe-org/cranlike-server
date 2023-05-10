@@ -191,16 +191,20 @@ function doc_path(file, package){
 
 /* processed html-snipped (not a full doc) */
 router.get('/:user/:package/doc/readme', function(req, res, next){
+  var user = req.params.user;
   var package = req.params.package;
-  var query = {_user: req.params.user, _type: 'src', Package: package};
+  var query = {_user: user, _type: 'src', Package: package};
   tools.get_extracted_file(query, `${package}/readme.html`).then(function(html){
+
     if(req.query.highlight === 'hljs'){
       const $ = cheerio.load(html, null, false);
       $('code[class^="language-"]').each(function(i, el){
         try { //hljs errors for unsupported languages
           var el = $(el)
           var lang = el.attr('class').substring(9);
-          var out = hljs.highlight(el.text(), {language: lang}).value
+          var matcher = new RegExp(`([a-z]+::)?install_github\\("${user}/${package}"\\)`)
+          var input = el.text().replace(matcher, `install.packages("${package}", repos = c('https://${user}.r-universe.dev', 'https://cloud.r-project.org'))`)
+          var out = hljs.highlight(input, {language: lang}).value
           el.addClass("hljs").empty().append(out);
         } catch (e) { }
       });
