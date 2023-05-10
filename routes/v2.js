@@ -202,7 +202,7 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
         try { //hljs errors for unsupported languages
           var el = $(el)
           var lang = el.attr('class').substring(9);
-          var matcher = new RegExp(`([a-z]+::)?install_github\\("${user}/${package}"\\)`)
+          var matcher = new RegExp(`([a-z]+::)?install_github\\(.${user}/${package}.\\)`)
           var input = el.text().replace(matcher, `install.packages("${package}", repos = c('https://${user}.r-universe.dev', 'https://cloud.r-project.org'))`)
           var out = hljs.highlight(input, {language: lang}).value
           el.addClass("hljs").empty().append(out);
