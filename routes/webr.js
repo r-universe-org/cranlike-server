@@ -11,6 +11,7 @@ function new_rsession(preload){
     session = new webr.WebR();
     session.started = new Date();
     session.reset = reset;
+    session.preloaded = preload;
     return session.init().then(function(){
       return session.evalRVoid(`getNamespace("${preload}")`)
     }).then(function(){
@@ -23,7 +24,6 @@ function new_rsession(preload){
   function reset(if_older_than){
     const now = new Date();
     const age = now - session.started;
-    console.log("Age is: ", age)
     if(age < if_older_than)
       return;
     var oldsession = session;
@@ -72,6 +72,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   var query = {'_user': user, 'Package': package, '_type': 'src'};
   var key = `${package}_${name}`.replace(/\W+/g, "");
   var session = get_session(format);
+  console.log(`Selected R session with ${session.preloaded}`)
   var supported = ['csv', 'csv.gz', 'xlsx', 'json', 'ndjson', 'rda', 'rds'];
   return packages.findOne(query).then(async function(x){
     var lazydata = ['yes', 'true'].includes((x['LazyData'] || "").toLowerCase());
