@@ -4,35 +4,65 @@ const webr = require("@r-universe/webr");
 const router = express.Router();
 const tools = require("../src/tools.js");
 
-/* Start or restart webr */
-var session;
-function reset_webr(if_older_than = 0){
-  const now = new Date();
-  if(session && (now - session.started < if_older_than)){
-    return;
-  }
-  const oldsession = session;
-  session = new webr.WebR();
-  session.started = new Date();
-  session.init().then(function(){
-    console.log("webR is ready!");
-  }).catch(function(e){
-    console.log("ERROR: problem starting webr! " + e);
-  });
-  if(oldsession){
-    var timer = setTimeout(function(){
-      console.log("Timeout: closing hung R session");
-      oldsession.close();
-    }, 60*1000);
-    oldsession.evalRVoid(`1+1`).finally(function(){
-      clearTimeout(timer);
-      console.log('Closing old R session');
-      oldsession.close();
+function new_rsession(preload){
+  var session;
+
+  function start(){
+    session = new webr.WebR();
+    session.started = new Date();
+    session.reset = reset;
+    return session.init().then(function(){
+      return session.evalRVoid(`getNamespace("${preload}")`)
+    }).then(function(){
+      console.log(`webR with preloaded ${preload} is ready!`);
+    }).catch(function(e){
+      console.log("ERROR: problem initiating webr! " + e);
     });
+  }
+
+  function reset(if_older_than){
+    const now = new Date();
+    const age = now - session.started;
+    console.log("Age is: ", age)
+    if(age < if_older_than)
+      return;
+    var oldsession = session;
+    start().then(function(){
+      var timer = setTimeout(function(){
+        console.log("Timeout: closing hung R session");
+        oldsession.close();
+      }, 60*1000);
+      oldsession.evalRVoid(`1+1`).finally(function(){
+        clearTimeout(timer);
+        console.log('Closing old R session');
+        oldsession.close();
+      });
+    });
+  }
+
+  start();
+  return {
+    get: function(){
+      return session;
+    }
   }
 }
 
-reset_webr();
+function new_pool(){
+  var db = {
+    base : new_rsession('base'),
+    xlsx : new_rsession('writexl'),
+    json : new_rsession('jsonlite'),
+    csv : new_rsession('data.table')
+  };
+
+  return function(format){
+    var r = db[format] || db['base'];
+    return r.get();
+  }
+}
+
+var get_session = new new_pool();
 
 router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   var user =  req.params.user;
@@ -41,6 +71,8 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   var format = req.params.format;
   var query = {'_user': user, 'Package': package, '_type': 'src'};
   var key = `${package}_${name}`.replace(/\W+/g, "");
+  var session = get_session(format);
+  var supported = ['csv', 'csv.gz', 'xlsx', 'json', 'ndjson', 'rda', 'rds'];
   return packages.findOne(query).then(async function(x){
     var lazydata = ['yes', 'true'].includes((x['LazyData'] || "").toLowerCase());
     var datasets = x['_contents'] && x['_contents'].datasets || [];
@@ -49,6 +81,9 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
     } else {
       if(!format){
         return res.redirect(req.path.replace(/\/$/, '') + '/csv');
+      }
+      if(!supported.includes(format)){
+        throw `Unsupported format: ${format}`;
       }
       var ds = datasets.find(x => x.name == name);
       if(!ds)
@@ -97,14 +132,13 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
     }
   }).catch(function(err){
     next(createError(400, err));
-    const now = new Date();
     if(err.stack){
-      console.log("Got an R error. Restarting R...");
-      reset_webr(60*1000); //restart R after error (but at most once per minute)
+      console.log("Got an R error. Restarting R...", err.stack);
+      session.reset(60*1000); //restart R after error (but at most once per minute)
     }
   }).finally(function(){
     session.evalRVoid(`unlink('${key}.*')`);
-    reset_webr(3600*1000); //restart R once per hour
+    session.reset(3600*1000); //restart R sessions once per hour
   });
 });
 
