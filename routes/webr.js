@@ -49,16 +49,22 @@ function new_rsession(preload){
 }
 
 function new_pool(){
-  var db = {
-    base : new_rsession('base'),
-    xlsx : new_rsession('writexl'),
-    json : new_rsession('jsonlite'),
-    csv : new_rsession('data.table')
-  };
+  var pkgmap = {
+    'json': 'jsonlite',
+    'ndjson': 'jsonlite',
+    'csv': 'data.table',
+    'csv.gz' : 'data.table',
+    'xlsx': 'writexl'
+  }
+
+  var workers = {base: new_rsession('base')};
+  Object.values(pkgmap).forEach(pkg => {
+    workers[pkg] = workers[pkg] || new_rsession(pkg);
+  });
 
   return function(format){
-    var r = db[format] || db['base'];
-    return r.get();
+    var pkg = pkgmap[format] || 'base';
+    return workers[pkg].get();
   }
 }
 
