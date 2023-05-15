@@ -50,6 +50,8 @@ function new_rsession(preload){
 
 function new_pool(){
   var pkgmap = {
+    'rds' : 'base',
+    'rda' : 'base',
     'json': 'jsonlite',
     'ndjson': 'jsonlite',
     'csv': 'data.table',
@@ -57,7 +59,7 @@ function new_pool(){
     'xlsx': 'writexl'
   }
 
-  var workers = {base: new_rsession('base')};
+  var workers = {};
   Object.values(pkgmap).forEach(pkg => {
     workers[pkg] = workers[pkg] || new_rsession(pkg);
   });
