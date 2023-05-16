@@ -285,7 +285,8 @@ function find_package(user, package){
       '_type' : 'src',
       '$or' : [
         {'_user': user},
-        {'_builder.maintainer.login': user, '_selfowned': true}
+        {'_owner': user, '_selfowned': true}, //legacy redirect for gitlab-xyz owned packages
+        {'_builder.maintainer.login': user, '_selfowned': true} // for gitlab-xyz or /cran mirror packages
       ]
     };
     return packages.findOne(query).then(function(x){
