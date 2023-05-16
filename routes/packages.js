@@ -275,15 +275,11 @@ function parse_major_version(built){
 }
 
 function get_repo_owner(description){
-  var url = description['_builder'].upstream || "";
-  if(url.indexOf("github.com/") > 0){
-    return url.split('/').at(-2).toLowerCase();
-  }
-  if(url.indexOf("gitlab.com/") > 0){
-    return 'gitlab-' + url.split('/').at(-2).toLowerCase();
-  }
-  if(url.indexOf("bitbucket.org/") > 0){
-    return 'bitbucket-' + url.split('/').at(-2).toLowerCase();
+  const url = description['_builder'].upstream || "";
+  const re = new RegExp('.*://([a-z]+).*/([^/]*)/.*')
+  const match = url.match(re);
+  if(match){
+    return match[1] == 'github' ? match[2] : `${match[1]}-${match[2]}`;
   }
 }
 
