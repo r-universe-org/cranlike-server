@@ -4,6 +4,10 @@ const webr = require("@r-universe/webr");
 const router = express.Router();
 const tools = require("../src/tools.js");
 
+function etagify(x){
+  return 'W/"' +  x + '"';
+}
+
 function new_rsession(preload){
   var session;
 
@@ -83,6 +87,11 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
   console.log(`Selected R session with ${session.preloaded}`)
   var supported = ['csv', 'csv.gz', 'xlsx', 'json', 'ndjson', 'rda', 'rds'];
   return packages.findOne(query).then(async function(x){
+    var etag = etagify(x['_id']);
+    if(etag === req.header('If-None-Match')){
+      res.status(304).send();
+      return;
+    }
     var lazydata = ['yes', 'true'].includes((x['LazyData'] || "").toLowerCase());
     var datasets = x['_contents'] && x['_contents'].datasets || [];
     if(!name) {
@@ -137,7 +146,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
         default:
           throw "Only csv, json, xlsx, rda format is supported";
       }
-      return res.send(Buffer.from(outbuf, 'binary'));
+      return res.set('ETag', etag).set('Cache-Control', 'public, max-age=3600').send(Buffer.from(outbuf, 'binary'));
     }
   }).catch(function(err){
     next(createError(400, err));
