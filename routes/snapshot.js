@@ -16,8 +16,9 @@ function error_cb(status, next) {
 }
 
 function new_zipfile(format){
+  /* contents are already compressed */
   const archive = archiver(format, {
-    gzip: true, zlib: { level: 9 }
+    store: true, gzip: true, gzipOptions: {level: 1},
   });
   return archive.on('warning', function(err) {
     if (err.code === 'ENOENT') {
