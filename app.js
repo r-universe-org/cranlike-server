@@ -15,6 +15,7 @@ var badgesRouter = require('./routes/badges');
 var feedsRouter = require('./routes/feeds');
 var sharedRouter = require('./routes/shared');
 var scienceMinerRouter = require('./routes/scienceminer');
+var snapshotRouter = require('./routes/snapshot');
 var v2Router = require('./routes/v2');
 var webrRouter = require('./routes/webr');
 
@@ -42,6 +43,7 @@ app.use('/', badgesRouter);
 app.use('/', feedsRouter);
 app.use('/', sharedRouter);
 app.use('/', scienceMinerRouter);
+app.use('/', snapshotRouter);
 app.use('/', v2Router);
 app.use('/', webrRouter);
 
