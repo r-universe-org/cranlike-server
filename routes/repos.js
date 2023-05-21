@@ -5,54 +5,13 @@ const zlib = require('zlib');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
-
-/* Fields included in PACKAGES indices */
-/* To do: once DB is repopulated, we can remove Imports, Suggests, etc in favor of _dependencies */
-const pkgfields = {_id: 1, _hard_deps: 1, _soft_deps: 1, Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
-  NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
-  OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
+const pkgfields = tools.pkgfields;
+const doc_to_dcf = tools.doc_to_dcf;
 
 function error_cb(status, next) {
   return function(err) {
     next(createError(status, err));
   }
-}
-
-function dep_to_string(x){
-  if(x.package && x.version){
-    return x.package + " (" + x.version + ")";
-  } else if(x.package) {
-    return x.package
-  } else {
-    return x;
-  }
-}
-
-function unpack_deps(x){
-  var hard_deps = x['_hard_deps'] || [];
-  var soft_deps = x['_soft_deps'] || [];
-  var alldeps = hard_deps.concat(soft_deps);
-  var deptypes = new Set(alldeps.map(dep => dep.role));
-  deptypes.forEach(function(type){
-    x[type] = alldeps.filter(dep => dep.role == type);
-  });
-  delete x['_hard_deps'];
-  delete x['_soft_deps'];
-  return x;
-}
-
-function doc_to_dcf(doc){
-  var x = unpack_deps(doc);
-  delete x['_id'];
-  let keys = Object.keys(x);
-  return keys.map(function(key){
-    let val = x[key];
-    if(Array.isArray(val))
-      val = val.map(dep_to_string).join(", ");
-    else if(key == 'Built')
-      val = "R " + Object.values(val).join("; ");
-    return key + ": " + val.replace(/\s/gi, ' ');
-  }).join("\n") + "\n\n";
 }
 
 function doc_to_ndjson(x){

@@ -1,7 +1,12 @@
 const express = require('express');
 const createError = require('http-errors');
+const zlib = require('zlib');
 const router = express.Router();
 const archiver = require('archiver');
+const path = require('node:path');
+const tools = require("../src/tools.js");
+const pkgfields = tools.pkgfields;
+const doc_to_dcf = tools.doc_to_dcf;
 
 function error_cb(status, next) {
   return function(err){
@@ -47,10 +52,15 @@ function make_filename(doc){
 }
 
 function packages_snapshot(docs, archive){
+  var indexes = {};
   var promises = docs.map(function(doc){
     var hash = doc.MD5sum;
     var date = doc._created;
     var filename = make_filename(doc);
+    var dirname = path.dirname(filename);
+    if(!indexes[dirname])
+      indexes[dirname] = [];
+    indexes[dirname].push(doc);
     return bucket.find({_id: hash}, {limit:1}).next().then(function(x){
       if (!x)
         throw `Failed to locate file in gridFS: ${hash}`;
@@ -58,8 +68,12 @@ function packages_snapshot(docs, archive){
       return archive.append(input, { name: filename, date: date });
     });
   });
-  return Promise.allSettled(promises).then(function(){
-    //TODO: add PACKAGES(gz) files
+  return Promise.allSettled(promises).then(async function(){
+    for (const [path, docs] of Object.entries(indexes)) {
+      var packages = docs.map(doc_to_dcf).join('');
+      await archive.append(packages, { name: `${path}/PACKAGES` });
+      await archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz` });
+    }
     archive.finalize();
     return docs;
   });
@@ -69,7 +83,7 @@ router.get('/:user/snapshot/:format', function(req, res, next) {
   var user = req.params.user;
   var format = req.params.format;
   var query = {_user: user, _type: req.query.type || {'$ne' : 'failure'}};
-  var cursor = packages.find(query).sort({"_id" : -1});
+  var cursor = packages.find(query).project(pkgfields).sort({"Package" : 1});
   cursor.toArray().then(function(docs){
     if(!docs.length)
       throw "Query returned no packages";

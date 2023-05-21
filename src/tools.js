@@ -5,6 +5,11 @@ const gunzip = require('gunzip-maybe');
 const mime = require('mime');
 const path = require('path');
 
+/* Fields included in PACKAGES indices */
+const pkgfields = {_id: 1, _type:1, _hard_deps: 1, _soft_deps: 1, Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
+  NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
+  OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
+
 function fetch_github(url, opt = {}){
   opt.headers = opt.headers || {'Authorization': 'token ' + token};
   return fetch(url, opt).then(function(response){
@@ -325,7 +330,46 @@ function send_dashboard(req, res, file){
   }
 }
 
+function dep_to_string(x){
+  if(x.package && x.version){
+    return x.package + " (" + x.version + ")";
+  } else if(x.package) {
+    return x.package
+  } else {
+    return x;
+  }
+}
+
+function unpack_deps(x){
+  var hard_deps = x['_hard_deps'] || [];
+  var soft_deps = x['_soft_deps'] || [];
+  var alldeps = hard_deps.concat(soft_deps);
+  var deptypes = new Set(alldeps.map(dep => dep.role));
+  deptypes.forEach(function(type){
+    x[type] = alldeps.filter(dep => dep.role == type);
+  });
+  delete x['_hard_deps'];
+  delete x['_soft_deps'];
+  return x;
+}
+
+function doc_to_dcf(doc){
+  var x = unpack_deps(doc);
+  delete x['_id'];
+  delete x['_type'];
+  let keys = Object.keys(x);
+  return keys.map(function(key){
+    let val = x[key];
+    if(Array.isArray(val))
+      val = val.map(dep_to_string).join(", ");
+    else if(key == 'Built')
+      val = "R " + Object.values(val).join("; ");
+    return key + ": " + val.replace(/\s/gi, ' ');
+  }).join("\n") + "\n\n";
+}
+
 module.exports = {
+  pkgfields: pkgfields,
   send_frontend_js : send_frontend_js,
   send_frontend_html : send_frontend_html,
   send_extracted_file : send_extracted_file,
@@ -335,7 +379,8 @@ module.exports = {
   get_registry_info : get_registry_info,
   get_submodule_hash : get_submodule_hash,
   trigger_rebuild : trigger_rebuild,
-  get_cran_desc : get_cran_desc
+  get_cran_desc : get_cran_desc,
+  doc_to_dcf : doc_to_dcf
 };
 
 /* Tests
