@@ -30,7 +30,7 @@ function make_filename(doc){
   if(type == 'src'){
     return `src/contrib/${doc.Package}_${doc.Version}.tar.gz`;
   }
-  var built = doc.Built.R && doc.Built.R.substring(0,3);
+  var built = doc.Built && doc.Built.R && doc.Built.R.substring(0,3);
   if(type == 'win'){
     return `bin/windows/contrib/${built}/${doc.Package}_${doc.Version}.zip`;
   }
@@ -68,10 +68,7 @@ function packages_snapshot(docs, archive){
 router.get('/:user/snapshot/:format', function(req, res, next) {
   var user = req.params.user;
   var format = req.params.format;
-  var query = {_user: user};
-  if(req.query.type){
-    query._type = req.query.type;
-  }
+  var query = {_user: user, _type: req.query.type || {'$ne' : 'failure'}};
   var cursor = packages.find(query).sort({"_id" : -1});
   cursor.toArray().then(function(docs){
     if(!docs.length)
