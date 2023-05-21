@@ -46,7 +46,7 @@ function make_filename(doc){
   }
   if(type == 'linux'){
     var distro = doc._builder && doc._builder.distro || 'linux';
-    return `bin/linux/${distro}/src/contrib/${doc.Package}_${doc.Version}.tar.gz`;
+    return `bin/linux/${distro}/${built}/src/contrib/${doc.Package}_${doc.Version}.tar.gz`;
   }
   throw `Unsupported type: ${type}`;
 }
