@@ -10,9 +10,9 @@ function error_cb(status, next) {
   }
 }
 
-function new_zipfile(){
-  const archive = archiver('zip', {
-    zlib: { level: 9 }
+function new_zipfile(format){
+  const archive = archiver(format, {
+    gzip: true, zlib: { level: 9 }
   });
   return archive.on('warning', function(err) {
     if (err.code === 'ENOENT') {
@@ -65,8 +65,9 @@ function packages_snapshot(docs, archive){
   });
 }
 
-router.get('/:user/snapshot/zip', function(req, res, next) {
+router.get('/:user/snapshot/:format', function(req, res, next) {
   var user = req.params.user;
+  var format = req.params.format;
   var query = {_user: user};
   if(req.query.type){
     query._type = req.query.type;
@@ -75,8 +76,15 @@ router.get('/:user/snapshot/zip', function(req, res, next) {
   cursor.toArray().then(function(docs){
     if(!docs.length)
       throw "Query returned no packages";
-    var archive = new_zipfile();
-    archive.pipe(res.type('application/zip').attachment(`${user}-snapshot.zip`));
+    var archive = new_zipfile(format);
+    if(format == 'zip'){
+      res.type('application/zip').attachment(`${user}-snapshot.zip`)
+    } else if(format == 'tar') {
+      res.type('application/gzip').attachment(`${user}-snapshot.tar.gz`)
+    } else {
+      throw "Unsupported snapshot format: " + format;
+    }
+    archive.pipe(res);
     packages_snapshot(docs, archive);
   }).catch(error_cb(400, next));
 });
