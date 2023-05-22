@@ -83,11 +83,22 @@ function packages_snapshot(docs, archive){
 router.get('/:user/snapshot/:format', function(req, res, next) {
   var user = req.params.user;
   var format = req.params.format;
-  var query = {_user: user, _type: req.query.type || {'$ne' : 'failure'}};
+  var query = {_user: user, _type: {'$ne' : 'failure'}};
+  if(req.query.types)
+    query._type = {'$in' : req.query.types.split(",")};
+  if(req.query.packages)
+    query.Package = {'$in' : req.query.packages.split(",")};
   var cursor = packages.find(query).project(pkgfields).sort({"Package" : 1});
   cursor.toArray().then(function(docs){
     if(!docs.length)
       throw "Query returned no packages";
+    if(req.query.binaries){
+      var allowed = req.query.binaries.split(",");
+      docs = docs.filter(function(doc){
+        var binver = doc.Built && doc.Built.R || "";
+        return doc._type == 'src' || allowed.find(ver => binver.startsWith(ver));
+      });
+    }
     var archive = new_zipfile(format);
     if(format == 'zip'){
       res.type('application/zip').attachment(`${user}-snapshot.zip`)
