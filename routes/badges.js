@@ -102,7 +102,7 @@ router.get('/:user/badges/:package', function(req, res, next) {
       badge.status = x.join("|");
       badge.color = color || 'green';
     }
-    send_badge(badge, user, res);
+    send_badge(badge, user, res, `https://${user}.r-universe.dev/${package}`);
   }).catch(error_cb(400, next));
 });
 
