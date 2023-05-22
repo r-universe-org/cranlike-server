@@ -6,7 +6,7 @@ const mime = require('mime');
 const path = require('path');
 
 /* Fields included in PACKAGES indices */
-const pkgfields = {_id: 1, _type:1, _hard_deps: 1, _soft_deps: 1, '_builder.distro': 1,
+const pkgfields = {_id: 1, _type:1, _hard_deps: 1, _soft_deps: 1, Distro: '$_builder.distro',
   Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
   NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
   OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
@@ -358,7 +358,7 @@ function doc_to_dcf(doc){
   var x = unpack_deps(doc);
   delete x['_id'];
   delete x['_type'];
-  delete x['_builder'];
+  delete x['Distro'];
   let keys = Object.keys(x);
   return keys.map(function(key){
     let val = x[key];
