@@ -8,7 +8,7 @@ const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
 const send_frontend_html = tools.send_frontend_html;
 const send_frontend_js = tools.send_frontend_js;
-const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges'];
+const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'snapshot'];
 
 /* Error generator */
 function error_cb(status, next) {
