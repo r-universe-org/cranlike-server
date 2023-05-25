@@ -80,9 +80,8 @@ function packages_snapshot(docs, archive){
   });
 }
 
-router.get('/:user/snapshot/:format', function(req, res, next) {
+router.get('/:user/api/snapshot/:format?', function(req, res, next) {
   var user = req.params.user;
-  var format = req.params.format;
   var query = {_user: user, _type: {'$ne' : 'failure'}};
   if(req.query.types)
     query._type = {'$in' : req.query.types.split(",")};
@@ -99,6 +98,7 @@ router.get('/:user/snapshot/:format', function(req, res, next) {
         return doc._type == 'src' || allowed.find(ver => binver.startsWith(ver));
       });
     }
+    var format = req.query.format || "zip";
     var archive = new_zipfile(format);
     if(format == 'zip'){
       res.type('application/zip').attachment(`${user}-snapshot.zip`)
