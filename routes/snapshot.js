@@ -75,7 +75,22 @@ function packages_snapshot(files, archive){
       await archive.append(packages, { name: `${path}/PACKAGES` });
       await archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz` });
     }
-    return files;
+  });
+}
+
+function package_manuals(query, archive){
+  query._type = 'src';
+  return packages.find(query).toArray().then(function(files){
+    var promises = files.map(function(x){
+      var package = x.Package;
+      var date = x._created;
+      return tools.get_extracted_file({_id: x._id}, [`${package}/extra/${package}.html`]).then(function(buffers){
+        if(buffers[0]){
+          return archive.append(buffers[0], { name: `docs/${package}.html`, date: date });
+        }
+      });
+    });
+    return Promise.allSettled(promises);
   });
 }
 
@@ -107,8 +122,9 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
       throw "Unsupported snapshot format: " + format;
     }
     archive.pipe(res);
-    packages_snapshot(files, archive).then(function(files){
-      files.filter(x => x._type == 'src')
+    packages_snapshot(files, archive).then(function(){
+      return package_manuals(query, archive);
+    }).then(function(){
       archive.finalize();
     });
   }).catch(error_cb(400, next));
