@@ -75,7 +75,6 @@ function packages_snapshot(files, archive){
       await archive.append(packages, { name: `${path}/PACKAGES` });
       await archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz` });
     }
-    archive.finalize();
     return files;
   });
 }
@@ -108,7 +107,10 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
       throw "Unsupported snapshot format: " + format;
     }
     archive.pipe(res);
-    packages_snapshot(files, archive);
+    packages_snapshot(files, archive).then(function(files){
+      files.filter(x => x._type == 'src')
+      archive.finalize();
+    });
   }).catch(error_cb(400, next));
 });
 
