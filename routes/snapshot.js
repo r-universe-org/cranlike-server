@@ -97,8 +97,9 @@ function package_manuals(query, archive){
 router.get('/:user/api/snapshot/:format?', function(req, res, next) {
   var user = req.params.user;
   var query = {_user: user, _type: {'$ne' : 'failure'}};
-  if(req.query.types)
-    query._type = {'$in' : req.query.types.split(",")};
+  var types = req.query.types && req.query.types.split(',');
+  if(types)
+    query._type = {'$in' : types};
   if(req.query.packages)
     query.Package = {'$in' : req.query.packages.split(",")};
   var cursor = packages.find(query).project(pkgfields).sort({"Package" : 1});
@@ -123,7 +124,9 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
     }
     archive.pipe(res);
     packages_snapshot(files, archive).then(function(){
-      return package_manuals(query, archive);
+      if(!types || types.includes("docs")){
+        return package_manuals(query, archive);
+      }
     }).then(function(){
       archive.finalize();
     });
