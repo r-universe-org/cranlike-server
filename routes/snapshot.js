@@ -55,7 +55,6 @@ function make_filename(doc){
 function packages_snapshot(files, archive, types){
   var indexes = {};
   var promises = [];
-  var add_docs = !types || types.includes('docs');
   files.forEach(function(x){
     var package = x.Package;
     var date = x._created;
@@ -73,21 +72,28 @@ function packages_snapshot(files, archive, types){
         return archive.append(input, { name: filename, date: date });
       }));
     }
-    /* Extract manual page from src package */
-    if(add_docs && x._type == 'src'){
+  });
+
+  /* Extract html manual pages. This is a bit slower so doing this last */
+  if(!types || types.includes('docs')){
+    files.filter(x => x._type == 'src').forEach(function(x){
+      var package = x.Package;
+      var date = x._created;
       promises.push(tools.get_extracted_file({_id: x._id}, [`${package}/extra/${package}.html`]).then(function(buffers){
         if(buffers[0]){
           return archive.append(buffers[0], { name: `docs/${package}.html`, date: date });
         }
       }));
-    }
-  });
+    });
+  }
+
   /* Generate index files */
   for (const [path, files] of Object.entries(indexes)) {
     var packages = files.map(doc_to_dcf).join('');
     promises.push(archive.append(packages, { name: `${path}/PACKAGES` }));
     promises.push(archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz` }));
   }
+
   return Promise.allSettled(promises);
 }
 
@@ -97,7 +103,7 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
   var types = req.query.types && req.query.types.split(',');
   if(req.query.packages)
     query.Package = {'$in' : req.query.packages.split(",")};
-  var cursor = packages.find(query).project(pkgfields).sort({"Package" : 1});
+  var cursor = packages.find(query).project(pkgfields).sort({"_type" : 1});
   cursor.toArray().then(function(files){
     if(!files.length)
       throw "Query returned no packages";
