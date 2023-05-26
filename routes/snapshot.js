@@ -52,54 +52,49 @@ function make_filename(doc){
   throw `Unsupported type: ${type}`;
 }
 
-function packages_snapshot(files, archive){
+function packages_snapshot(files, archive, types){
   var indexes = {};
-  var promises = files.map(function(x){
-    var hash = x.MD5sum;
+  var promises = [];
+  var add_docs = !types || types.includes('docs');
+  files.forEach(function(x){
+    var package = x.Package;
     var date = x._created;
-    var filename = make_filename(x);
-    var dirname = path.dirname(filename);
-    if(!indexes[dirname])
-      indexes[dirname] = [];
-    indexes[dirname].push(x);
-    return bucket.find({_id: hash}, {limit:1}).next().then(function(x){
-      if (!x)
-        throw `Failed to locate file in gridFS: ${hash}`;
-      var input = bucket.openDownloadStream(x['_id']);
-      return archive.append(input, { name: filename, date: date });
-    });
-  });
-  return Promise.allSettled(promises).then(async function(){
-    for (const [path, files] of Object.entries(indexes)) {
-      var packages = files.map(doc_to_dcf).join('');
-      await archive.append(packages, { name: `${path}/PACKAGES` });
-      await archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz` });
+    if(!types || types.includes(x._type)){
+      var hash = x.MD5sum;
+      var filename = make_filename(x);
+      var dirname = path.dirname(filename);
+      if(!indexes[dirname])
+        indexes[dirname] = [];
+      indexes[dirname].push(x);
+      promises.push(bucket.find({_id: hash}, {limit:1}).next().then(function(x){
+        if (!x)
+          throw `Failed to locate file in gridFS: ${hash}`;
+        var input = bucket.openDownloadStream(x['_id']);
+        return archive.append(input, { name: filename, date: date });
+      }));
     }
-  });
-}
-
-function package_manuals(query, archive){
-  query._type = 'src';
-  return packages.find(query).toArray().then(function(files){
-    var promises = files.map(function(x){
-      var package = x.Package;
-      var date = x._created;
-      return tools.get_extracted_file({_id: x._id}, [`${package}/extra/${package}.html`]).then(function(buffers){
+    /* Extract manual page from src package */
+    if(add_docs && x._type == 'src'){
+      promises.push(tools.get_extracted_file({_id: x._id}, [`${package}/extra/${package}.html`]).then(function(buffers){
         if(buffers[0]){
           return archive.append(buffers[0], { name: `docs/${package}.html`, date: date });
         }
-      });
-    });
-    return Promise.allSettled(promises);
+      }));
+    }
   });
+  /* Generate index files */
+  for (const [path, files] of Object.entries(indexes)) {
+    var packages = files.map(doc_to_dcf).join('');
+    promises.push(archive.append(packages, { name: `${path}/PACKAGES` }));
+    promises.push(archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz` }));
+  }
+  return Promise.allSettled(promises);
 }
 
 router.get('/:user/api/snapshot/:format?', function(req, res, next) {
   var user = req.params.user;
   var query = {_user: user, _type: {'$ne' : 'failure'}};
   var types = req.query.types && req.query.types.split(',');
-  if(types)
-    query._type = {'$in' : types};
   if(req.query.packages)
     query.Package = {'$in' : req.query.packages.split(",")};
   var cursor = packages.find(query).project(pkgfields).sort({"Package" : 1});
@@ -123,11 +118,7 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
       throw "Unsupported snapshot format: " + format;
     }
     archive.pipe(res);
-    packages_snapshot(files, archive).then(function(){
-      if(!types || types.includes("docs")){
-        return package_manuals(query, archive);
-      }
-    }).then(function(){
+    packages_snapshot(files, archive, types).then(function(){
       archive.finalize();
     });
   }).catch(error_cb(400, next));
