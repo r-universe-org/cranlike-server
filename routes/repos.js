@@ -7,6 +7,8 @@ const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
 const pkgfields = tools.pkgfields;
 const doc_to_dcf = tools.doc_to_dcf;
+const group_package_data = tools.group_package_data;
+
 
 function error_cb(status, next) {
   return function(err) {
@@ -279,6 +281,23 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
   var query = qf({_user: req.params.user, _type: 'linux', 'Built.R' : {$regex: '^' + req.params.built},
     '_builder.distro' : req.params.distro, Package: pkg[0], Version: pkg[1]});
   send_binary(query, `${req.params.pkg}-${req.params.distro}.tar.gz`, req, res, next);
+});
+
+router.get('/:user/api/packages', function(req, res, next) {
+  var query = qf({_user: req.params.user}, req.query.all);
+  var cursor = packages.aggregate([
+    {$match: query},
+    {$group : {
+      _id : '$Package',
+      value: { '$push': '$$ROOT' }
+    }}
+  ]);
+  var out = [];
+  cursor.forEach(function(x){
+    out.push(group_package_data(x.value));
+  }).then(function(){
+    res.send(out);
+  }).catch(error_cb(400, next));
 });
 
 router.get("/:user/stats/vignettes", function(req, res, next) {
