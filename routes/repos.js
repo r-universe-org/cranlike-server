@@ -283,21 +283,29 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
   send_binary(query, `${req.params.pkg}-${req.params.distro}.tar.gz`, req, res, next);
 });
 
-router.get('/:user/api/packages', function(req, res, next) {
-  var query = qf({_user: req.params.user}, req.query.all);
-  var cursor = packages.aggregate([
-    {$match: query},
-    {$group : {
-      _id : '$Package',
-      value: { '$push': '$$ROOT' }
-    }}
-  ]);
-  var out = [];
-  cursor.forEach(function(x){
-    out.push(group_package_data(x.value));
-  }).then(function(){
-    res.send(out);
-  }).catch(error_cb(400, next));
+router.get('/:user/api/packages/:package?', function(req, res, next) {
+  var user = req.params.user;
+  var package = req.params.package;
+  if(package){
+    packages.find({_user : user, Package : package}).toArray().then(function(docs){
+      res.send(group_package_data(docs));
+    }).catch(error_cb(400, next));
+  } else {
+    var query = qf({_user: user}, req.query.all);
+    var cursor = packages.aggregate([
+      {$match: query},
+      {$group : {
+        _id : '$Package',
+        value: { '$push': '$$ROOT' }
+      }}
+    ]);
+    var out = [];
+    cursor.forEach(function(x){
+      out.push(group_package_data(x.value));
+    }).then(function(){
+      res.send(out);
+    }).catch(error_cb(400, next));
+  }
 });
 
 router.get("/:user/stats/vignettes", function(req, res, next) {

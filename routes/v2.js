@@ -9,7 +9,7 @@ const send_extracted_file = tools.send_extracted_file;
 const send_frontend_html = tools.send_frontend_html;
 const send_frontend_js = tools.send_frontend_js;
 const group_package_data = tools.group_package_data;
-const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'snapshot'];
+const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'snapshot', 'api'];
 
 /* Error generator */
 function error_cb(status, next) {
