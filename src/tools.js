@@ -370,7 +370,33 @@ function doc_to_dcf(doc){
   }).join("\n") + "\n\n";
 }
 
+function group_package_data(docs){
+  var src = docs.find(x => x['_type'] == 'src');
+  var failure = docs.find(x => x['_type'] == 'failure');
+  if(failure){
+    var failbuild = failure['_builder'] || {};
+    src.failure = {
+      commit: failbuild.commit,
+      url: failbuild.url,
+      date: failure._created
+    }
+  }
+  src.binaries = docs.filter(x => x.Built).map(function(x){
+    return {
+      r: x.Built.R,
+      os: x['_type'],
+      version: x.Version,
+      date: x._created,
+      distro: (x['_type'] == 'linux' ? x['_builder'].distro : undefined),
+      commit: (x['_builder'] && x['_builder'].commit && x['_builder'].commit.id),
+      fileid: x['_fileid']
+    }
+  });
+  return src;
+}
+
 module.exports = {
+  group_package_data: group_package_data,
   pkgfields: pkgfields,
   send_frontend_js : send_frontend_js,
   send_frontend_html : send_frontend_html,
