@@ -312,7 +312,7 @@ function calculate_score(description){
 }
 
 function is_self_owned(description, builder, user){
-  if(description['_owner'] === user || builder.maintainer.login === user){
+  if(description['_owner'] === user || builder.maintainer.login === user || user === 'ropensci'){
     return true;
   }
   var URL = description.URL || "";
