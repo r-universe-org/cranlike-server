@@ -1,6 +1,6 @@
 {
   "name": "cranlike",
-  "version": "0.15.58",
+  "version": "0.15.59",
   "description": "High-performance R package server",
   "author": "Jeroen Ooms <jeroen@berkeley.edu>",
   "license": "MIT",
@@ -12,7 +12,7 @@
     "url": "git://github.com/r-universe-org/cranlike-server"
   },
   "dependencies": {
-    "@r-universe/webr": "^2023.5.5",
+    "@r-universe/webr": "^2023.6.7",
     "archiver": "^5.3.1",
     "badgen": "^3.2.2",
     "cheerio": "^1.0.0-rc.12",
