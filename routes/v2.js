@@ -105,11 +105,7 @@ router.get("/:user/:package", function(req, res, next) {
 });
 
 router.get("/:user/:package/json", function(req, res, next) {
-  var user = req.params.user;
-  var package = req.params.package;
-  packages.find({_user : user, Package : package}).toArray().then(function(docs){
-    res.send(group_package_data(docs));
-  }).catch(error_cb(400, next));
+  res.redirect(301, `/${req.params.user}/api/packages/${req.params.package}`);
 });
 
 router.get("/:user/:package/files", function(req, res, next) {
