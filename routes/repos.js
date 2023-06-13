@@ -303,7 +303,7 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
     cursor.forEach(function(x){
       out.push(group_package_data(x.value));
     }).then(function(){
-      res.send(out);
+      res.send(out.filter(x => x));
     }).catch(error_cb(400, next));
   }
 });

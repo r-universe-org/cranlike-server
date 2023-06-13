@@ -372,6 +372,9 @@ function doc_to_dcf(doc){
 
 function group_package_data(docs){
   var src = docs.find(x => x['_type'] == 'src');
+  if(!src){
+    return null; //package only has a 'failure' and nothing else
+  }
   var failure = docs.find(x => x['_type'] == 'failure');
   if(failure){
     var failbuild = failure['_builder'] || {};
