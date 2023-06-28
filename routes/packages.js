@@ -312,6 +312,9 @@ function calculate_score(description){
 }
 
 function is_self_owned(description, builder, user){
+  if(user === 'cran'){
+    return false; //mirror only packages
+  }
   if(description['_owner'] === user || builder.maintainer.login === user || user === 'ropensci'){
     return true;
   }
