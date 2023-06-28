@@ -80,7 +80,7 @@ router.get("/:user/:package*", function(req, res, next) {
       next();
     }).catch(error_cb(404, next));
   } else {
-    find_package(user, package).then(function(x){
+    real_package_home(user, package).then(function(x){
       if(x._user != user){
         /* nginx does not understand cross-domain redirect with relative path */
         res.redirect(req.path.replace(`/${user}/${package}`, `https://${x._user}.r-universe.dev/${x.Package}`));
@@ -219,7 +219,7 @@ router.get('/:user/:package/doc/:file?', function(req, res, next){
 });
 
 router.get('/:user/:package/sitemap.xml', function(req, res, next) {
-  find_package(req.params.user, req.params.package).then(function(x){
+  real_package_home(req.params.user, req.params.package).then(function(x){
     var xml = xmlbuilder.create('urlset', {encoding:"UTF-8"});
     xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}`);
@@ -250,6 +250,19 @@ router.get('/:user/:package/sitemap.xml', function(req, res, next) {
     res.type('application/xml').send(xml.end({ pretty: true}));
   }).catch(error_cb(400, next));
 });
+
+//This redirects cran.r-universe.dev/pkg to the canonical home, if any
+//Todo: allow to by pass to access resources (e.g. vignettes) from the cran copy
+function real_package_home(user, package){
+  if(user === 'cran'){
+    return packages.findOne({'Package': package, '_type': 'src', '_selfowned': true}).then(function(x){
+      if(x) return x;
+      return find_package(user, package);
+    });
+  } else {
+    return find_package(user, package);
+  }
+}
 
 function find_package(user, package){
   var query = {'_user': user, 'Package': package, '_type': 'src'};
