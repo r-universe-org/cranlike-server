@@ -223,7 +223,7 @@ router.get('/:user/:package/sitemap.xml', function(req, res, next) {
     var xml = xmlbuilder.create('urlset', {encoding:"UTF-8"});
     xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}`);
-    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/json`);
+    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/api/packages/${x.Package}`);
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/${x.Package}.pdf`);
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/manual.html`);
     var assets = x['_contents'] && x['_contents'].assets || [];
