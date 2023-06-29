@@ -384,8 +384,9 @@ router.get('/:user/stats/datasets', function(req, res, next){
 
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
+  var limit = parseInt(req.query.limit) || 500;
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
-  var cursor = packages.find(query).sort({"_builder.commit.time" : -1}).project({_id:0, _type:0});
+  var cursor = packages.find(query, {limit:limit}).sort({"_builder.commit.time" : -1}).project({_id:0, _type:0});
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
@@ -444,6 +445,7 @@ function days_ago(n){
 router.get('/:user/stats/builds', function(req, res, next) {
   var user = req.params.user;
   var query = qf({_user: user}, req.query.all);
+  var limit = parseInt(req.query.limit) || 500;
   if(user == ":any"){
     query['_builder.commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
   }
@@ -484,7 +486,8 @@ router.get('/:user/stats/builds', function(req, res, next) {
       macbinary: { $first: "$macbinary" },
       winbinary: { $first: "$winbinary" },
       os_restriction:{ $first: "$os_restriction" }
-    }}
+    }},
+    {$limit: limit}
   ]);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
