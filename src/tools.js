@@ -390,7 +390,7 @@ function group_package_data(docs){
       os: x['_type'],
       version: x.Version,
       date: x._created,
-      distro: (x['_type'] == 'linux' ? x['_builder'].distro : undefined),
+      distro: (x['_type'] == 'linux' && x['_builder'] ? x['_builder'].distro : undefined),
       commit: (x['_builder'] && x['_builder'].commit && x['_builder'].commit.id),
       fileid: x['_fileid']
     }
