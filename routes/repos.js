@@ -286,14 +286,23 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
 router.get('/:user/api/packages/:package?', function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
+  var projection = {_id:0};
+  if(req.query.fields){
+    var projection = {Package:1, _type:1, _id:0};
+    req.query.fields.split(",").forEach(function (f) {
+      if(f == 'binaries') f = 'Built';
+      projection[f] = 1;
+    });
+  }
   if(package){
-    packages.find({_user : user, Package : package}).toArray().then(function(docs){
+    packages.find({_user : user, Package : package}).project(projection).toArray().then(function(docs){
       res.send(group_package_data(docs));
     }).catch(error_cb(400, next));
   } else {
     var query = qf({_user: user}, req.query.all);
     var cursor = packages.aggregate([
       {$match: query},
+      {$project: projection},
       {$group : {
         _id : '$Package',
         value: { '$push': '$$ROOT' }
