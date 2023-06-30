@@ -309,7 +309,12 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
       }}
     ]);
     var out = [];
+    var count = 0;
     cursor.forEach(function(x){
+      if(count++ > 1000){
+        cursor.close();
+        throw "Too many results"
+      }
       out.push(group_package_data(x.value));
     }).then(function(){
       res.send(out.filter(x => x));
