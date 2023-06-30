@@ -300,13 +300,15 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
     }).catch(error_cb(400, next));
   } else {
     var query = qf({_user: user}, req.query.all);
+    var limit = parseInt(req.query.limit) || 500;
     var cursor = packages.aggregate([
       {$match: query},
       {$project: projection},
       {$group : {
         _id : '$Package',
         value: { '$push': '$$ROOT' }
-      }}
+      }},
+      {$limit : limit}
     ]);
     var out = [];
     cursor.forEach(function(x){
