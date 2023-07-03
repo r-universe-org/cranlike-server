@@ -311,6 +311,14 @@ function calculate_score(description){
   return 1 + Math.log10(Math.max(1, score));
 }
 
+function is_indexed(description){
+  var universe = description['_user']
+  var owner = (description['_contents'] || {}).realowner;
+  if(!owner)
+    return true;
+  return universe == owner;
+}
+
 function is_self_owned(description, builder, user){
   if(user === 'cran'){
     return false; //mirror only packages
@@ -361,6 +369,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
         description['_usedby'] = metadata[1];
         description['_contents'] = metadata[2];
         description['_score'] = calculate_score(description);
+        description['_indexed'] = is_indexed(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
