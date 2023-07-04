@@ -29,7 +29,7 @@ function test_if_universe_exists(user){
   const url = 'https://github.com/r-universe/' + user;
   const query = {'$or': [
     {'_user': user},
-    {'_builder.maintainer.login': user, '_selfowned': true}
+    {'_builder.maintainer.login': user, '_indexed': true}
   ]};
   return packages.findOne(query).then(function(x){
     if(x) return true;

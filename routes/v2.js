@@ -255,7 +255,7 @@ router.get('/:user/:package/sitemap.xml', function(req, res, next) {
 //Todo: allow to by pass to access resources (e.g. vignettes) from the cran copy
 function real_package_home(user, package){
   if(user === 'cran'){
-    return packages.findOne({'Package': package, '_type': 'src', '_selfowned': true}).then(function(x){
+    return packages.findOne({'Package': package, '_type': 'src', '_indexed': true}).then(function(x){
       if(x) return x;
       return find_package(user, package);
     });
@@ -274,8 +274,7 @@ function find_package(user, package){
       '_type' : 'src',
       '$or' : [
         {'_user': user},
-        {'_owner': user, '_selfowned': true}, //legacy redirect for gitlab-xyz owned packages
-        {'_builder.maintainer.login': user, '_selfowned': true} // for gitlab-xyz or /cran mirror packages
+        {'_indexed': true}
       ]
     };
     return packages.findOne(query).then(function(x){

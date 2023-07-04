@@ -38,7 +38,7 @@ function qf(x, query_by_user_or_maintainer){
   if(user == ":any"){
     delete x._user;
     if(query_by_user_or_maintainer){
-      x['_selfowned'] = true;
+      x['_indexed'] = true;
     }
   } else if(user === 'bioconductor' && query_by_user_or_maintainer){
     delete x._user;
@@ -47,7 +47,7 @@ function qf(x, query_by_user_or_maintainer){
     delete x._user;
     x['$or'] = [
       {'_user': user},
-      {'_builder.maintainer.login': user, '_selfowned': true}
+      {'_builder.maintainer.login': user, '_indexed': true}
     ];
   }
   return x;
@@ -638,7 +638,7 @@ router.get("/:user/stats/contributions", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 100000;
   var cutoff = parseInt(req.query.cutoff) || 0;
   var user = req.params.user;
-  var query = {_type: 'src', '_selfowned' : true};
+  var query = {_type: 'src', '_indexed' : true};
   var contribfield = `_contents.gitstats.contributions.${user}`;
   query[contribfield] = { $gt: cutoff };
   if(req.query.skipself){
@@ -732,10 +732,9 @@ router.get("/:user/stats/pkgrevdeps", function(req,res,next){
   //group can be set to 'owner' or 'maintainer'
   var group = req.query.group || 'dependencies.package';
   var groupname = group.split('.').pop();
-  var prequery = {_user: req.params.user, _type: 'src', '_selfowned' : true};
+  var prequery = {_user: req.params.user, _type: 'src', '_indexed' : true};
   packages.distinct('Package', qf(prequery, req.query.all)).then(function(pkgs){
-    //var query = {_type: 'src', _selfowned : true, _hard_deps: {$elemMatch: { package: {$in: pkgs}}}};
-    var query = {_type: 'src', _selfowned : true};
+    var query = {_type: 'src', _indexed : true};
     var cursor = packages.aggregate([
       {$match: query},
       {$project: {_id: 0, owner: '$_user', package: '$Package', dependencies: '$_hard_deps', maintainer: '$_builder.maintainer.login'}},
@@ -766,7 +765,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
     postmatch['$or'] = [{'owner': user}, {'maintainer': user}];
   }
   var cursor = packages.aggregate([
-    {$match: {_type: 'src', _selfowned : true}},
+    {$match: {_type: 'src', _indexed : true}},
     {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {
       $concatArrays: ['$_hard_deps', soft_deps, [{
         package: '$Package',
@@ -1000,7 +999,7 @@ router.get("/:user/stats/ranksearch", function(req, res, next) {
 /* Simple 1 package revdep cases; see above for aggregates */
 router.get('/:user/stats/usedby', function(req, res, next) {
   var package = req.query.package;
-  var q0 = qf({_user: req.params.user, _type: 'src', _selfowned : true}, req.query.all);
+  var q0 = qf({_user: req.params.user, _type: 'src', _indexed : true}, req.query.all);
   var q1 = Object.assign({}, q0, { '_hard_deps.package': package });
   var q2 = Object.assign({}, q0, { '_soft_deps.package': package });
   var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_contents.gitstats.stars': -1}).toArray();
@@ -1010,7 +1009,7 @@ router.get('/:user/stats/usedby', function(req, res, next) {
 
 router.get('/:user/stats/usedbyorg', function(req, res, next) {
   var package = req.query.package;
-  var query = qf({_user: req.params.user, _type: 'src', _selfowned : true}, req.query.all);
+  var query = qf({_user: req.params.user, _type: 'src', _indexed : true}, req.query.all);
   query['$or'] = [{'_hard_deps.package': package},{ '_soft_deps.package': package }];
   var cursor = packages.aggregate([
     {$match:query},

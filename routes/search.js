@@ -14,7 +14,7 @@ function qf(x, query_by_user_or_maintainer){
   if(user == ":any"){
     delete x._user;
     if(query_by_user_or_maintainer){
-      x['_selfowned'] = true;
+      x['_indexed'] = true;
     }
   } else if(user === 'bioconductor' && query_by_user_or_maintainer){
     delete x._user;
@@ -23,7 +23,7 @@ function qf(x, query_by_user_or_maintainer){
     delete x._user;
     x['$or'] = [
       {'_user': user},
-      {'_builder.maintainer.login': user, '_selfowned': true}
+      {'_builder.maintainer.login': user, '_indexed': true}
     ];
   }
   return x;
@@ -127,7 +127,7 @@ router.get("/:user/stats/powersearch", function(req, res, next) {
     //remove fields unrelated to the search
     delete out.query._type;
     delete out.query._registered;
-    delete out.query._selfowned;
+    delete out.query._indexed;
     delete out.stat;
     return res.send(out);
   }).catch(error_cb(400, next));
