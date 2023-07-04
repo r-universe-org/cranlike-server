@@ -254,14 +254,14 @@ router.get('/:user/:package/sitemap.xml', function(req, res, next) {
 //This redirects cran.r-universe.dev/pkg to the canonical home, if any
 //Todo: allow to by pass to access resources (e.g. vignettes) from the cran copy
 function real_package_home(user, package){
-  if(user === 'cran'){
-    return packages.findOne({'Package': package, '_type': 'src', '_indexed': true}).then(function(x){
-      if(x) return x;
-      return find_package(user, package);
-    });
-  } else {
+  //if(user === 'cran'){
+  //  return packages.findOne({'Package': package, '_type': 'src', '_indexed': true}).then(function(x){
+  //    if(x) return x;
+  //    return find_package(user, package);
+  //  });
+  //} else {
     return find_package(user, package);
-  }
+  //}
 }
 
 function find_package(user, package){
@@ -274,7 +274,7 @@ function find_package(user, package){
       '_type' : 'src',
       '$or' : [
         {'_user': user},
-        {'_indexed': true}
+        {'_indexed': true, '_selfowned': true} //eg 'tiledbsoma' is not on cran but multiple universes. Avoid random redirects.
       ]
     };
     return packages.findOne(query).then(function(x){

@@ -32,7 +32,7 @@ connection.then(async function(client) {
   await packages.createIndex({"_user":1, "_builder.commit.id":1, "Package":1});
   await packages.createIndex({"_user":1, "_type":1, "_builder.commit.time":1});
   await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_builder.commit.time":1});
-  await packages.createIndex({"_builder.maintainer.login":1, "_selfowned":1, "_builder.commit.time":1});
+  await packages.createIndex({"_builder.maintainer.login":1, "_indexed":1, "_builder.commit.time":1});
 
   /* The text search index (only one is allowed) */
   //await packages.dropIndex("textsearch").catch(console.log);
