@@ -312,6 +312,8 @@ function calculate_score(description){
 }
 
 function is_indexed(description){
+  if(description['_registered'] === false)
+    return false; //remotes
   var universe = description['_user']
   var owner = (description['_contents'] || {}).realowner;
   if(!owner)
@@ -542,7 +544,7 @@ router.post('/:user/api/reindex', function(req, res, next) {
     return packages.find({_type:'src'}).forEach(function(doc){
       console.log(`Updating: ${doc.Package}`)
       var realowner = owners[doc.Package];
-      var indexed = !realowner || (realowner == doc['_user']);
+      var indexed = (!realowner && doc['_registered']) || (realowner == doc['_user']);
       return packages.updateOne(
         { _id: doc['_id'] },
         { "$set": {"_contents.realowner": realowner, "_indexed": indexed}}
