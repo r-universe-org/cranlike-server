@@ -527,6 +527,32 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
   }).catch(err => res.status(400).send(err));
 });
 
+router.post('/:user/api/reindex', function(req, res, next) {
+  var owners = {};
+  fetch('https://r-universe-org.github.io/cran-to-git/universes.csv')
+  .then((result) => result.text())
+  .then(function(txt){
+    return txt.trim().split('\n').forEach(function(doc){
+      var arr = doc.split(',');
+      var pkg = arr[0];
+      var owner = arr[1];
+      owners[pkg] = owner;
+    })
+  }).then(function(){
+    return packages.find({_type:'src'}).forEach(function(doc){
+      console.log(`Updating: ${doc.Package}`)
+      var realowner = owners[doc.Package];
+      var indexed = !realowner || (realowner == doc['_user']);
+      return packages.updateOne(
+        { _id: doc['_id'] },
+        { "$set": {"_contents.realowner": realowner, "_indexed": indexed}}
+      );
+    });
+  }).then(function(x){
+    res.send(owners);
+  });
+});
+
 function extract_json_metadata(input, package){
   return tools.extract_file(input, `${package}/extra/contents.json`).then(function(str){
     return JSON.parse(str);
