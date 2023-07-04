@@ -453,6 +453,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
         description['_usedby'] = metadata[1];
         description['_contents'] = metadata[2];
         description['_score'] = calculate_score(description);
+        description['_indexed'] = is_indexed(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }

@@ -81,11 +81,15 @@ router.get("/:user/:package*", function(req, res, next) {
     }).catch(error_cb(404, next));
   } else {
     real_package_home(user, package).then(function(x){
+      var realowner = x._contents && x._contents.realowner || x._user;
       if(x._user != user){
         /* nginx does not understand cross-domain redirect with relative path */
         res.redirect(req.path.replace(`/${user}/${package}`, `https://${x._user}.r-universe.dev/${x.Package}`));
       } else if(x.Package != package){
         res.redirect(req.path.replace(`/${user}/${package}`, `/${user}/${x.Package}`));
+      } else if(req.params['0'] === "" && user === 'cran' && realowner !== 'cran' ) {
+        /* req.params['0'] means only redirect the html dasbhoard, not pkg content */
+        res.redirect(req.path.replace(`/${user}/${package}`, `https://${realowner}.r-universe.dev/${x.Package}`));
       } else {
         next();
       }
