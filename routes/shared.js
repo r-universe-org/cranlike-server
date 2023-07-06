@@ -13,6 +13,23 @@ function error_cb(status, next) {
   }
 }
 
+router.get('/shared/redirect/:package*', function(req, res, next) {
+  var package = req.params.package;
+  var query = {
+    Package : {$regex: `^${package}$`, $options: 'i'},
+    '_type' : 'src',
+    '_user' : 'cran'
+  }
+  packages.findOne(query).then(function(x){
+    if(!x){
+      res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
+    } else {
+      var realowner = x['_contents'] && x['_contents'].realowner || 'cran';
+      res.redirect(`https://${realowner}.r-universe.dev/${x.Package}/${req.params['0'] || ""}`);
+    }
+  });
+});
+
 router.get('/shared/cranstatus/:package', function(req, res, next) {
   tools.get_cran_desc(req.params.package).then(function(info){
     res.set('Cache-Control', 'max-age=3600, public').send(info);
