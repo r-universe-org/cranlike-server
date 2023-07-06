@@ -25,7 +25,8 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
       res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
     } else {
       var realowner = x['_contents'] && x['_contents'].realowner || 'cran';
-      res.redirect(`https://${realowner}.r-universe.dev/${x.Package}/${req.params['0'] || ""}`);
+      var path = req.headers.host == 'docs.cran.dev' ? '/doc/manual.html' : req.params['0'] || "";
+      res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${realowner}.r-universe.dev/${x.Package}${path}`);
     }
   });
 });
