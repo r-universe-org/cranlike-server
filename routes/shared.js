@@ -15,12 +15,7 @@ function error_cb(status, next) {
 
 router.get('/shared/redirect/:package*', function(req, res, next) {
   var package = req.params.package;
-  var query = {
-    Package : {$regex: `^${package}$`, $options: 'i'},
-    '_type' : 'src',
-    '_user' : 'cran'
-  }
-  packages.findOne(query).then(function(x){
+  find_cran_package(package).then(function(x){
     if(!x){
       res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
     } else {
@@ -50,5 +45,19 @@ router.get('/shared/webrstatus', function(req, res, next) {
     });
   }).catch(error_cb(400, next))
 });
+
+
+function find_cran_package(package){
+  var regex = {$regex: `^${package}$`, $options: 'i'};
+  return packages.findOne({Package : regex, _type : 'src', _user : 'cran'}).then(function(x){
+    if(x) return x;
+    /* fallback for packages misssing from the CRAN mirror for whatever reason */
+    return packages.findOne({Package : regex, _type : 'src', _indexed : true}).then(function(y){
+      if(y && y['_contents'] && y['_contents'].realowner == y['_user']){
+        return y;
+      }
+    });
+  });
+}
 
 module.exports = router;
