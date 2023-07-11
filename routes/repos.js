@@ -304,6 +304,9 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
     var query = req.query.all ?
       {'$or' : [{'_user': user}, {'_builder.maintainer.login': user}]} :
       {'_user': user};
+    if(user == ":any" || user == 'cran'){
+      query['_builder.commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
+    }
     var limit = parseInt(req.query.limit) || 500;
     var cursor = packages.aggregate([
       {$match: query},
