@@ -316,12 +316,18 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
       {$match: {indexed: true}},
       {$limit : limit}
     ]);
-    var out = [];
-    cursor.forEach(function(x){
-      out.push(group_package_data(x.value));
-    }).then(function(){
-      res.send(out.filter(x => x));
-    }).catch(error_cb(400, next));
+    if(req.query.stream){
+      cursor.hasNext().then(function(){
+        cursor.transformStream({transform: x => doc_to_ndjson(group_package_data(x.value))}).pipe(res.type('text/plain'));
+      }).catch(error_cb(400, next));
+    } else {
+      var out = [];
+      cursor.forEach(function(x){
+        out.push(group_package_data(x.value));
+      }).then(function(){
+        res.send(out.filter(x => x));
+      }).catch(error_cb(400, next));
+    }
   }
 });
 
