@@ -288,7 +288,7 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
   var package = req.params.package;
   var projection = {_id:0};
   if(req.query.fields){
-    var projection = {Package:1, _type:1, _id:0};
+    var projection = {Package:1, _type:1, _user:1, _indexed: 1, _id:0};
     req.query.fields.split(",").forEach(function (f) {
       if(f == 'binaries') f = 'Built';
       projection[f] = 1;
@@ -299,15 +299,21 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
       res.send(group_package_data(docs));
     }).catch(error_cb(400, next));
   } else {
-    var query = qf({_user: user}, req.query.all);
+    /* Only src pkg has _indexed field, so first group and then filter again by _indexed
+       otherwise we don't get the binaries for non-indexed packages */
+    var query = req.query.all ?
+      {'$or' : [{'_user': user}, {'_builder.maintainer.login': user}]} :
+      {'_user': user};
     var limit = parseInt(req.query.limit) || 500;
     var cursor = packages.aggregate([
       {$match: query},
       {$project: projection},
       {$group : {
-        _id : '$Package',
+        _id : {'Package': '$Package', '_user':'$_user'},
+        indexed: { $addToSet: "$_indexed" },
         value: { '$push': '$$ROOT' }
       }},
+      {$match: {indexed: true}},
       {$limit : limit}
     ]);
     var out = [];
