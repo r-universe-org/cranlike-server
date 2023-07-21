@@ -20,8 +20,15 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
       res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
     } else {
       var realowner = x['_contents'] && x['_contents'].realowner || 'cran';
-      var path = req.headers.host == 'docs.cran.dev' ? '/doc/manual.html' : req.params['0'] || "";
-      res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${realowner}.r-universe.dev/${x.Package}${path}`);
+      switch (req.headers.host) {
+        case 'docs.cran.dev':
+          var path = `${x.Package}/doc/manual.html`; break;
+        case 'api.cran.dev':
+          var path = `api/packages/${x.Package}`; break;
+        default:
+          var path = `${x.Package}/${req.params['0']}`; break;
+      }
+      res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${realowner}.r-universe.dev/${path}`);
     }
   });
 });
