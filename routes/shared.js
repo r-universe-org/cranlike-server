@@ -19,16 +19,40 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
     if(!x){
       res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
     } else {
+      var manual = '/doc/manual.html';
       var realowner = x['_contents'] && x['_contents'].realowner || 'cran';
-      switch (req.headers.host) {
-        case 'docs.cran.dev':
-          var path = `${x.Package}/doc/manual.html`; break;
-        case 'api.cran.dev':
-          var path = `api/packages/${x.Package}`; break;
-        default:
-          var path = `${x.Package}/${req.params['0']}`; break;
+      if(req.headers.host == 'api.cran.dev'){
+        var out = {
+          package: x.Package,
+          maintainer: x.Maintainer,
+          home : `https://cran.r-universe.dev/${x.Package}`,
+          release : {
+            version: x.Version,
+            date: x._created,
+            source: x.RemoteUrl,
+            docs: `https://cran.r-universe.dev/${x.Package}${manual}`,
+            api:  `https://cran.r-universe.dev/api/packages/${x.Package}`
+          }
+        };
+        packages.findOne({Package : x.Package, _user : realowner}).then(function(y){
+          if(y){
+            out.home = `https://${y._user}.r-universe.dev/${y.Package}`;
+            if(y._owner != 'cran') {
+              out.devel = {
+                version: y.Version,
+                date: y._created,
+                source: y.RemoteUrl,
+                docs: `https://${y._user}.r-universe.dev/${x.Package}${manual}`,
+                api:  `https://${y._user}.r-universe.dev/api/packages/${y.Package}`
+              };
+            }
+          }
+          res.send(out);
+        });
+      } else {
+        var path = req.headers.host == 'docs.cran.dev' ? manual : req.params['0'] || "";
+        res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${realowner}.r-universe.dev/${x.Package}${path}`);
       }
-      res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${realowner}.r-universe.dev/${path}`);
     }
   });
 });
