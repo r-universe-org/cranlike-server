@@ -30,6 +30,7 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
             version: x.Version,
             date: x._created,
             source: x.RemoteUrl,
+            repository: 'https://cloud.r-project.org',
             docs: `https://cran.r-universe.dev/${x.Package}${manual}`,
             api:  `https://cran.r-universe.dev/api/packages/${x.Package}`
           }
@@ -42,6 +43,7 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
                 version: y.Version,
                 date: y._created,
                 source: y.RemoteUrl,
+                repository: `https://${y._user}.r-universe.dev`,
                 docs: `https://${y._user}.r-universe.dev/${x.Package}${manual}`,
                 api:  `https://${y._user}.r-universe.dev/api/packages/${y.Package}`
               };
