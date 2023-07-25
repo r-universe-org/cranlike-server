@@ -8,7 +8,7 @@ const send_extracted_file = tools.send_extracted_file;
 const pkgfields = tools.pkgfields;
 const doc_to_dcf = tools.doc_to_dcf;
 const group_package_data = tools.group_package_data;
-
+const flatten_contents = tools.flatten_contents;
 
 function error_cb(status, next) {
   return function(err) {
@@ -17,6 +17,7 @@ function error_cb(status, next) {
 }
 
 function doc_to_ndjson(x){
+  flatten_contents(x);
   return JSON.stringify(x) + '\n';
 }
 
