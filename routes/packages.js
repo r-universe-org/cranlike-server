@@ -353,6 +353,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
     //console.log(`Successfully stored file ${filename} with ${runrevdeps} runreveps`);
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
       const filedata = metadata[0];
+      description['MD5sum'] = md5;
       description['_user'] = user;
       description['_type'] = type;
       description['_file'] = filename;
@@ -364,7 +365,6 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = is_self_owned(description, builder, user);
       description['_registered'] = (builder.registered !== "false");
-      description['MD5sum'] = md5;
       description = merge_dependencies(description);
       validate_description(description, package, version, type);
       if(type == "src"){
@@ -435,6 +435,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
   }).then(function(metadata){
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
       const filedata = metadata[0];
+      description['MD5sum'] = md5;
       description['_user'] = user;
       description['_type'] = type;
       description['_file'] = filename;
@@ -446,7 +447,6 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = is_self_owned(description, builder, user);
       description['_registered'] = (builder.registered !== "false");
-      description['MD5sum'] = md5;
       description = merge_dependencies(description);
       validate_description(description, package, version, type);
       if(type == "src"){
