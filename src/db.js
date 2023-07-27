@@ -20,13 +20,12 @@ connection.then(async function(client) {
   global.packages = db.collection('packages');
   global.chunks = db.collection('files.chunks');
 
-  //print or drop all indexes
+  //print (or drop) indexes
   var indexes = await packages.indexes();
   for (x of indexes) {
-    if (x.name != '_id_'){
-      console.log("Current index: " + x.name);
-      await packages.dropIndex(x.name).catch(console.log);
-    }
+    if (x.name == '_id_') continue;
+    console.log("Found index: " + x.name);
+    //await packages.dropIndex(x.name).catch(console.log);
   };
 
   /* Speed up common query fields */
