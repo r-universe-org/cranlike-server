@@ -43,12 +43,12 @@ function qf(x, query_by_user_or_maintainer){
     }
   } else if(user === 'bioconductor' && query_by_user_or_maintainer){
     delete x._user;
-    x['_contents.gitstats.bioconductor'] = {'$exists':1};
+    x['_gitstats.bioconductor'] = {'$exists':1};
   } else if(query_by_user_or_maintainer) {
     delete x._user;
     x['$or'] = [
       {'_user': user},
-      {'_builder.maintainer.login': user, '_indexed': true}
+      {'_maintainer.login': user, '_indexed': true}
     ];
   }
   return x;
@@ -233,12 +233,12 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/', function(req, res, next)
 
 /* CRAN-like index for Linux binaries (fake src pkg structure) */
 router.get('/:user/bin/linux/:distro/:built/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
-  var query = qf({_user: req.params.user, _type: 'linux', '_builder.distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}});
+  var query = qf({_user: req.params.user, _type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}});
   packages_index(query, req.params.ext, req, res, next);
 });
 
 router.get('/:user/bin/linux/:distro/:built/src/contrib/', function(req, res, next) {
-  var query = qf({_user: req.params.user, _type: 'linux', '_builder.distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}});
+  var query = qf({_user: req.params.user, _type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}});
   packages_index(query, 'json', req, res, next);
 });
 
@@ -280,7 +280,7 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
 router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'linux', 'Built.R' : {$regex: '^' + req.params.built},
-    '_builder.distro' : req.params.distro, Package: pkg[0], Version: pkg[1]});
+    '_distro' : req.params.distro, Package: pkg[0], Version: pkg[1]});
   send_binary(query, `${req.params.pkg}-${req.params.distro}.tar.gz`, req, res, next);
 });
 
@@ -303,10 +303,10 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
     /* Only src pkg has _indexed field, so first group and then filter again by _indexed
        otherwise we don't get the binaries for non-indexed packages */
     var query = req.query.all ?
-      {'$or' : [{'_user': user}, {'_builder.maintainer.login': user}]} :
+      {'$or' : [{'_user': user}, {'_maintainer.login': user}]} :
       {'_user': user};
     if(user == ":any" || user == 'cran'){
-      query['_builder.commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
+      query['_commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
     }
     var limit = parseInt(req.query.limit) || 500;
     var cursor = packages.aggregate([
@@ -338,8 +338,8 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_contents.vignettes' : {$exists: true}}, req.query.all)},
-    {$sort : {'_builder.commit.time' : -1}},
+    {$match: qf({_user: req.params.user, _type: 'src', '_vignettes' : {$exists: true}}, req.query.all)},
+    {$sort : {'_commit.time' : -1}},
     {$limit : limit},
     {$project: {
       _id: 0,
@@ -348,11 +348,11 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
       version: '$Version',
       maintainer: '$Maintainer',
       universe: '$_user',
-      pkglogo: '$_builder.pkglogo',
-      upstream: '$_builder.upstream',
-      login: '$_builder.maintainer.login',
-      published: '$_builder.commit.time',
-      vignette: '$_contents.vignettes'
+      pkglogo: '$_pkglogo',
+      upstream: '$_upstream',
+      login: '$_maintainer.login',
+      published: '$_commit.time',
+      vignette: '$_vignettes'
     }},
     {$unwind: '$vignette'}
   ]);
@@ -364,8 +364,8 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
 router.get("/:user/stats/datasets", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 500;
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_contents.datasets' : {$exists: true}}, req.query.all)},
-    {$sort : {'_builder.commit.time' : -1}},
+    {$match: qf({_user: req.params.user, _type: 'src', '_datasets' : {$exists: true}}, req.query.all)},
+    {$sort : {'_commit.time' : -1}},
     {$limit : limit},
     {$project: {
       _id: 0,
@@ -374,11 +374,11 @@ router.get("/:user/stats/datasets", function(req, res, next) {
       version: '$Version',
       maintainer: '$Maintainer',
       universe: '$_user',
-      pkglogo: '$_builder.pkglogo',
-      upstream: '$_builder.upstream',
-      login: '$_builder.maintainer.login',
-      published: '$_builder.commit.time',
-      dataset: '$_contents.datasets'
+      pkglogo: '$_pkglogo',
+      upstream: '$_upstream',
+      login: '$_maintainer.login',
+      published: '$_commit.time',
+      dataset: '$_datasets'
     }},
     {$unwind: '$dataset'}
   ]);
@@ -391,8 +391,8 @@ router.get("/:user/stats/datasets", function(req, res, next) {
 router.get('/:user/stats/datasets', function(req, res, next){
   var limit = parseInt(req.query.limit) || 500;
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_contents.datasets' : {$exists: true}}, req.query.all)},
-    {$sort : {'_builder.commit.time' : -1}},
+    {$match: qf({_user: req.params.user, _type: 'src', '_datasets' : {$exists: true}}, req.query.all)},
+    {$sort : {'_commit.time' : -1}},
     {$limit : limit},
     {$project: {
       _id: 0,
@@ -400,7 +400,7 @@ router.get('/:user/stats/datasets', function(req, res, next){
       version: '$Version',
       maintainer: '$Maintainer',
       universe: '$_user',
-      dataset: '$_contents.datasets'
+      dataset: '$_datasets'
     }},
     {$unwind: '$dataset'}
   ]);
@@ -415,9 +415,9 @@ router.get('/:user/stats/descriptions', function(req, res, next) {
   var limit = parseInt(req.query.limit) || 500;
   var query = qf({_user: user, _type: 'src', _registered : true}, req.query.all);
   if(user == ":any" || user == 'cran'){
-    query['_builder.commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
+    query['_commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
   }
-  var cursor = packages.find(query, {limit:limit}).sort({"_builder.commit.time" : -1}).project({_id:0, _type:0});
+  var cursor = packages.find(query, {limit:limit}).sort({"_commit.time" : -1}).project({_id:0, _type:0});
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
@@ -443,10 +443,10 @@ router.get('/:user/stats/checks', function(req, res, next) {
     {$match: query},
     {$group : {
       _id : { package:'$Package', version:'$Version', user: '$_user', maintainer: '$Maintainer'},
-      timestamp: { $max : "$_builder.commit.time" },
+      timestamp: { $max : "$_commit.time" },
       registered: { $first: "$_registered" },
       os_restriction: { $addToSet: '$OS_type'},
-      runs : { $addToSet: { type: "$_type", builder: "$_builder", built: '$Built', date:'$_published'}}
+      runs : { $addToSet: { type: "$_type", built: '$Built', date:'$_published'}}
     }},
     /* NB: sort+limit requires buffering, maybe not a good idea? */
     {$sort : {timestamp : -1}},
@@ -478,25 +478,25 @@ router.get('/:user/stats/builds', function(req, res, next) {
   var query = qf({_user: user}, req.query.all);
   var limit = parseInt(req.query.limit) || 500;
   if(user == ":any" || user == 'cran'){
-    query['_builder.commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
+    query['_commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
   }
   var cursor = packages.aggregate([
     {$match: query},
     {$group : {
-      _id : { user: '$_user', package: '$Package', commit: '$_builder.commit.id'},
+      _id : { user: '$_user', package: '$Package', commit: '$_commit.id'},
       version: { $first : "$Version" },
-      maintainer: { $first : "$_builder.maintainer.name" },
-      maintainerlogin: { $first : "$_builder.maintainer.login" },
-      timestamp: { $first : "$_builder.commit.time" },
-      upstream: { $first : "$_builder.upstream" },
+      maintainer: { $first : "$_maintainer.name" },
+      maintainerlogin: { $first : "$_maintainer.login" },
+      timestamp: { $first : "$_commit.time" },
+      upstream: { $first : "$_upstream" },
       registered: { $first: "$_registered" },
       os_restriction: { $addToSet: '$OS_type'},
-      sysdeps: { $addToSet: '$_contents.sysdeps'},
-      pkgdocs: { $addToSet : '$_builder.pkgdocs' },
-      macbinary: { $addToSet : '$_builder.macbinary' },
-      winbinary: { $addToSet : '$_builder.winbinary' },
+      sysdeps: { $addToSet: '$_sysdeps'},
+      pkgdocs: { $addToSet : '$_pkgdocs' },
+      macbinary: { $addToSet : '$_macbinary' },
+      winbinary: { $addToSet : '$_winbinary' },
       runs : { $addToSet:
-        { type: "$_type", built: '$Built', date:'$_published', url: '$_builder.url', status: '$_builder.status', distro: '$_builder.distro'}
+        { type: "$_type", built: '$Built', date:'$_published', url: '$_url', status: '$_status', distro: '$_distro'}
       }
     }},
     {$sort : {"timestamp" : -1}},
@@ -534,11 +534,11 @@ router.get("/:user/stats/pkgsbymaintainer", function(req, res, next) {
       _id: 0,
       package: '$Package',
       user: '$_user',
-      login: '$_builder.maintainer.login',
-      orcid: '$_builder.maintainer.orcid',
-      name: '$_builder.maintainer.name',
-      email: '$_builder.maintainer.email',
-      updated: '$_builder.commit.time'
+      login: '$_maintainer.login',
+      orcid: '$_maintainer.orcid',
+      name: '$_maintainer.name',
+      email: '$_maintainer.email',
+      updated: '$_commit.time'
     }},
     {$group: {
       _id : '$email',
@@ -579,11 +579,11 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
     {$match: qf(query, req.query.all)},
     {$sort:{ _published: -1}}, //assume most recent builds have most current email-login mapping
     {$group: {
-      _id : '$_builder.maintainer.email',
-      updated: { $max: '$_builder.commit.time'},
-      name : { $first: '$_builder.maintainer.name'},
-      login : { $addToSet: '$_builder.maintainer.login'}, //login can be null
-      orcid : { $addToSet: '$_builder.maintainer.orcid'}, //login can be null
+      _id : '$_maintainer.email',
+      updated: { $max: '$_commit.time'},
+      name : { $first: '$_maintainer.name'},
+      login : { $addToSet: '$_maintainer.login'}, //login can be null
+      orcid : { $addToSet: '$_maintainer.orcid'}, //login can be null
       orgs: { $push:  { "k": "$_user", "v": true}},
       count : { $sum: 1 }
     }},
@@ -625,11 +625,11 @@ router.get("/:user/stats/universes", function(req, res, next) {
       _id: 0,
       package: '$Package',
       user: '$_user',
-      updated: '$_builder.commit.time',
-      name: '$_builder.maintainer.name',
-      email: '$_builder.maintainer.email',
+      updated: '$_commit.time',
+      name: '$_maintainer.name',
+      email: '$_maintainer.email',
       owner: '$_owner',
-      organization: '$_contents.gitstats.organization'
+      organization: '$_gitstats.organization'
     }},
     {$group: {
       _id : '$user',
@@ -655,18 +655,18 @@ router.get("/:user/stats/contributions", function(req, res, next) {
   var cutoff = parseInt(req.query.cutoff) || 0;
   var user = req.params.user;
   var query = {_type: 'src', '_indexed' : true};
-  var contribfield = `_contents.gitstats.contributions.${user}`;
+  var contribfield = `_gitstats.contributions.${user}`;
   query[contribfield] = { $gt: cutoff };
   if(req.query.skipself){
-    query['_builder.maintainer.login'] = {$ne: user};
+    query['_maintainer.login'] = {$ne: user};
   }
   var cursor = packages.aggregate([
     {$match: query},
     {$group: {
-      _id: "$_builder.upstream",
+      _id: "$_upstream",
       owner: {$first: '$_user'}, //equals upstream org
       packages: {$addToSet: '$Package'},
-      maintainers: {$addToSet: '$_builder.maintainer.login'}, //upstreams can have multiple pkgs and maintainers
+      maintainers: {$addToSet: '$_maintainer.login'}, //upstreams can have multiple pkgs and maintainers
       contributions: {$max: '$' + contribfield}
     }},
     {$project: {_id:0, contributions:'$contributions', upstream: '$_id', owner: '$owner', packages: '$packages', maintainers: '$maintainers'}},
@@ -690,8 +690,8 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$match: qf(query, req.query.all)},
     {$project: {
       _id: 0,
-      contributions: '$_contents.gitstats.contributions',
-      upstream: '$_builder.upstream'
+      contributions: '$_gitstats.contributions',
+      upstream: '$_upstream'
     }},
     {$addFields: {contributions: {$objectToArray:"$contributions"}}},
     {$unwind: "$contributions"},
@@ -712,7 +712,7 @@ router.get("/:user/stats/updates", function(req, res, next) {
     {$project: {
       _id: 0,
       package: '$Package',
-      updates: '$_contents.gitstats.updates'
+      updates: '$_gitstats.updates'
     }},
     {$unwind: "$updates"},
     {$group: {_id: "$updates.week", total: {$sum: '$updates.n'}, packages: {$addToSet: {k:'$package', v:'$updates.n'}}}},
@@ -753,7 +753,7 @@ router.get("/:user/stats/pkgrevdeps", function(req,res,next){
     var query = {_type: 'src', _indexed : true};
     var cursor = packages.aggregate([
       {$match: query},
-      {$project: {_id: 0, owner: '$_user', package: '$Package', dependencies: '$_hard_deps', maintainer: '$_builder.maintainer.login'}},
+      {$project: {_id: 0, owner: '$_user', package: '$Package', dependencies: '$_hard_deps', maintainer: '$_maintainer.login'}},
       {$unwind: '$dependencies'},
       {$match: {'dependencies.package': {$in: pkgs}}},
       {$group: {
@@ -786,7 +786,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
       $concatArrays: ['$_hard_deps', soft_deps, [{
         package: '$Package',
         owner: '$_user',
-        maintainer: '$_builder.maintainer.login',
+        maintainer: '$_maintainer.login',
         role: 'self'
       }]]}}
     },
@@ -813,16 +813,16 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 
 router.get("/:user/stats/sysdeps", function(req, res, next) {
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_contents.sysdeps': {$exists: true}}, req.query.all)},
-    {$unwind: '$_contents.sysdeps'},
+    {$match: qf({_user: req.params.user, _type: 'src', '_sysdeps': {$exists: true}}, req.query.all)},
+    {$unwind: '$_sysdeps'},
     {$group: {
-      _id : '$_contents.sysdeps.name',
-      packages: { $addToSet: '$_contents.sysdeps.package'},
-      headers: { $addToSet: '$_contents.sysdeps.headers'},
-      version: { $first: '$_contents.sysdeps.version'},
-      homepage: { $addToSet: '$_contents.sysdeps.homepage'},
-      description: { $addToSet: '$_contents.sysdeps.description'},
-      distro : { $addToSet: '$_builder.distro'},
+      _id : '$_sysdeps.name',
+      packages: { $addToSet: '$_sysdeps.package'},
+      headers: { $addToSet: '$_sysdeps.headers'},
+      version: { $first: '$_sysdeps.version'},
+      homepage: { $addToSet: '$_sysdeps.homepage'},
+      description: { $addToSet: '$_sysdeps.description'},
+      distro : { $addToSet: '$_distro'},
       usedby : { $addToSet: {owner: '$_owner', package:'$Package'}}
     }},
     {$project: {_id: 0, library: '$_id', packages: 1, headers: 1, version: 1, usedby: 1,
@@ -839,9 +839,9 @@ router.get("/:user/stats/topics", function(req, res, next) {
   var limit =  parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src'})},
-    {$unwind: '$_contents.gitstats.topics'},
+    {$unwind: '$_gitstats.topics'},
     {$group: {
-      _id : '$_contents.gitstats.topics',
+      _id : '$_gitstats.topics',
       packages: { $addToSet: '$Package' }
     }},
     {$project: {_id: 0, topic: '$_id', packages: '$packages', count: { $size: "$packages" }}},
@@ -964,10 +964,10 @@ function build_query(query, str){
   }
   match_partial('author', 'Author');
   match_partial('maintainer', 'Maintainer');
-  match_exact('needs', '_contents.rundeps');
-  match_exists('contributor', '_contents.gitstats.contributions');
-  match_insensitive('topic', '_contents.gitstats.topics');
-  match_insensitive('exports', '_contents.exports');
+  match_exact('needs', '_rundeps');
+  match_exists('contributor', '_gitstats.contributions');
+  match_insensitive('topic', '_gitstats.topics');
+  match_insensitive('exports', '_exports');
   match_insensitive('package', 'Package');
   str = str.trim();
   if(str){
@@ -987,12 +987,12 @@ router.get("/:user/stats/ranksearch", function(req, res, next) {
     _owner: 1,
     _score: 1,
     _usedby: 1,
-    maintainer: '$_builder.maintainer',
-    updated: '$_builder.commit.time',
-    stars: '$_contents.gitstats.stars',
-    topics: '$_contents.gitstats.topics',
-    sysdeps: '$_contents.sysdeps.name',
-    rundeps: '$_contents.rundeps'
+    maintainer: '$_maintainer',
+    updated: '$_commit.time',
+    stars: '$_gitstats.stars',
+    topics: '$_gitstats.topics',
+    sysdeps: '$_sysdeps.name',
+    rundeps: '$_rundeps'
   };
   if(query['$text']){
     project.match = {$meta: "textScore"};
@@ -1018,8 +1018,8 @@ router.get('/:user/stats/usedby', function(req, res, next) {
   var q0 = qf({_user: req.params.user, _type: 'src', _indexed : true}, req.query.all);
   var q1 = Object.assign({}, q0, { '_hard_deps.package': package });
   var q2 = Object.assign({}, q0, { '_soft_deps.package': package });
-  var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_contents.gitstats.stars': -1}).toArray();
-  var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_contents.gitstats.stars': -1}).toArray();
+  var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_gitstats.stars': -1}).toArray();
+  var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_gitstats.stars': -1}).toArray();
   Promise.all([p1,p2]).then(data => res.send({hard: data[0], soft: data[1]})).catch(error_cb(400, next));
 });
 
@@ -1031,8 +1031,8 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
     {$match:query},
     {$group : {
       _id: "$_user",
-      packages : { $addToSet: { package: "$Package", maintainer :'$_builder.maintainer.login', stars: '$_contents.gitstats.stars'}},
-      allstars: { $sum: '$_contents.gitstats.stars'},
+      packages : { $addToSet: { package: "$Package", maintainer :'$_maintainer.login', stars: '$_gitstats.stars'}},
+      allstars: { $sum: '$_gitstats.stars'},
     }},
     {$project:{_id: 0, owner: "$_id", packages: 1, allstars:1}},
     {$sort : {allstars : -1}},
@@ -1046,12 +1046,12 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
 router.get('/:user/stats/summary', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
   var p1 = packages.distinct('Package', query);
-  var p2 = packages.distinct('_builder.maintainer.email', query);
-  var p3 = packages.distinct('_contents.vignettes.title', query);
-  var p4 = packages.distinct('_contents.datasets.title', query);
+  var p2 = packages.distinct('_maintainer.email', query);
+  var p3 = packages.distinct('_vignettes.title', query);
+  var p4 = packages.distinct('_datasets.title', query);
   var p5 = packages.aggregate([
     {$match:query},
-    {$project: {contrib: {$objectToArray:"$_contents.gitstats.contributions"}}},
+    {$project: {contrib: {$objectToArray:"$_gitstats.contributions"}}},
     {$unwind: "$contrib"},
     {$group: {_id: "$contrib.k"}},
     {$count: "total"}
@@ -1071,7 +1071,7 @@ router.get('/:user/stats/summary', function(req, res, next){
 router.get('/:user/stats/everyone', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
   var p1 = packages.distinct('_user', query);
-  var p2 = packages.distinct('_builder.maintainer.login', query);
+  var p2 = packages.distinct('_maintainer.login', query);
   Promise.all([p1, p2]).then((values) => {
     const out = {
       universes: values[0].sort(),

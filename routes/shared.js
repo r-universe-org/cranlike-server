@@ -20,7 +20,7 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
       res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
     } else {
       var manual = '/doc/manual.html';
-      var realowner = x['_contents'] && x['_contents'].realowner || 'cran';
+      var realowner = x._realowner || 'cran';
       if(req.headers.host == 'api.cran.dev'){
         var out = {
           package: x.Package,
@@ -86,7 +86,7 @@ function find_cran_package(package){
     if(x) return x;
     /* fallback for packages misssing from the CRAN mirror for whatever reason */
     return packages.findOne({Package : regex, _type : 'src', _indexed : true}).then(function(y){
-      if(y && y['_contents'] && y['_contents'].realowner == y['_user']){
+      if(y && y._realowner == y['_user']){
         return y;
       }
     });

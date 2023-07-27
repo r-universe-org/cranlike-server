@@ -93,7 +93,7 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
       return;
     }
     var lazydata = ['yes', 'true'].includes((x['LazyData'] || "").toLowerCase());
-    var datasets = x['_contents'] && x['_contents'].datasets || [];
+    var datasets = x._datasets || [];
     if(!name) {
       return res.send(datasets);
     } else {

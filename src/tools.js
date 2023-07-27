@@ -6,7 +6,7 @@ const mime = require('mime');
 const path = require('path');
 
 /* Fields included in PACKAGES indices */
-const pkgfields = {_id: 1, _type:1, _hard_deps: 1, _soft_deps: 1, Distro: '$_builder.distro',
+const pkgfields = {_id: 1, _type:1, _hard_deps: 1, _soft_deps: 1, Distro: '$_distro',
   Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
   NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
   OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
@@ -29,7 +29,7 @@ function test_if_universe_exists(user){
   const url = 'https://github.com/r-universe/' + user;
   const query = {'$or': [
     {'_user': user},
-    {'_builder.maintainer.login': user, '_indexed': true}
+    {'_maintainer.login': user, '_indexed': true}
   ]};
   return packages.findOne(query).then(function(x){
     if(x) return true;
@@ -387,10 +387,9 @@ function group_package_data(docs){
   }
   var failure = docs.find(x => x['_type'] == 'failure');
   if(failure){
-    var failbuild = failure['_builder'] || {};
     src.failure = {
-      commit: failbuild.commit,
-      url: failbuild.url,
+      commit: failure._commit,
+      url: failure._url,
       date: failure._created
     }
   }
@@ -401,8 +400,8 @@ function group_package_data(docs){
       os: x['_type'],
       version: x.Version,
       date: x._created,
-      distro: (x['_type'] == 'linux' && x['_builder'] ? x['_builder'].distro : undefined),
-      commit: (x['_builder'] && x['_builder'].commit && x['_builder'].commit.id),
+      distro: (x['_type'] == 'linux' && x._distro || undefined),
+      commit: x._commit.id,
       fileid: x['_fileid']
     }
   });
