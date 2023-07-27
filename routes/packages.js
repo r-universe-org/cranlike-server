@@ -503,7 +503,7 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
         return;
       }
     }
-    var run_url = builder._url;
+    var run_url = doc._url;
     if(!run_url) {
       throw `Failed to find _url in ${package} ${version}`;
     }
