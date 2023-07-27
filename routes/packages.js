@@ -209,6 +209,12 @@ function validate_description(data, package, version, type){
     //Built.Platform is missing for binary pkgs without copiled code
     throw 'MacOS Binary package has unexpected Platform:' + data.Built.Platform;
   }
+  if(!data._commit || !data._commit.id){
+    throw 'No commit data found in builder metadata';
+  }
+  if(!data._maintainer || !data._maintainer.email){
+    throw 'No maintainer data found in builder metadata';
+  }
 }
 
 function filter_keys(x, regex){
@@ -227,21 +233,6 @@ function from_base64_gzip(str){
 
 function parse_builder_fields(x){
   var builder = filter_keys(x, /^builder-/gi);
-  if(builder.sysdeps){
-    builder.sysdeps = from_base64_gzip(builder.sysdeps);
-  }
-  if(builder.vignettes){
-    builder.vignettes = from_base64_gzip(builder.vignettes);
-  }
-  if(builder.gitstats){
-    builder.gitstats = from_base64_gzip(builder.gitstats);
-  }
-  if(builder.rundeps){
-    builder.rundeps = from_base64_gzip(builder.rundeps);
-  }
-  if(builder.assets){
-    builder.assets = from_base64_gzip(builder.assets);
-  }
   builder.commit = from_base64_gzip(builder.commit) || {};
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
   return builder;
@@ -275,7 +266,7 @@ function parse_major_version(built){
 }
 
 function get_repo_owner(description){
-  const url = description['_builder'].upstream || "";
+  const url = description._upstream || "";
   const re = new RegExp('.*://([a-z]+).*/([^/]*)/.*')
   const match = url.match(re);
   if(match){
@@ -295,8 +286,8 @@ function get_created(x){
 
 function calculate_score(description){
   var score = 3 * description['_usedby'];
-  var gitstats = description['_contents'].gitstats;
-  var cranurl = description['_contents'].cranurl;
+  var gitstats = description._gitstats;
+  var cranurl = description._cranurl;
   if(cranurl){
     score += 5;
   }
@@ -314,22 +305,29 @@ function calculate_score(description){
 function is_indexed(description){
   if(description['_registered'] === false)
     return false; //remotes
-  var universe = description['_user']
-  var owner = (description['_contents'] || {}).realowner;
+  var universe = description._user;
+  var owner = description._realowner;
   if(!owner)
     return true;
   return universe == owner;
 }
 
-function is_self_owned(description, builder, user){
+function is_self_owned(description){
+  var user = description._user;
   if(user === 'cran'){
     return false; //mirror only packages
   }
-  if(description['_owner'] === user || builder.maintainer.login === user || user === 'ropensci'){
+  if(description._owner === user || description._maintainer.login === user || user === 'ropensci'){
     return true;
   }
   var URL = description.URL || "";
   return URL.includes(`${user}.r-universe.dev`);
+}
+
+function add_meta_fields(description, meta){
+  for (const [key, value] of Object.entries(meta)) {
+    description[`_${key}`] = value;
+  }
 }
 
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
@@ -361,15 +359,17 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_filesize'] = filedata.length;
       description['_created'] = get_created(description);
       description['_published'] = new Date();
-      description['_builder'] = builder;
+      description['_builder'] = builder; //TODO: remove
       description['_owner'] = get_repo_owner(description);
-      description['_selfowned'] = is_self_owned(description, builder, user);
-      description['_registered'] = (builder.registered !== "false");
-      description = merge_dependencies(description);
+      add_meta_fields(description, builder);
+      merge_dependencies(description);
       validate_description(description, package, version, type);
+      description['_selfowned'] = is_self_owned(description);
+      description['_registered'] = builder.registered !== "false";
       if(type == "src"){
         description['_usedby'] = metadata[1];
-        description['_contents'] = metadata[2];
+        description['_contents'] = metadata[2]; //TODO: remove
+        add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
       } else {
@@ -400,11 +400,13 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var builder = parse_builder_fields(req.body);
   var maintainer = `${builder.maintainer.name} <${builder.maintainer.email}>`;
   var query = {_type : 'failure', _user : user, Package : package};
-  var description = {...query, Version: version, Maintainer: maintainer, _builder: builder, _published: new Date()};
+  var description = {...query, Version: version, Maintainer: maintainer, _published: new Date()};
+  description['_builder'] = builder; //TODO: remove
+  add_meta_fields(description, builder);
   description['_created'] = new Date();
   description['_owner'] = get_repo_owner(description);
-  description['_selfowned'] = description['_owner'] === user;
-  description['_registered'] = (description['_builder'].registered !== "false");
+  description['_selfowned'] = description._owner === user;
+  description['_registered'] = description._registered !== "false";
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
     .catch(error_cb(400, next))
@@ -443,15 +445,17 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_filesize'] = filedata.length;
       description['_created'] = get_created(description);
       description['_published'] = new Date();
-      description['_builder'] = builder;
+      description['_builder'] = builder; //TODO: remove
       description['_owner'] = get_repo_owner(description);
-      description['_selfowned'] = is_self_owned(description, builder, user);
-      description['_registered'] = (builder.registered !== "false");
-      description = merge_dependencies(description);
+      add_meta_fields(description, builder);
+      merge_dependencies(description);
       validate_description(description, package, version, type);
+      description['_selfowned'] = is_self_owned(description);
+      description['_registered'] = builder.registered !== "false";
       if(type == "src"){
         description['_usedby'] = metadata[1];
-        description['_contents'] = metadata[2];
+        description['_contents'] = metadata[2]; //TODO: remove
+        add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
       } else {
@@ -499,10 +503,9 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
         return;
       }
     }
-    var builder = doc['_builder'];
-    var run_url = builder && builder.url;
+    var run_url = doc._url;
     if(!run_url) {
-      throw `Failed to find builder.url in ${package} ${version}`;
+      throw `Failed to find _url in ${package} ${version}`;
     }
     const pattern = new RegExp('https://github.com/(r-universe/.*/actions/runs/[0-9]+)');
     const match = run_url.match(pattern);
@@ -511,9 +514,9 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
     }
     const run_path = match[1];
     return tools.get_submodule_hash(user, package).then(function(sha){
-      if(sha !== doc['_builder'].commit.id){
+      if(sha !== doc._commit.id){
         throw `Build version of ${package} not match ${user} monorepo. Package may have been updated or removed in the mean time.` +
-          `\nUpstream: ${sha}\nThis build: ${doc['_builder'].commit.id}`
+          `\nUpstream: ${sha}\nThis build: ${doc._commit.id}`
       }
       return tools.trigger_rebuild(run_path).then(function(){
         return packages.updateOne(
@@ -548,7 +551,7 @@ router.post('/:user/api/reindex', function(req, res, next) {
       var indexed = (!realowner && doc['_registered']) || (realowner == doc['_user']);
       return packages.updateOne(
         { _id: doc['_id'] },
-        { "$set": {"_contents.realowner": realowner, "_indexed": indexed}}
+        { "$set": {"_realowner": realowner, "_indexed": indexed}}
       );
     });
   }).then(function(x){
