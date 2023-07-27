@@ -360,10 +360,10 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_created'] = get_created(description);
       description['_published'] = new Date();
       description['_builder'] = builder; //TODO: remove
-      description['_owner'] = get_repo_owner(description);
       add_meta_fields(description, builder);
       merge_dependencies(description);
       validate_description(description, package, version, type);
+      description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = is_self_owned(description);
       description['_registered'] = builder.registered !== "false";
       if(type == "src"){
@@ -446,10 +446,10 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_created'] = get_created(description);
       description['_published'] = new Date();
       description['_builder'] = builder; //TODO: remove
-      description['_owner'] = get_repo_owner(description);
       add_meta_fields(description, builder);
       merge_dependencies(description);
       validate_description(description, package, version, type);
+      description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = is_self_owned(description);
       description['_registered'] = builder.registered !== "false";
       if(type == "src"){
