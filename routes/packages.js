@@ -209,6 +209,12 @@ function validate_description(data, package, version, type){
     //Built.Platform is missing for binary pkgs without copiled code
     throw 'MacOS Binary package has unexpected Platform:' + data.Built.Platform;
   }
+  if(!data._commit || !data._commit.id){
+    throw 'No commit data found in builder metadata';
+  }
+  if(!data._maintainer || !data._maintainer.email){
+    throw 'No maintainer data found in builder metadata';
+  }
 }
 
 function filter_keys(x, regex){
