@@ -359,6 +359,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_filesize'] = filedata.length;
       description['_created'] = get_created(description);
       description['_published'] = new Date();
+      description['_builder'] = builder; //TODO: remove
       description['_owner'] = get_repo_owner(description);
       add_meta_fields(description, builder);
       merge_dependencies(description);
@@ -367,6 +368,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_registered'] = builder.registered !== "false";
       if(type == "src"){
         description['_usedby'] = metadata[1];
+        description['_contents'] = metadata[2]; //TODO: remove
         add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
@@ -399,6 +401,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var maintainer = `${builder.maintainer.name} <${builder.maintainer.email}>`;
   var query = {_type : 'failure', _user : user, Package : package};
   var description = {...query, Version: version, Maintainer: maintainer, _published: new Date()};
+  description['_builder'] = builder; //TODO: remove
   add_meta_fields(description, builder);
   description['_created'] = new Date();
   description['_owner'] = get_repo_owner(description);
@@ -442,6 +445,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_filesize'] = filedata.length;
       description['_created'] = get_created(description);
       description['_published'] = new Date();
+      description['_builder'] = builder; //TODO: remove
       description['_owner'] = get_repo_owner(description);
       add_meta_fields(description, builder);
       merge_dependencies(description);
@@ -450,6 +454,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_registered'] = builder.registered !== "false";
       if(type == "src"){
         description['_usedby'] = metadata[1];
+        description['_contents'] = metadata[2]; //TODO: remove
         add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
@@ -498,7 +503,6 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
         return;
       }
     }
-    //var builder = doc['_builder'];
     var run_url = builder._url;
     if(!run_url) {
       throw `Failed to find _url in ${package} ${version}`;
