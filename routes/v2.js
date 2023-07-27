@@ -47,7 +47,7 @@ router.get('/:user/articles', function(req, res, next){
   if((req.headers['accept'] || "").includes("html")){
     return next(); //fall through to virtual dashboard
   }
-  var query = qf({_user: req.params.user, _type: 'src', '_contents.vignettes' : { $exists: true }}, req.query.all);
+  var query = qf({_user: req.params.user, _type: 'src', '_vignettes' : { $exists: true }}, req.query.all);
   packages.distinct('Package', query).then(function(x){
     res.send(x);
   }).catch(error_cb(400, next));
@@ -81,7 +81,7 @@ router.get("/:user/:package*", function(req, res, next) {
     }).catch(error_cb(404, next));
   } else {
     real_package_home(user, package).then(function(x){
-      var realowner = x._contents && x._contents.realowner || x._user;
+      var realowner = x._realowner || x._user;
       if(x._user != user){
         /* nginx does not understand cross-domain redirect with relative path */
         res.redirect(req.path.replace(`/${user}/${package}`, `https://${x._user}.r-universe.dev/${x.Package}`));
@@ -230,7 +230,7 @@ router.get('/:user/:package/sitemap.xml', function(req, res, next) {
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/api/packages/${x.Package}`);
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/${x.Package}.pdf`);
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/manual.html`);
-    var assets = x['_contents'] && x['_contents'].assets || [];
+    var assets = x._assets || [];
     if(assets.includes('extra/NEWS.html')){
       xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/NEWS`);
     }
@@ -246,7 +246,7 @@ router.get('/:user/:package/sitemap.xml', function(req, res, next) {
     if(assets.includes('extra/citation.cff')){
       xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/citation.cff`);
     }
-    var vignettes = x['_contents'] && x['_contents'].vignettes || [];
+    var vignettes = x._vignettes || [];
     vignettes.map(function(vignette){
       xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/${vignette.source}`);
       xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/${vignette.filename}`);

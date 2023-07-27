@@ -18,12 +18,12 @@ function qf(x, query_by_user_or_maintainer){
     }
   } else if(user === 'bioconductor' && query_by_user_or_maintainer){
     delete x._user;
-    x['_contents.gitstats.bioconductor'] = {'$exists':1};
+    x['_gitstats.bioconductor'] = {'$exists':1};
   } else if(query_by_user_or_maintainer) {
     delete x._user;
     x['$or'] = [
       {'_user': user},
-      {'_builder.maintainer.login': user, '_indexed': true}
+      {'_maintainer.login': user, '_indexed': true}
     ];
   }
   return x;
@@ -66,14 +66,14 @@ function build_query(query, str){
   }
   match_partial('author', 'Author');
   match_partial('maintainer', 'Maintainer');
-  match_exact('needs', '_contents.rundeps');
-  match_exists('contributor', '_contents.gitstats.contributions');
-  match_insensitive('topic', '_contents.gitstats.topics');
-  match_insensitive('exports', '_contents.exports');
+  match_exact('needs', '_rundeps');
+  match_exists('contributor', '_gitstats.contributions');
+  match_insensitive('topic', '_gitstats.topics');
+  match_insensitive('exports', '_exports');
   match_insensitive('package', 'Package');
   match_insensitive('owner', '_owner');
   match_insensitive('universe', '_user');
-  match_partial('data', '_contents.datasets.title');
+  match_partial('data', '_datasets.title');
   str = str.trim();
   if(str){
     query['$text'] = { $search: str, $caseSensitive: false};
@@ -92,12 +92,12 @@ router.get("/:user/stats/powersearch", function(req, res, next) {
     _owner: 1,
     _score: 1,
     _usedby: 1,
-    maintainer: '$_builder.maintainer',
-    updated: '$_builder.commit.time',
-    stars: '$_contents.gitstats.stars',
-    topics: '$_contents.gitstats.topics',
-    sysdeps: '$_contents.sysdeps.name',
-    rundeps: '$_contents.rundeps'
+    maintainer: '$_maintainer',
+    updated: '$_commit.time',
+    stars: '$_gitstats.stars',
+    topics: '$_gitstats.topics',
+    sysdeps: '$_sysdeps.name',
+    rundeps: '$_rundeps'
   };
   if(query['$text']){
     project.match = {$meta: "textScore"};

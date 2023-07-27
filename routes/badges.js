@@ -19,7 +19,7 @@ function qf(x, query_by_user_or_maintainer){
     delete x._user;
     x['$or'] = [
       {'_user': user},
-      {'_builder.maintainer.login': user, '_indexed': true}
+      {'_maintainer.login': user, '_indexed': true}
     ];
   }
   return x;
@@ -38,7 +38,7 @@ router.get('/:user/badges', function(req, res, next) {
   if((req.headers['accept'] || "").includes("html")){
     return next(); //fall through to virtual dashboard
   }
-  packages.distinct('Package', {_user : req.params.user, '_builder.registered' : {$ne: 'false'}}).then(function(x){
+  packages.distinct('Package', {_user : req.params.user, '_registered' : {$ne: 'false'}}).then(function(x){
     x.push(":name");
     x.push(":registry");
     x.push(":total");
@@ -61,7 +61,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
       badge.status = user;
       send_badge(badge, user, res);
     } else if(req.params.meta == 'total'){
-      return packages.distinct('Package', qf({_user : user, _type: 'src', '_builder.registered' : {$ne: 'false'}}, true)).then(function(x){
+      return packages.distinct('Package', qf({_user : user, _type: 'src', '_registered' : {$ne: 'false'}}, true)).then(function(x){
         badge.status = x.length + " packages";
         send_badge(badge, user, res);
       });
@@ -97,7 +97,7 @@ router.get('/:user/badges/:package', function(req, res, next) {
     scale: req.query.scale
   };
   //badge.icon = 'data:image/svg+xml;base64,...';
-  packages.distinct('Version', {_user : user, Package : package, _type: 'src', '_builder.registered' : {$ne: 'false'}}).then(function(x){
+  packages.distinct('Version', {_user : user, Package : package, _type: 'src', '_registered' : {$ne: 'false'}}).then(function(x){
     if(x.length){
       badge.status = x.join("|");
       badge.color = color || 'green';

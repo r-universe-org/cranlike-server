@@ -21,7 +21,7 @@ function qf(x, query_by_user_or_maintainer){
     delete x._user;
     x['$or'] = [
       {'_user': user},
-      {'_builder.maintainer.login': user, '_indexed': true}
+      {'_maintainer.login': user, '_indexed': true}
     ];
   }
   return x;
@@ -34,7 +34,7 @@ router.get('/:user/feed.xml', function(req, res, next) {
   tools.test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
     var cursor = packages.find(query)
-      .sort({'_builder.commit.time' : -1})
+      .sort({'_commit.time' : -1})
       .limit(limit)
       .project({
         _id: 0,
@@ -42,11 +42,11 @@ router.get('/:user/feed.xml', function(req, res, next) {
         package: '$Package',
         version: '$Version',
         description: '$Description',
-        updated: '$_builder.commit.time',
-        vignettes: '$_contents.vignettes',
-        status: '$_builder.status',
-        upstream: '$_builder.upstream',
-        buildlog: '$_builder.url',
+        updated: '$_commit.time',
+        vignettes: '$_vignettes',
+        status: '$_status',
+        upstream: '$_upstream',
+        buildlog: '$_url',
         repository: '$Repository',
         type: '$_type',
         user: '$_user'

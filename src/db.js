@@ -20,19 +20,29 @@ connection.then(async function(client) {
   global.packages = db.collection('packages');
   global.chunks = db.collection('files.chunks');
 
+  //drop old indexes
+  await packages.indexes().then(async function(arr){
+    for (x of arr) {
+      if (x.name != '_id_'){
+        console.log("Dropping index: " + x.name);
+        await packages.dropIndex(x.name).catch(console.log);
+      }
+    };
+  });
+
   /* Speed up common query fields */
   /* NB: Dont use indexes with low cardinality (few unique values) */
   await packages.createIndex("MD5sum");
   await packages.createIndex("Package");
   await packages.createIndex("_user");
   await packages.createIndex("_published");
-  await packages.createIndex("_builder.commit.time");
-  await packages.createIndex("_builder.maintainer.login");
+  await packages.createIndex("_commit.time");
+  await packages.createIndex("_maintainer.login");
   await packages.createIndex({"_user":1, "_type":1, "Package":1});
-  await packages.createIndex({"_user":1, "_builder.commit.id":1, "Package":1});
-  await packages.createIndex({"_user":1, "_type":1, "_builder.commit.time":1});
-  await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_builder.commit.time":1});
-  await packages.createIndex({"_builder.maintainer.login":1, "_indexed":1, "_builder.commit.time":1});
+  await packages.createIndex({"_user":1, "_commit.id":1, "Package":1});
+  await packages.createIndex({"_user":1, "_type":1, "_commit.time":1});
+  await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_commit.time":1});
+  await packages.createIndex({"_maintainer.login":1, "_indexed":1, "_commit.time":1});
 
   /* The text search index (only one is allowed) */
   //await packages.dropIndex("textsearch").catch(console.log);
@@ -43,13 +53,13 @@ connection.then(async function(client) {
     Title: "text",
     Author: "text",
     Description: "text",
-    '_contents.vignettes.title': "text",
-    '_builder.maintainer.name': "text",
-    '_contents.gitstats.topics': "text",
-    '_contents.sysdeps.name': "text",
-    '_contents.exports' : "text",
-    '_contents.help.title' : "text",
-    '_contents.datasets.title' : "text"
+    '_vignettes.title': "text",
+    '_maintainer.name': "text",
+    '_gitstats.topics': "text",
+    '_sysdeps.name': "text",
+    '_exports' : "text",
+    '_help.title' : "text",
+    '_datasets.title' : "text"
   },{
     weights: {
       Package: 50,
@@ -57,21 +67,15 @@ connection.then(async function(client) {
       Title: 5,
       Author: 3,
       Description: 1,
-      '_contents.vignettes.title': 5,
-      '_builder.maintainer.name': 10,
-      '_contents.gitstats.topics': 10,
-      '_contents.sysdeps.name': 20,
-      '_contents.exports' : 3,
-      '_contents.help.title' : 3,
-      '_contents.datasets.title' : 3
+      '_vignettes.title': 5,
+      '_maintainer.name': 10,
+      '_gitstats.topics': 10,
+      '_sysdeps.name': 20,
+      '_exports' : 3,
+      '_help.title' : 3,
+      '_datasets.title' : 3
     },
     name: "textsearch"
-  });
-
-  //await packages.dropIndex("_user_1__type_1__registered_1").catch(console.log);
-  packages.indexes().then(function(x){
-    //console.log("Current indexes() for packages:")
-    //console.log(x);
   });
 }).catch(function(error){
   console.log("Failed to connect to mongodb!\n" + error)
