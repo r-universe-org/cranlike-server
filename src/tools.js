@@ -372,10 +372,10 @@ function doc_to_dcf(doc){
 
 function flatten_contents(x){
   for (grpkey of ['_builder', '_contents']) {
-    var group = x[grpkey] || {};
-    for (const key in group) {
-      x[`_${key}`] = group[key];
-    }
+    //var group = x[grpkey] || {};
+    //for (const key in group) {
+    //  x[`_${key}`] = group[key];
+    //}
     delete x[grpkey];
   }
 }
