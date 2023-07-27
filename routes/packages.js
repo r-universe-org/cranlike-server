@@ -227,21 +227,6 @@ function from_base64_gzip(str){
 
 function parse_builder_fields(x){
   var builder = filter_keys(x, /^builder-/gi);
-  if(builder.sysdeps){
-    builder.sysdeps = from_base64_gzip(builder.sysdeps);
-  }
-  if(builder.vignettes){
-    builder.vignettes = from_base64_gzip(builder.vignettes);
-  }
-  if(builder.gitstats){
-    builder.gitstats = from_base64_gzip(builder.gitstats);
-  }
-  if(builder.rundeps){
-    builder.rundeps = from_base64_gzip(builder.rundeps);
-  }
-  if(builder.assets){
-    builder.assets = from_base64_gzip(builder.assets);
-  }
   builder.commit = from_base64_gzip(builder.commit) || {};
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
   return builder;
