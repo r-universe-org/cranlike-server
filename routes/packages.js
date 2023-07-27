@@ -260,7 +260,7 @@ function parse_major_version(built){
 }
 
 function get_repo_owner(description){
-  const url = description['_builder'].upstream || "";
+  const url = description._upstream || "";
   const re = new RegExp('.*://([a-z]+).*/([^/]*)/.*')
   const match = url.match(re);
   if(match){
@@ -280,8 +280,8 @@ function get_created(x){
 
 function calculate_score(description){
   var score = 3 * description['_usedby'];
-  var gitstats = description['_contents'].gitstats;
-  var cranurl = description['_contents'].cranurl;
+  var gitstats = description._gitstats;
+  var cranurl = description._cranurl;
   if(cranurl){
     score += 5;
   }
@@ -299,22 +299,29 @@ function calculate_score(description){
 function is_indexed(description){
   if(description['_registered'] === false)
     return false; //remotes
-  var universe = description['_user']
-  var owner = (description['_contents'] || {}).realowner;
+  var universe = description._user;
+  var owner = description._realowner;
   if(!owner)
     return true;
   return universe == owner;
 }
 
-function is_self_owned(description, builder, user){
+function is_self_owned(description){
+  var user = description._user;
   if(user === 'cran'){
     return false; //mirror only packages
   }
-  if(description['_owner'] === user || builder.maintainer.login === user || user === 'ropensci'){
+  if(description._owner === user || description._maintainer.login === user || user === 'ropensci'){
     return true;
   }
   var URL = description.URL || "";
   return URL.includes(`${user}.r-universe.dev`);
+}
+
+function add_meta_fields(description, meta){
+  for (const [key, value] of Object.entries(meta)) {
+    description[`_${key}`] = value;
+  }
 }
 
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
@@ -328,7 +335,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   var filename = get_filename(package, version, type, builder.distro);
   crandb_store_file(req, md5, filename).then(function(filedata){
     if(type == 'src'){
-      var p1 = packages.find({_type: 'src', _registered: true, '_contents.rundeps': package}).count();
+      var p1 = packages.find({_type: 'src', _registered: true, '_rundeps': package}).count();
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
       return Promise.all([filedata, p1, p2]);
     } else {
@@ -346,15 +353,15 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_filesize'] = filedata.length;
       description['_created'] = get_created(description);
       description['_published'] = new Date();
-      description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
-      description['_selfowned'] = is_self_owned(description, builder, user);
-      description['_registered'] = (builder.registered !== "false");
-      description = merge_dependencies(description);
+      add_meta_fields(description, builder);
+      merge_dependencies(description);
       validate_description(description, package, version, type);
+      description['_selfowned'] = is_self_owned(description);
+      description['_registered'] = builder.registered !== "false";
       if(type == "src"){
         description['_usedby'] = metadata[1];
-        description['_contents'] = metadata[2];
+        add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
       } else {
@@ -385,11 +392,12 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var builder = parse_builder_fields(req.body);
   var maintainer = `${builder.maintainer.name} <${builder.maintainer.email}>`;
   var query = {_type : 'failure', _user : user, Package : package};
-  var description = {...query, Version: version, Maintainer: maintainer, _builder: builder, _published: new Date()};
+  var description = {...query, Version: version, Maintainer: maintainer, _published: new Date()};
+  add_meta_fields(description, builder);
   description['_created'] = new Date();
   description['_owner'] = get_repo_owner(description);
-  description['_selfowned'] = description['_owner'] === user;
-  description['_registered'] = (description['_builder'].registered !== "false");
+  description['_selfowned'] = description._owner === user;
+  description['_registered'] = description._registered !== "false";
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
     .catch(error_cb(400, next))
@@ -411,7 +419,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
   var stream = fs.createReadStream(filepath);
   crandb_store_file(stream, md5, filename).then(function(filedata){
     if(type == 'src'){
-      var p1 = packages.find({_type: 'src', _registered: true, '_contents.rundeps': package}).count();
+      var p1 = packages.find({_type: 'src', _registered: true, '_rundeps': package}).count();
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
       return Promise.all([filedata, p1, p2]);
     } else {
@@ -428,15 +436,15 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       description['_filesize'] = filedata.length;
       description['_created'] = get_created(description);
       description['_published'] = new Date();
-      description['_builder'] = builder;
       description['_owner'] = get_repo_owner(description);
-      description['_selfowned'] = is_self_owned(description, builder, user);
-      description['_registered'] = (builder.registered !== "false");
-      description = merge_dependencies(description);
+      add_meta_fields(description, builder);
+      merge_dependencies(description);
       validate_description(description, package, version, type);
+      description['_selfowned'] = is_self_owned(description);
+      description['_registered'] = builder.registered !== "false";
       if(type == "src"){
         description['_usedby'] = metadata[1];
-        description['_contents'] = metadata[2];
+        add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
       } else {
@@ -484,10 +492,10 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
         return;
       }
     }
-    var builder = doc['_builder'];
-    var run_url = builder && builder.url;
+    //var builder = doc['_builder'];
+    var run_url = builder._url;
     if(!run_url) {
-      throw `Failed to find builder.url in ${package} ${version}`;
+      throw `Failed to find _url in ${package} ${version}`;
     }
     const pattern = new RegExp('https://github.com/(r-universe/.*/actions/runs/[0-9]+)');
     const match = run_url.match(pattern);
@@ -496,9 +504,9 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
     }
     const run_path = match[1];
     return tools.get_submodule_hash(user, package).then(function(sha){
-      if(sha !== doc['_builder'].commit.id){
+      if(sha !== doc._commit.id){
         throw `Build version of ${package} not match ${user} monorepo. Package may have been updated or removed in the mean time.` +
-          `\nUpstream: ${sha}\nThis build: ${doc['_builder'].commit.id}`
+          `\nUpstream: ${sha}\nThis build: ${doc._commit.id}`
       }
       return tools.trigger_rebuild(run_path).then(function(){
         return packages.updateOne(
@@ -533,7 +541,7 @@ router.post('/:user/api/reindex', function(req, res, next) {
       var indexed = (!realowner && doc['_registered']) || (realowner == doc['_user']);
       return packages.updateOne(
         { _id: doc['_id'] },
-        { "$set": {"_contents.realowner": realowner, "_indexed": indexed}}
+        { "$set": {"_realowner": realowner, "_indexed": indexed}}
       );
     });
   }).then(function(x){
