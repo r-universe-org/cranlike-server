@@ -20,15 +20,14 @@ connection.then(async function(client) {
   global.packages = db.collection('packages');
   global.chunks = db.collection('files.chunks');
 
-  //drop old indexes
-  await packages.indexes().then(async function(arr){
-    for (x of arr) {
-      if (x.name != '_id_'){
-        console.log("Dropping index: " + x.name);
-        await packages.dropIndex(x.name).catch(console.log);
-      }
-    };
-  });
+  //print or drop all indexes
+  var indexes = await packages.indexes();
+  for (x of indexes) {
+    if (x.name != '_id_'){
+      console.log("Current index: " + x.name);
+      await packages.dropIndex(x.name).catch(console.log);
+    }
+  };
 
   /* Speed up common query fields */
   /* NB: Dont use indexes with low cardinality (few unique values) */

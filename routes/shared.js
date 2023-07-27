@@ -79,6 +79,12 @@ router.get('/shared/webrstatus', function(req, res, next) {
   }).catch(error_cb(400, next))
 });
 
+router.get('/shared/mongostatus', function(req, res, next) {
+  packages.indexes().then(function(indexes){
+    var out = {indexes: indexes}
+    res.send(out);
+  }).catch(error_cb(400, next))
+});
 
 function find_cran_package(package){
   var regex = {$regex: `^${package}$`, $options: 'i'};
