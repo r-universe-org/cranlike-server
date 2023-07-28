@@ -8,7 +8,6 @@ const send_extracted_file = tools.send_extracted_file;
 const pkgfields = tools.pkgfields;
 const doc_to_dcf = tools.doc_to_dcf;
 const group_package_data = tools.group_package_data;
-const flatten_contents = tools.flatten_contents;
 
 function error_cb(status, next) {
   return function(err) {
@@ -17,7 +16,6 @@ function error_cb(status, next) {
 }
 
 function doc_to_ndjson(x){
-  flatten_contents(x);
   return JSON.stringify(x) + '\n';
 }
 
@@ -496,7 +494,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
       macbinary: { $addToSet : '$_macbinary' },
       winbinary: { $addToSet : '$_winbinary' },
       runs : { $addToSet:
-        { type: "$_type", built: '$Built', date:'$_published', url: '$_url', status: '$_status', distro: '$_distro'}
+        { type: "$_type", built: '$Built', date:'$_published', url: '$_buildurl', status: '$_status', distro: '$_distro'}
       }
     }},
     {$sort : {"timestamp" : -1}},

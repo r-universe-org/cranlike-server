@@ -498,12 +498,12 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
         return;
       }
     }
-    var run_url = doc._url;
-    if(!run_url) {
-      throw `Failed to find _url in ${package} ${version}`;
+    var buildurl = doc._buildurl;
+    if(!buildurl) {
+      throw `Failed to find _buildurl in ${package} ${version}`;
     }
     const pattern = new RegExp('https://github.com/(r-universe/.*/actions/runs/[0-9]+)');
-    const match = run_url.match(pattern);
+    const match = buildurl.match(pattern);
     if(!match || !match[1]) {
       throw 'Did not recognize github action url'
     }

@@ -370,16 +370,6 @@ function doc_to_dcf(doc){
   }).join("\n") + "\n\n";
 }
 
-function flatten_contents(x){
-  for (grpkey of ['_builder', '_contents']) {
-    //var group = x[grpkey] || {};
-    //for (const key in group) {
-    //  x[`_${key}`] = group[key];
-    //}
-    delete x[grpkey];
-  }
-}
-
 function group_package_data(docs){
   var src = docs.find(x => x['_type'] == 'src');
   if(!src){
@@ -389,11 +379,10 @@ function group_package_data(docs){
   if(failure){
     src.failure = {
       commit: failure._commit,
-      url: failure._url,
+      url: failure._buildurl,
       date: failure._created
     }
   }
-  flatten_contents(src);
   src._binaries = docs.filter(x => x.Built).map(function(x){
     return {
       r: x.Built.R,
@@ -409,7 +398,6 @@ function group_package_data(docs){
 }
 
 module.exports = {
-  flatten_contents: flatten_contents,
   group_package_data: group_package_data,
   pkgfields: pkgfields,
   send_frontend_js : send_frontend_js,

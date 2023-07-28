@@ -46,7 +46,7 @@ router.get('/:user/feed.xml', function(req, res, next) {
         vignettes: '$_vignettes',
         status: '$_status',
         upstream: '$_upstream',
-        buildlog: '$_url',
+        buildlog: '$_buildurl',
         repository: '$Repository',
         type: '$_type',
         user: '$_user'
