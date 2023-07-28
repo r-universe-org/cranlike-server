@@ -235,6 +235,7 @@ function parse_builder_fields(x){
   var builder = filter_keys(x, /^builder-/gi);
   builder.commit = from_base64_gzip(builder.commit) || {};
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
+  builder.registered = builder.registered !== "false";
   return builder;
 }
 
@@ -364,7 +365,6 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       validate_description(description, package, version, type);
       description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = is_self_owned(description);
-      description['_registered'] = builder.registered !== "false";
       if(type == "src"){
         description['_usedby'] = metadata[1];
         add_meta_fields(description, metadata[2]); //contents.json
@@ -403,7 +403,6 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   description['_created'] = new Date();
   description['_owner'] = get_repo_owner(description);
   description['_selfowned'] = description._owner === user;
-  description['_registered'] = description._registered !== "false";
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
     .catch(error_cb(400, next))
@@ -447,7 +446,6 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       validate_description(description, package, version, type);
       description['_owner'] = get_repo_owner(description);
       description['_selfowned'] = is_self_owned(description);
-      description['_registered'] = builder.registered !== "false";
       if(type == "src"){
         description['_usedby'] = metadata[1];
         add_meta_fields(description, metadata[2]); //contents.json
