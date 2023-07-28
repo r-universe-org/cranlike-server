@@ -20,12 +20,20 @@ connection.then(async function(client) {
   global.packages = db.collection('packages');
   global.chunks = db.collection('files.chunks');
 
+  //remove and recreate all indexes:
+  //reset_indexes();
+}).catch(function(error){
+  console.log("Failed to connect to mongodb!\n" + error)
+  throw error;
+});
+
+async function reset_indexes(){
   //print (or drop) indexes
   var indexes = await packages.indexes();
   for (x of indexes) {
     if (x.name == '_id_') continue;
-    console.log("Found index: " + x.name);
-    //await packages.dropIndex(x.name).catch(console.log);
+    console.log("Dropping index: " + x.name);
+    await packages.dropIndex(x.name).catch(console.log);
   };
 
   /* Speed up common query fields */
@@ -75,9 +83,8 @@ connection.then(async function(client) {
     },
     name: "textsearch"
   });
-}).catch(function(error){
-  console.log("Failed to connect to mongodb!\n" + error)
-  throw error;
-});
+  var indexes = await packages.indexes();
+  console.log(indexes.map(x => x.name));
+}
 
 module.exports = connection;
