@@ -215,7 +215,7 @@ function validate_description(data, package, version, type){
   if(!data._maintainer || !data._maintainer.email){
     throw 'No maintainer data found in builder metadata';
   }
-  if(!data._registered){
+  if(data._registered === undefined){
     throw 'No registered field found in builder headers';
   }
 }
