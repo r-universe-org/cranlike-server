@@ -391,7 +391,8 @@ function group_package_data(docs){
       date: x._created,
       distro: (x['_type'] == 'linux' && x._distro || undefined),
       commit: x._commit.id,
-      fileid: x['_fileid']
+      fileid: x['_fileid'],
+      status: x['_status']
     }
   });
   return src;

@@ -289,8 +289,11 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
   if(req.query.fields){
     var projection = {Package:1, _type:1, _user:1, _indexed: 1, _id:0};
     req.query.fields.split(",").forEach(function (f) {
-      if(f == '_binaries') f = 'Built';
-      projection[f] = 1;
+      if(f == '_binaries'){
+        projection['Built'] = 1;
+        projection['_status'] = 1;
+        projection['_commit.id'] = 1;
+      }
     });
   }
   if(package){
