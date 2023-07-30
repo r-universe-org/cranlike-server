@@ -293,6 +293,8 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
         projection['Built'] = 1;
         projection['_status'] = 1;
         projection['_commit.id'] = 1;
+      } else {
+        projection[f] = 1;
       }
     });
   }
