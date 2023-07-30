@@ -316,12 +316,12 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
       {$match: query},
       {$project: projection},
       {$group : {
-        _id : {'Package': '$Package', '_user':'$_user'},
+        _id : {'Package': '$Package', 'user':'$_user'},
         indexed: { $addToSet: "$_indexed" },
         timestamp: { $max : "$_commit.time" },
         files: { '$push': '$$ROOT' }
       }},
-      {$match: {'$or' : [{indexed: true, '_id._user': user}]}},
+      {$match: {'$or' : [{indexed: true}, {'_id.user': user}]}},
       {$sort : {timestamp : -1}},
       {$limit : limit}
     ]);
