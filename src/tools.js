@@ -377,9 +377,10 @@ function group_package_data(docs){
   }
   var failure = docs.find(x => x['_type'] == 'failure');
   if(failure){
-    src.failure = {
+    src._failure = {
+      version: failure.Version,
       commit: failure._commit,
-      url: failure._buildurl,
+      buildurl: failure._buildurl,
       date: failure._created
     }
   }
