@@ -316,19 +316,21 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
       {$group : {
         _id : {'Package': '$Package', '_user':'$_user'},
         indexed: { $addToSet: "$_indexed" },
-        value: { '$push': '$$ROOT' }
+        timestamp: { $max : "$_commit.time" },
+        files: { '$push': '$$ROOT' }
       }},
       {$match: {indexed: true}},
+      {$sort : {timestamp : -1}},
       {$limit : limit}
     ]);
     if(req.query.stream){
       cursor.hasNext().then(function(){
-        cursor.transformStream({transform: x => doc_to_ndjson(group_package_data(x.value))}).pipe(res.type('text/plain'));
+        cursor.transformStream({transform: x => doc_to_ndjson(group_package_data(x.files))}).pipe(res.type('text/plain'));
       }).catch(error_cb(400, next));
     } else {
       var out = [];
       cursor.forEach(function(x){
-        out.push(group_package_data(x.value));
+        out.push(group_package_data(x.files));
       }).then(function(){
         res.send(out.filter(x => x));
       }).catch(error_cb(400, next));
