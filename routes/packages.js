@@ -209,6 +209,9 @@ function validate_description(data, package, version, type){
     //Built.Platform is missing for binary pkgs without copiled code
     throw 'MacOS Binary package has unexpected Platform:' + data.Built.Platform;
   }
+  if(type !== 'failure' && data._status === undefined) {
+    throw 'Submission does not have a "status" field';
+  }
   if(!data._commit || !data._commit.id){
     throw 'No commit data found in builder metadata';
   }
