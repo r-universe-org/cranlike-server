@@ -375,16 +375,12 @@ function group_package_data(docs){
   var failure = docs.find(x => x['_type'] == 'failure');
   if(!src){
     //no src found, package probably only has a 'failure' submission
-    if(!failure) return null;
-    src = {
-      Package: failure.Package,
-      _user: failure._user,
-      _type: failure._type,
-      _owner: failure._owner,
-      _upstream: failure._upstream,
-      _maintainer: failure._maintainer,
-      _registered: failure._registered
-    };
+    if(failure) {
+      src = failure;
+      delete src.Version;
+    } else {
+      return null;
+    }
   }
   if(failure){
     src._failure = {
