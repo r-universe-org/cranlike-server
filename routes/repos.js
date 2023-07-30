@@ -319,7 +319,7 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
         timestamp: { $max : "$_commit.time" },
         files: { '$push': '$$ROOT' }
       }},
-      {$match: {indexed: true}},
+      {$match: {'$or' : [{indexed: true, '_id._user': user}]}},
       {$sort : {timestamp : -1}},
       {$limit : limit}
     ]);
