@@ -376,7 +376,7 @@ function group_package_data(docs){
   if(!src){
     //no src found, package probably only has a 'failure' submission
     if(failure) {
-      src = failure;
+      src = Object.assign({}, failure); //shallow copy to delete src.Version
       delete src.Version;
     } else {
       return null;
@@ -396,7 +396,7 @@ function group_package_data(docs){
       os: x['_type'],
       version: x.Version,
       date: x._created,
-      distro: (x['_type'] == 'linux' && x._distro || undefined),
+      distro: x['_type'] == 'linux' && x._distro || undefined,
       commit: x._commit.id,
       fileid: x['_fileid'],
       status: x['_status'],
