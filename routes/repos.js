@@ -288,11 +288,13 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
   var projection = {_id:0};
   if(req.query.fields){
     var projection = {Package:1, _type:1, _user:1, _indexed: 1, _id:0};
-    req.query.fields.split(",").forEach(function (f) {
+    var fields = req.query.fields.split(",");
+    fields.forEach(function (f) {
       if(f == '_binaries'){
         projection['Built'] = 1;
         projection['_status'] = 1;
-        projection['_commit.id'] = 1;
+        if(!fields.includes("_commit"))
+          projection['_commit.id'] = 1;
       } else {
         projection[f] = 1;
       }
