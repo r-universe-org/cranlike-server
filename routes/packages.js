@@ -275,7 +275,7 @@ function parse_major_version(built){
 function get_repo_owner(description){
   const url = description._upstream || "";
   const re = new RegExp('.*://([a-z]+).*/([^/]*)/.*')
-  const match = url.match(re);
+  const match = url.toLowerCase().match(re);
   if(match){
     return match[1] == 'github' ? match[2] : `${match[1]}-${match[2]}`;
   }
