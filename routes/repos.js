@@ -282,6 +282,13 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
   send_binary(query, `${req.params.pkg}-${req.params.distro}.tar.gz`, req, res, next);
 });
 
+//Formerly /:user/packages but this is now a UI endpoint
+router.get('/:user/api/ls', function(req, res, next) {
+  packages.distinct('Package', {_user : req.params.user}).then(function(x){
+    res.send(x);
+  }).catch(error_cb(400, next));
+});
+
 router.get('/:user/api/packages/:package?', function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
