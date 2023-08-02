@@ -548,7 +548,13 @@ router.post('/:user/api/reindex', function(req, res, next) {
 
 function extract_json_metadata(input, package){
   return tools.extract_file(input, `${package}/extra/contents.json`).then(function(str){
-    return JSON.parse(str);
+    var contents = JSON.parse(str);
+    if(contents.gitstats){
+      /* Temp fix, remove when upstream flattens input */
+      contents = Object.assign(contents, contents.gitstats);
+      //delete contents.gitstats;
+    }
+    return contents;
   }).catch(function(e){return {}});
 }
 
