@@ -41,7 +41,7 @@ function qf(x, query_by_user_or_maintainer){
     }
   } else if(user === 'bioconductor' && query_by_user_or_maintainer){
     delete x._user;
-    x['_gitstats.bioconductor'] = {'$exists':1};
+    x['_bioconductor'] = {'$exists':1};
   } else if(query_by_user_or_maintainer) {
     delete x._user;
     x['$or'] = [
@@ -643,7 +643,7 @@ router.get("/:user/stats/universes", function(req, res, next) {
       name: '$_maintainer.name',
       email: '$_maintainer.email',
       owner: '$_owner',
-      organization: '$_gitstats.organization'
+      organization: '$_organization'
     }},
     {$group: {
       _id : '$user',
@@ -669,7 +669,7 @@ router.get("/:user/stats/contributions", function(req, res, next) {
   var cutoff = parseInt(req.query.cutoff) || 0;
   var user = req.params.user;
   var query = {_type: 'src', '_indexed' : true};
-  var contribfield = `_gitstats.contributions.${user}`;
+  var contribfield = `_contributions.${user}`;
   query[contribfield] = { $gt: cutoff };
   if(req.query.skipself){
     query['_maintainer.login'] = {$ne: user};
@@ -704,7 +704,7 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$match: qf(query, req.query.all)},
     {$project: {
       _id: 0,
-      contributions: '$_gitstats.contributions',
+      contributions: '$_contributions',
       upstream: '$_upstream'
     }},
     {$addFields: {contributions: {$objectToArray:"$contributions"}}},
@@ -726,7 +726,7 @@ router.get("/:user/stats/updates", function(req, res, next) {
     {$project: {
       _id: 0,
       package: '$Package',
-      updates: '$_gitstats.updates'
+      updates: '$_updates'
     }},
     {$unwind: "$updates"},
     {$group: {_id: "$updates.week", total: {$sum: '$updates.n'}, packages: {$addToSet: {k:'$package', v:'$updates.n'}}}},
@@ -853,9 +853,9 @@ router.get("/:user/stats/topics", function(req, res, next) {
   var limit =  parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src'})},
-    {$unwind: '$_gitstats.topics'},
+    {$unwind: '$_topics'},
     {$group: {
-      _id : '$_gitstats.topics',
+      _id : '$_topics',
       packages: { $addToSet: '$Package' }
     }},
     {$project: {_id: 0, topic: '$_id', packages: '$packages', count: { $size: "$packages" }}},
@@ -979,8 +979,8 @@ function build_query(query, str){
   match_partial('author', 'Author');
   match_partial('maintainer', 'Maintainer');
   match_exact('needs', '_rundeps');
-  match_exists('contributor', '_gitstats.contributions');
-  match_insensitive('topic', '_gitstats.topics');
+  match_exists('contributor', '_contributions');
+  match_insensitive('topic', '_topics');
   match_insensitive('exports', '_exports');
   match_insensitive('package', 'Package');
   str = str.trim();
@@ -1003,8 +1003,8 @@ router.get("/:user/stats/ranksearch", function(req, res, next) {
     _usedby: 1,
     maintainer: '$_maintainer',
     updated: '$_commit.time',
-    stars: '$_gitstats.stars',
-    topics: '$_gitstats.topics',
+    stars: '$_stars',
+    topics: '$_topics',
     sysdeps: '$_sysdeps.name',
     rundeps: '$_rundeps'
   };
@@ -1032,8 +1032,8 @@ router.get('/:user/stats/usedby', function(req, res, next) {
   var q0 = qf({_user: req.params.user, _type: 'src', _indexed : true}, req.query.all);
   var q1 = Object.assign({}, q0, { '_hard_deps.package': package });
   var q2 = Object.assign({}, q0, { '_soft_deps.package': package });
-  var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_gitstats.stars': -1}).toArray();
-  var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_gitstats.stars': -1}).toArray();
+  var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1}).toArray();
+  var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1}).toArray();
   Promise.all([p1,p2]).then(data => res.send({hard: data[0], soft: data[1]})).catch(error_cb(400, next));
 });
 
@@ -1045,8 +1045,8 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
     {$match:query},
     {$group : {
       _id: "$_user",
-      packages : { $addToSet: { package: "$Package", maintainer :'$_maintainer.login', stars: '$_gitstats.stars'}},
-      allstars: { $sum: '$_gitstats.stars'},
+      packages : { $addToSet: { package: "$Package", maintainer :'$_maintainer.login', stars: '$_stars'}},
+      allstars: { $sum: '$_stars'},
     }},
     {$project:{_id: 0, owner: "$_id", packages: 1, allstars:1}},
     {$sort : {allstars : -1}},
@@ -1065,7 +1065,7 @@ router.get('/:user/stats/summary', function(req, res, next){
   var p4 = packages.distinct('_datasets.title', query);
   var p5 = packages.aggregate([
     {$match:query},
-    {$project: {contrib: {$objectToArray:"$_gitstats.contributions"}}},
+    {$project: {contrib: {$objectToArray:"$_contributions"}}},
     {$unwind: "$contrib"},
     {$group: {_id: "$contrib.k"}},
     {$count: "total"}

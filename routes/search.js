@@ -18,7 +18,7 @@ function qf(x, query_by_user_or_maintainer){
     }
   } else if(user === 'bioconductor' && query_by_user_or_maintainer){
     delete x._user;
-    x['_gitstats.bioconductor'] = {'$exists':1};
+    x['_bioconductor'] = {'$exists':1};
   } else if(query_by_user_or_maintainer) {
     delete x._user;
     x['$or'] = [
@@ -67,8 +67,8 @@ function build_query(query, str){
   match_partial('author', 'Author');
   match_partial('maintainer', 'Maintainer');
   match_exact('needs', '_rundeps');
-  match_exists('contributor', '_gitstats.contributions');
-  match_insensitive('topic', '_gitstats.topics');
+  match_exists('contributor', '_contributions');
+  match_insensitive('topic', '_topics');
   match_insensitive('exports', '_exports');
   match_insensitive('package', 'Package');
   match_insensitive('owner', '_owner');
@@ -94,8 +94,8 @@ router.get("/:user/stats/powersearch", function(req, res, next) {
     _usedby: 1,
     maintainer: '$_maintainer',
     updated: '$_commit.time',
-    stars: '$_gitstats.stars',
-    topics: '$_gitstats.topics',
+    stars: '$_stars',
+    topics: '$_topics',
     sysdeps: '$_sysdeps.name',
     rundeps: '$_rundeps'
   };

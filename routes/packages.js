@@ -281,19 +281,14 @@ function get_created(x){
 
 function calculate_score(description){
   var score = 3 * description['_usedby'];
-  var gitstats = description._gitstats;
-  var cranurl = description._cranurl;
-  if(cranurl){
+  if(description._cranurl)
     score += 5;
-  }
-  if(gitstats){
-    if(gitstats.stars)
-      score += (gitstats.stars || 0);
-    if(Array.isArray(gitstats.updates))
-      score += (gitstats.updates.length || 0)
-    if(typeof gitstats.contributions === 'object')
-      score += Object.keys(gitstats.contributions).length;
-  }
+  if(description._stars)
+    score += (description._stars || 0);
+  if(Array.isArray(description._updates))
+    score += (description._updates.length || 0)
+  if(typeof description._contributions === 'object')
+    score += Object.keys(description._contributions).length;
   return 1 + Math.log10(Math.max(1, score));
 }
 
