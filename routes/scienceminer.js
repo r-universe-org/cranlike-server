@@ -23,6 +23,9 @@ function find_package(package){
     data.status = response.status;
     return data;
   }).then(function(res){
+    if(!res.hits){
+      res.status(400).send(res)
+    }
     var total = res.hits.total.value;
     if(total < 1){
       throw `No entry found for R package ${package} not found`;

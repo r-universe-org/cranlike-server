@@ -547,7 +547,7 @@ function extract_json_metadata(input, package){
     if(contents.gitstats){
       /* Temp fix, remove when upstream flattens input */
       contents = Object.assign(contents, contents.gitstats);
-      //delete contents.gitstats;
+      delete contents.gitstats;
     }
     return contents;
   }).catch(function(e){return {}});
