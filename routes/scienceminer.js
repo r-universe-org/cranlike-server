@@ -24,7 +24,7 @@ function find_package(package){
     return data;
   }).then(function(res){
     if(!res.hits){
-      res.status(400).send(res)
+      throw `Unexpected response from science-miner: ${JSON.stringify(res)}`;
     }
     var total = res.hits.total.value;
     if(total < 1){
