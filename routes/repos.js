@@ -244,6 +244,17 @@ router.get('/:user/bin/linux/:distro/:built', function(req, res, next) {
   res.redirect(req.path + '/src/contrib');
 });
 
+/* CRAN-like index for WASM packages */
+router.get('/:user/bin/emscripten/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
+  var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built}});
+  packages_index(query, req.params.ext, req, res, next);
+});
+
+router.get('/:user/bin/emscripten/contrib/:built/', function(req, res, next) {
+  var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built}});
+  packages_index(query, 'json', req, res, next);
+});
+
 /* Index available R builds for binary pkgs */
 router.get('/:user/bin/windows/contrib', function(req, res, next) {
   count_by_built(req.params.user, 'win').pipe(res);
@@ -251,6 +262,10 @@ router.get('/:user/bin/windows/contrib', function(req, res, next) {
 
 router.get('/:user/bin/macosx/:xcode?/contrib', function(req, res, next) {
   count_by_built(req.params.user, 'mac').pipe(res);
+});
+
+router.get('/:user/bin/emscripten/contrib', function(req, res, next) {
+  count_by_built(req.params.user, 'wasm').pipe(res);
 });
 
 /* Download package files */
@@ -280,6 +295,14 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
   var query = qf({_user: req.params.user, _type: 'linux', 'Built.R' : {$regex: '^' + req.params.built},
     '_distro' : req.params.distro, Package: pkg[0], Version: pkg[1]});
   send_binary(query, `${req.params.pkg}-${req.params.distro}.tar.gz`, req, res, next);
+});
+
+router.get('/:user/bin/emscripten/contrib/:built/:pkg.tgz', function(req, res, next) {
+  var pkg = req.params.pkg.split("_");
+  var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
+    Package: pkg[0], Version: pkg[1]});
+  query['Built.Platform'] = arch_to_built(req.params.xcode);
+  send_binary(query, `${req.params.pkg}.tgz`, req, res, next);
 });
 
 //Formerly /:user/packages but this is now a UI endpoint
