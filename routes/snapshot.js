@@ -49,6 +49,9 @@ function make_filename(doc){
     var distro = doc.Distro || 'linux';
     return `bin/linux/${distro}/${built}/src/contrib/${doc.Package}_${doc.Version}.tar.gz`;
   }
+  if(type == 'wasm'){
+    return `bin/emscripten/contrib/${built}/${doc.Package}_${doc.Version}.tgz`;
+  }
   throw `Unsupported type: ${type}`;
 }
 
@@ -100,7 +103,7 @@ function packages_snapshot(files, archive, types){
 router.get('/:user/api/snapshot/:format?', function(req, res, next) {
   var user = req.params.user;
   var query = {_user: user, _type: {'$ne' : 'failure'}};
-  var types = req.query.types && req.query.types.split(',');
+  var types = req.query.types ? req.query.types.split(',') : ['src', 'win', 'mac', 'linux']; //skip wasm
   if(req.query.packages)
     query.Package = {'$in' : req.query.packages.split(",")};
   var cursor = packages.find(query).project(pkgfields).sort({"_type" : 1});
