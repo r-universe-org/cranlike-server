@@ -7,6 +7,7 @@ const rdesc = require('rdesc-parser');
 const fs = require('fs');
 const zlib = require('zlib');
 const tar = require('tar-stream');
+const dependency_types = require('r-constants').dependency_types;
 const hard_dep_types = require('r-constants').essential_dependency_types;
 const soft_dep_types = require('r-constants').optional_dependency_types;
 
@@ -256,6 +257,7 @@ function merge_dependencies(x){
   });
   x['_hard_deps'] = hard_deps;
   x['_soft_deps'] = soft_deps;
+  x['_dependencies'] = hard_deps.concat(soft_deps);
   return x;
 }
 
