@@ -1052,18 +1052,17 @@ router.get("/:user/stats/ranksearch", function(req, res, next) {
 /* Simple 1 package revdep cases; see above for aggregates */
 router.get('/:user/stats/usedby', function(req, res, next) {
   var package = req.query.package;
-  var q0 = qf({_user: req.params.user, _type: 'src', _indexed : true}, req.query.all);
-  var q1 = Object.assign({}, q0, { '_hard_deps.package': package });
-  var q2 = Object.assign({}, q0, { '_soft_deps.package': package });
-  var p1 = packages.find(q1).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1}).toArray();
-  var p2 = packages.find(q2).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1}).toArray();
-  Promise.all([p1,p2]).then(data => res.send({hard: data[0], soft: data[1]})).catch(error_cb(400, next));
+  var query = qf({_user: req.params.user, _type: 'src', '_dependencies.package': package}, req.query.all);
+  var cursor = packages.find(query).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1});
+  cursor.hasNext().then(function(){
+    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+  }).catch(error_cb(400, next));
 });
 
 router.get('/:user/stats/usedbyorg', function(req, res, next) {
+  var user = req.params.user;
   var package = req.query.package;
-  var query = qf({_user: req.params.user, _type: 'src', _indexed : true}, req.query.all);
-  query['$or'] = [{'_hard_deps.package': package},{ '_soft_deps.package': package }];
+  var query = qf({_user: user, _type: 'src', '_dependencies.package': package}, req.query.all);
   var cursor = packages.aggregate([
     {$match:query},
     {$group : {
