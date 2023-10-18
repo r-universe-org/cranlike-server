@@ -56,27 +56,24 @@ function packages_index(query, format, req, res, next){
   if(format && format !== 'gz' && format !== 'json'){
     return next(createError(404, 'Unsupported PACKAGES format: ' + format));
   }
-  var cursor = packages.find(query).project(pkgfields).sort({"_id" : -1});
-  cursor.hasNext().then(function(has_any_data){
-    /* Cache disabled until we solve _id bug */
-    if(0 && has_any_data){
-      return cursor.next(); //promise to read 1st record
+  // Preflight to revalidate cache.
+  packages.find(query).sort({"_id" : -1}).limit(1).project({"_id": 1}).next().then(function(doc){
+    if(!doc){
+      res.status(200).send();
+      return; //DONE!
     }
-  }).then(function(doc){
-    if(doc){
-      var etag = etagify(doc['_id']);
-      if(etag === req.header('If-None-Match')){
-        cursor.close();
-        res.status(304).send();
-        return; //DONE!
-      } else {
-        /* Jeroen: the next() / rewind() here seems to trigger a warning/ bug in the mongo driver:
-           Field 'cursors' contains an element that is not of type long: 0 */
-        cursor.rewind();
-        res.set('ETag', etag);
-      }
+    var etag = etagify(doc['_id']);
+    res.set('ETag', etag);
+    if(etag === req.header('If-None-Match')){
+      res.status(304).send();
+      return; //DONE!
     }
-    res.set('Cache-Control', 'no-cache');
+    // Try mitigate hammering. Cache for at least 10 sec, after that revalidate.
+    // This requires nginx to use proxy_cache_revalidate;
+    res.set('Cache-Control', 'public, max-age=10, must-revalidate');
+
+    // Get actual package data
+    var cursor = packages.find(query).project(pkgfields).sort({"Package" : 1});
     if(!format){
       cursor
         .transformStream({transform: doc_to_dcf})
