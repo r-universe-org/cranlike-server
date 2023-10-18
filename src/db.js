@@ -20,14 +20,17 @@ connection.then(async function(client) {
   global.packages = db.collection('packages');
   global.chunks = db.collection('files.chunks');
 
-  //remove and recreate all indexes:
-  //reset_indexes();
+  //removes and recreates all indexes
+  if(process.env.REBUILD_INDEXES){
+    console.log("REBUILDING INDEXES!")
+    rebuild_indexes();
+  }
 }).catch(function(error){
   console.log("Failed to connect to mongodb!\n" + error)
   throw error;
 });
 
-async function reset_indexes(){
+async function rebuild_indexes(){
   //print (or drop) indexes
   var indexes = await packages.indexes();
   for (x of indexes) {
@@ -49,6 +52,7 @@ async function reset_indexes(){
   await packages.createIndex({"_user":1, "_type":1, "_commit.time":1});
   await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_commit.time":1});
   await packages.createIndex({"_maintainer.login":1, "_indexed":1, "_commit.time":1});
+  await packages.createIndex({"_type":1, "_rundeps":1});
 
   /* The text search index (only one is allowed) */
   //await packages.dropIndex("textsearch").catch(console.log);
