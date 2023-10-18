@@ -62,15 +62,18 @@ function packages_index(query, format, req, res, next){
       res.status(200).send();
       return; //DONE!
     }
+
+    // Try mitigate hammering. Cache for at least 10 sec, after that revalidate.
+    // This requires nginx to use proxy_cache_revalidate;
     var etag = etagify(doc['_id']);
     res.set('ETag', etag);
+    res.set('Cache-Control', 'public, max-age=10, must-revalidate');
+
+    // Revalidate:
     if(etag === req.header('If-None-Match')){
       res.status(304).send();
       return; //DONE!
     }
-    // Try mitigate hammering. Cache for at least 10 sec, after that revalidate.
-    // This requires nginx to use proxy_cache_revalidate;
-    res.set('Cache-Control', 'public, max-age=10, must-revalidate');
 
     // Get actual package data
     var cursor = packages.find(query).project(pkgfields).sort({"Package" : 1});
