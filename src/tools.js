@@ -137,8 +137,8 @@ function tar_stream_file(hash, res, filename){
     /* callback to extract single file from tarball */
     function process_entry(header, filestream, next_file) {
       if(!dolist && !hassent && header.name === filename){
-        filestream.on('end', function(){
-          hassent = true;
+        hassent = true;
+        filestream.on('finish', function(){
           resolve(filename);
           input.destroy(); // close mongo stream prematurely, is this safe?
         }).pipe(
