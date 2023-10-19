@@ -150,8 +150,8 @@ router.get('/:user/:package/data/:name?/:format?', function(req, res, next){
     }
   }).catch(function(err){
     next(createError(400, err));
-    if(err.stack){
-      console.log("Got an R error. Restarting R...", err.stack);
+    if (err instanceof webr.WebRError){
+      console.log(`WEBR error at ${req.path} with message: ${err.message}`);
       session.reset(60*1000); //restart R after error (but at most once per minute)
     }
   }).finally(function(){
