@@ -6,7 +6,7 @@ const mime = require('mime');
 const path = require('path');
 
 /* Fields included in PACKAGES indices */
-const pkgfields = {_id: 1, _type:1, _hard_deps: 1, _soft_deps: 1, Distro: '$_distro',
+const pkgfields = {_id: 1, _type:1, _dependencies: 1, Distro: '$_distro',
   Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
   NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
   OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
@@ -342,15 +342,12 @@ function dep_to_string(x){
 }
 
 function unpack_deps(x){
-  var hard_deps = x['_hard_deps'] || [];
-  var soft_deps = x['_soft_deps'] || [];
-  var alldeps = hard_deps.concat(soft_deps);
+  var alldeps = x['_dependencies'] || [];
   var deptypes = new Set(alldeps.map(dep => dep.role));
   deptypes.forEach(function(type){
     x[type] = alldeps.filter(dep => dep.role == type);
   });
-  delete x['_hard_deps'];
-  delete x['_soft_deps'];
+  delete x['_dependencies'];
   return x;
 }
 

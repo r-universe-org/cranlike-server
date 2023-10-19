@@ -764,7 +764,7 @@ router.get("/:user/stats/updates", function(req, res, next) {
 router.get("/:user/stats/pkgdeps", function(req,res,next){
   var cursor = packages.aggregate([
     {$match: qf({_user: req.params.user, _type: 'src', '_registered': true}, req.query.all)},
-    {$set: {dependencies: '$_hard_deps'}},
+    {$set: {dependencies: '$_dependencies'}},
     {$unwind: '$dependencies'},
     {$group: {
       _id : '$dependencies.package',
@@ -790,7 +790,7 @@ router.get("/:user/stats/pkgrevdeps", function(req,res,next){
     var query = {_type: 'src', _indexed : true};
     var cursor = packages.aggregate([
       {$match: query},
-      {$project: {_id: 0, owner: '$_user', package: '$Package', dependencies: '$_hard_deps', maintainer: '$_maintainer.login'}},
+      {$project: {_id: 0, owner: '$_user', package: '$Package', dependencies: '$_dependencies', maintainer: '$_maintainer.login'}},
       {$unwind: '$dependencies'},
       {$match: {'dependencies.package': {$in: pkgs}}},
       {$group: {
@@ -812,7 +812,6 @@ router.get("/:user/stats/pkgrevdeps", function(req,res,next){
 router.get("/:user/stats/revdeps", function(req, res, next) {
   /* Filter by user after aggregate to get cross universe dependencies */
   var user = req.params.user;
-  var soft_deps = req.query.soft ? '$_soft_deps' : [];
   var postmatch = {'revdeps.1': {$exists: true}};
   if(user != ":any"){
     postmatch['$or'] = [{'owner': user}, {'maintainer': user}];
@@ -820,7 +819,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
   var cursor = packages.aggregate([
     {$match: {_type: 'src', _indexed : true}},
     {$project: {_id: 0, user: '$_user', package: '$Package', dependencies: {
-      $concatArrays: ['$_hard_deps', soft_deps, [{
+      $concatArrays: ['$_dependencies', soft_deps, [{
         package: '$Package',
         owner: '$_user',
         maintainer: '$_maintainer.login',
@@ -914,42 +913,6 @@ router.get("/:user/stats/files", function(req, res, next) {
     });
   }
   var cursor = packages.find(query).project(projection);
-  cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  }).catch(error_cb(400, next));
-});
-
-/* Operations below do not support :any user because they are very heavy */
-router.get("/:user/stats/rundeps", function(req, res, next) {
-  var cursor = packages.aggregate([
-    {$match: {_user: req.params.user, _type: 'src'}},
-    { $graphLookup: {
-      from: "packages",
-      startWith: "$_hard_deps.package",
-      connectFromField: "_hard_deps.package",
-      connectToField: "Package",
-      as: "DependencyHierarchy"
-    }},
-    { $project: {Package: 1, rundeps: {'$setUnion': ['$DependencyHierarchy.Package']}}}
-  ]);
-  cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  }).catch(error_cb(400, next));
-});
-
-router.get("/:user/stats/checkdeps", function(req, res, next) {
-  var cursor = packages.aggregate([
-    {$match: {_user: req.params.user, _type: 'src'}},
-    { $project: {_id: 0, Package: 1, deps: {$concatArrays: ['$_hard_deps', '$_soft_deps']}}},
-    { $graphLookup: {
-      from: "packages",
-      startWith: "$deps.package",
-      connectFromField: "_hard_deps.package",
-      connectToField: "Package",
-      as: "DependencyHierarchy"
-    }},
-    { $project: {Package: 1, checkdeps: {'$setUnion': ['$DependencyHierarchy.Package']}}}
-  ]);
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));

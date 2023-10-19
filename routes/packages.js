@@ -8,8 +8,6 @@ const fs = require('fs');
 const zlib = require('zlib');
 const tar = require('tar-stream');
 const dependency_types = require('r-constants').dependency_types;
-const hard_dep_types = require('r-constants').essential_dependency_types;
-const soft_dep_types = require('r-constants').optional_dependency_types;
 
 /* Local variables */
 const upload = multer({ dest: '/tmp/' });
@@ -243,21 +241,14 @@ function parse_builder_fields(x){
 }
 
 function merge_dependencies(x){
-  var hard_deps = [];
-  var soft_deps = [];
-  Object.keys(x).forEach(function(key) {
-    if(hard_dep_types.includes(key)){
-      hard_deps = hard_deps.concat(x[key].map(function(y){y.role = key; return y;}));
-      delete x[key];
+  var deps = [];
+  dependency_types.forEach(function(key){
+    if(x[key]){
+      deps = deps.concat(x[key].map(function(y){y.role = key; return y;}));
     }
-    if(soft_dep_types.includes(key)){
-      soft_deps = soft_deps.concat(x[key].map(function(y){y.role = key; return y;}));
-      delete x[key];
-    }
+    delete x[key];
   });
-  x['_hard_deps'] = hard_deps;
-  x['_soft_deps'] = soft_deps;
-  x['_dependencies'] = hard_deps.concat(soft_deps);
+  x['_dependencies'] = deps;
   return x;
 }
 
