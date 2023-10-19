@@ -1,5 +1,4 @@
 /* dummy token for GH api limits */
-const token = Buffer.from('Z2hwX2IxR2RLZGN0cEZGSXZYSHUyWnlpZ0dXNmxGcHNzbTBxNGJ0Vg==', 'base64').toString();
 const tar = require('tar-stream');
 const gunzip = require('gunzip-maybe');
 const mime = require('mime');
@@ -12,7 +11,9 @@ const pkgfields = {_id: 1, _type:1, _dependencies: 1, Distro: '$_distro',
   OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
 
 function fetch_github(url, opt = {}){
-  opt.headers = opt.headers || {'Authorization': 'token ' + token};
+  if(process.env.REBUILD_TOKEN){
+    opt.headers = opt.headers || {'Authorization': 'token ' + process.env.REBUILD_TOKEN};
+  }
   return fetch(url, opt).then(function(response){
     return response.json().then(function(data){
       if (!response.ok) {
