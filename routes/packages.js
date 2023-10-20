@@ -544,14 +544,12 @@ router.post('/:user/api/reindex', function(req, res, next) {
 
 function extract_json_metadata(input, package){
   return tools.extract_file(input, `${package}/extra/contents.json`).then(function(str){
-    var contents = JSON.parse(str);
-    if(contents.gitstats){
-      /* Temp fix, remove when upstream flattens input */
-      contents = Object.assign(contents, contents.gitstats);
-      delete contents.gitstats;
+    var metadata = JSON.parse(str);
+    if(!metadata.assets){
+      throw "contents.json seems invalid";
     }
-    return contents;
-  }).catch(function(e){return {}});
+    return metadata;
+  });
 }
 
 module.exports = router;
