@@ -9,6 +9,15 @@ var debug = require('debug')('cranlike:server');
 var http = require('http');
 var dbcon = require('../src/db');
 
+/* Last resort error handler, that should never happen but somehow it sometimes does.
+   We quit because in a case of OOM/DOS, a restart may just be the best solution.
+   See: https://github.com/r-universe-org/help/issues/310
+   Maybe this can be removed for express 5, which does this natively */
+process.on('uncaughtException', function(err) {
+  console.log( "[UNCAUGHT EXCEPTION] " + err.stack || err.message );
+  process.exit(1);
+});
+
 /**
  * Get port from environment and store in Express.
  */
