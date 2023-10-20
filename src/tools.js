@@ -161,7 +161,7 @@ function send_extracted_file(query, filename, req, res, next){
 }
 
 function extract_file(input, filename, res){
-  var extract = tar.extract();
+  var extract = tar.extract({allowUnknownFormat: true});
   var done = false;
 
   return new Promise(function(resolve, reject) {
@@ -229,7 +229,7 @@ function extract_multi_files(input, files){
     function finish_stream(){
       resolve(output);
     }
-    var extract = tar.extract().on('entry', process_entry).on('finish', finish_stream);
+    var extract = tar.extract({allowUnknownFormat: true}).on('entry', process_entry).on('finish', finish_stream);
     input.pipe(gunzip()).pipe(extract);
   }).finally(function(){
     input.destroy();
