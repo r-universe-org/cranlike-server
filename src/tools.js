@@ -129,52 +129,11 @@ function stream2buffer(stream) {
     });
 }
 
-/* See https://www.npmjs.com/package/tar-stream#Extracting */
-function tar_stream_file(hash, res, filename){
-  var input = bucket.openDownloadStream(hash);
-  return new Promise(function(resolve, reject) {
-
-    /* callback to extract single file from tarball */
-    function process_entry(header, filestream, next_file) {
-      if(!dolist && !hassent && header.name === filename){
-        hassent = true;
-        filestream.on('finish', function(){
-          resolve(filename);
-          input.destroy(); // close mongo stream prematurely, is this safe?
-        }).pipe(
-          res.type(mime.getType(filename) || 'text/plain').set("ETag", hash).set('Content-Length', header.size)
-        );
-      } else {
-        if(dolist && header.name){
-          let m = header.name.match(filename);
-          if(m && m.length){
-            matches.push(m.pop());
-          }
-        }
-        filestream.resume(); //drain the file
-      }
-      next_file(); //ready for next entry
-    }
-
-    /* callback at end of tarball */
-    function finish_stream(){
-      if(dolist){
-        res.send(matches);
-        resolve(matches);
-      } else if(!hassent){
-        reject(`File not found: ${filename}`);
-      }
-    }
-
-    var dolist = filename instanceof RegExp;
-    var matches = [];
-    var hassent = false;
-    var extract = tar.extract()
-      .on('entry', process_entry)
-      .on('finish', finish_stream);
-    input.pipe(gunzip()).pipe(extract);
-  }).finally(function(){
-    input.destroy();
+function pipe_everything_to(stream, output) {
+  return new Promise((resolve, reject) => {
+    stream.on("end", () => resolve());
+    stream.on("error", (err) => reject(err));
+    stream.pipe(output);
   });
 }
 
@@ -191,14 +150,17 @@ function send_extracted_file(query, filename, req, res, next){
         return bucket.find({_id: hash}, {limit:1}).hasNext().then(function(x){
           if(!x)
             throw `Failed to locate file in gridFS: ${hash}`;
-          return tar_stream_file(hash, res, filename);
+          var input = bucket.openDownloadStream(hash);
+          return extract_file(input, filename, res).finally(function(){
+            input.destroy();
+          });
         });
       }
     }
   });
 }
 
-function extract_file(input, filename){
+function extract_file(input, filename, res){
   var extract = tar.extract();
   var done = false;
 
@@ -206,7 +168,8 @@ function extract_file(input, filename){
     extract.on('entry', function(header, file_stream, next_entry) {
       if (!done && header.name === filename) {
         done = true;
-        streamToString(file_stream).then(function(buf){
+        var promise = res ? pipe_everything_to(file_stream, res) : streamToString(file_stream);
+        promise.then(function(buf){
           resolve(buf);
         }).catch(function(err){
           reject(err);
@@ -214,13 +177,16 @@ function extract_file(input, filename){
           extract.destroy();
         });
       } else {
+        add_to_list(header);
         next_entry();
       }
       file_stream.resume();
     });
 
     extract.on('finish', function() {
-      if (!done) {
+      if(dolist){
+        res.send(matches);
+      } else if (!done) {
         reject(`file "${filename}" not found in tarball`);
         extract.destroy();
       }
@@ -230,6 +196,18 @@ function extract_file(input, filename){
       reject(err);
       extract.destroy();
     });
+
+    var matches = [];
+    var dolist = filename instanceof RegExp;
+    function add_to_list(header){
+      if(dolist && header.name){
+        let m = header.name.match(filename);
+        if(m && m.length){
+          matches.push(m.pop());
+        }
+      }
+    }
+
     return input.pipe(gunzip()).pipe(extract);
   });
 }
