@@ -1015,7 +1015,7 @@ router.get("/:user/stats/ranksearch", function(req, res, next) {
 /* Simple 1 package revdep cases; see above for aggregates */
 router.get('/:user/stats/usedby', function(req, res, next) {
   var package = req.query.package;
-  var query = qf({_user: req.params.user, _type: 'src', '_dependencies.package': package}, req.query.all);
+  var query = qf({_user: req.params.user, _type: 'src', '_dependencies.package': package, '_indexed': true}, req.query.all);
   var cursor = packages.find(query).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1});
   cursor.hasNext().then(function(){
     cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
@@ -1025,7 +1025,7 @@ router.get('/:user/stats/usedby', function(req, res, next) {
 router.get('/:user/stats/usedbyorg', function(req, res, next) {
   var user = req.params.user;
   var package = req.query.package;
-  var query = qf({_user: user, _type: 'src', '_dependencies.package': package}, req.query.all);
+  var query = qf({_user: user, _type: 'src', '_dependencies.package': package, '_indexed': true}, req.query.all);
   var cursor = packages.aggregate([
     {$match:query},
     {$group : {
