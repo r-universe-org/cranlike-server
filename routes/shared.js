@@ -17,7 +17,13 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
   var package = req.params.package;
   find_cran_package(package).then(function(x){
     if(!x){
-      res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
+      find_cran_package(package, 'failure').then(function(y){
+        if(y){
+          res.status(404).type('text/plain').send(`CRAN package ${package} failed to build on r-universe: ${y._buildurl}`);
+        } else {
+          res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
+        }
+      });
     } else {
       var manual = '/doc/manual.html';
       var realowner = x._realowner || 'cran';
@@ -86,12 +92,12 @@ router.get('/shared/mongostatus', function(req, res, next) {
   }).catch(error_cb(400, next))
 });
 
-function find_cran_package(package){
+function find_cran_package(package, type = 'src'){
   var regex = {$regex: `^${package}$`, $options: 'i'};
-  return packages.findOne({Package : regex, _type : 'src', _user : 'cran'}).then(function(x){
+  return packages.findOne({Package : regex, _type : type, _user : 'cran'}).then(function(x){
     if(x) return x;
     /* fallback for packages misssing from the CRAN mirror for whatever reason */
-    return packages.findOne({Package : regex, _type : 'src', _indexed : true}).then(function(y){
+    return packages.findOne({Package : regex, _type : type, _indexed : true}).then(function(y){
       if(y && y._realowner == y['_user']){
         return y;
       }
