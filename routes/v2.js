@@ -93,6 +93,10 @@ router.get("/:user/:package*", function(req, res, next) {
       } else {
         next();
       }
+    }).catch(function(){
+      return find_package(user, package, 'failure').then(function(y){
+        res.status(404).type('text/plain').send(`Package ${user}/${package} exists but failed to build: ${y._buildurl}`);
+      });
     }).catch(error_cb(404, next));
   }
 });
@@ -268,8 +272,8 @@ function real_package_home(user, package){
   //}
 }
 
-function find_package(user, package){
-  var query = {'_user': user, 'Package': package, '_type': 'src'};
+function find_package(user, package, type = 'src'){
+  var query = {'_user': user, 'Package': package, '_type': type};
   return packages.findOne(query).then(function(x){
     if(x) return x;
     /* try case insensitive */
