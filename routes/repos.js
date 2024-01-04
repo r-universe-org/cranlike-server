@@ -139,31 +139,36 @@ function count_by_built(user, type){
   .transformStream({transform: doc_to_ndjson});
 }
 
+function query_stream_info(query){
+  return packages.findOne(query, {project: {MD5sum: 1, Redirect: 1}}).then(function(docs){
+    if(!docs)
+      throw 'Package not found for query: ' + JSON.stringify(query);
+    var hash = docs.MD5sum;
+    return bucket.find({_id: hash}, {limit:1}).next().then(function(x){
+      if (!x)
+        throw `Failed to locate file in gridFS: ${hash}`;
+      return x;
+    });
+  });
+}
+
 function send_binary(query, filename, req, res, next){
-  packages.findOne(query, {project: {MD5sum: 1, Redirect: 1}}).then(function(docs){
-    if(!docs){
-      next(createError(404, 'Package not found'));
+  query_stream_info(query).then(function(x){
+    var hash = x['_id'];
+    var etag = etagify(hash);
+    if(etag === req.header('If-None-Match')){
+      res.status(304).send();
+    } else if(req.query.nocdn) {
+      let type = x.filename.endsWith('.zip') ? 'application/zip' : 'application/x-gzip';
+      return bucket.openDownloadStream(hash).pipe(
+        res.type(type).set("ETag", etag).set('Content-Length', x.length)
+      );
     } else {
-      var hash = docs.MD5sum;
-      var etag = etagify(hash);
-      if(etag === req.header('If-None-Match')){
-        res.status(304).send();
-      } else if(req.query.nocdn) {
-        return bucket.find({_id: hash}, {limit:1}).next().then(function(x){
-          if (!x)
-            throw `Failed to locate file in gridFS: ${hash}`;
-          let type = x.filename.endsWith('.zip') ? 'application/zip' : 'application/x-gzip';
-          return bucket.openDownloadStream(x['_id']).pipe(
-            res.type(type).set("ETag", etag).set('Content-Length', x.length)
-          );
-        });
-      } else {
-        const host = req.headers.host || "";
-        const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
-        res.set("ETag", etag).redirect(`${cdn}/${hash}/${filename}`);
-      }
+      const host = req.headers.host || "";
+      const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
+      res.set("ETag", etag).redirect(`${cdn}/${hash}/${x.filename}`);
     }
-  }).catch(error_cb(400, next));  
+  }).catch(error_cb(404, next));
 }
 
 function find_by_user(_user, _type){
@@ -301,7 +306,6 @@ router.get('/:user/bin/emscripten/contrib/:built/:pkg.tgz', function(req, res, n
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
-  query['Built.Platform'] = arch_to_built(req.params.xcode);
   send_binary(query, `${req.params.pkg}.tgz`, req, res, next);
 });
 
