@@ -129,6 +129,12 @@ function stream2buffer(stream) {
     });
 }
 
+function stream2string(stream) {
+  return stream2buffer(stream).then(function(buf){
+    return buf.toString("utf-8");
+  });
+}
+
 function pipe_everything_to(stream, output) {
   return new Promise((resolve, reject) => {
     stream.on("end", () => resolve());
@@ -168,7 +174,7 @@ function extract_file(input, filename, res){
     extract.on('entry', function(header, file_stream, next_entry) {
       if (!done && header.name === filename) {
         done = true;
-        var promise = res ? pipe_everything_to(file_stream, res) : streamToString(file_stream);
+        var promise = res ? pipe_everything_to(file_stream, res) : stream2string(file_stream);
         promise.then(function(buf){
           resolve(buf);
         }).catch(function(err){
@@ -253,14 +259,6 @@ function get_extracted_file(query, filename){
       }
     });
   });
-}
-
-async function streamToString(stream) {
-  const chunks = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks).toString("utf-8");
 }
 
 var store = {};
