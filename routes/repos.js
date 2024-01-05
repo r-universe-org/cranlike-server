@@ -8,6 +8,7 @@ const send_extracted_file = tools.send_extracted_file;
 const pkgfields = tools.pkgfields;
 const doc_to_dcf = tools.doc_to_dcf;
 const group_package_data = tools.group_package_data;
+const tar_stream_files = tools.tar_stream_files;
 
 function error_cb(status, next) {
   return function(err) {
@@ -153,7 +154,7 @@ function query_stream_info(query){
 }
 
 function send_binary(query, filename, req, res, next){
-  query_stream_info(query).then(function(x){
+  return query_stream_info(query).then(function(x){
     var hash = x['_id'];
     var etag = etagify(hash);
     if(etag === req.header('If-None-Match')){
@@ -167,6 +168,25 @@ function send_binary(query, filename, req, res, next){
       const host = req.headers.host || "";
       const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
       res.set("ETag", etag).redirect(`${cdn}/${hash}/${x.filename}`);
+    }
+  }).catch(error_cb(404, next));
+}
+
+function send_tar_data(query, filename, req, res, next){
+  return query_stream_info(query).then(function(x){
+    var hash = x['_id'];
+    var etag = etagify(hash);
+    if(etag === req.header('If-None-Match')){
+      res.status(304).send();
+    } else {
+      var input = bucket.openDownloadStream(hash);
+      if(filename.endsWith('.data')){
+        return tar_stream_files(input, res.type('application/wasm'));
+      } else {
+        return tar_stream_files(input).then(function(index){
+          res.send(index);
+        })
+      }
     }
   }).catch(error_cb(404, next));
 }
@@ -307,6 +327,20 @@ router.get('/:user/bin/emscripten/contrib/:built/:pkg.tgz', function(req, res, n
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
   send_binary(query, `${req.params.pkg}.tgz`, req, res, next);
+});
+
+router.get('/:user/bin/emscripten/contrib/:built/:pkg.data', function(req, res, next) {
+  var pkg = req.params.pkg.split("_");
+  var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
+    Package: pkg[0], Version: pkg[1]});
+  send_tar_data(query, `${req.params.pkg}.data`, req, res, next);
+});
+
+router.get('/:user/bin/emscripten/contrib/:built/:pkg.js.metadata', function(req, res, next) {
+  var pkg = req.params.pkg.split("_");
+  var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
+    Package: pkg[0], Version: pkg[1]});
+  send_tar_data(query, `${req.params.pkg}.js.metadata`, req, res, next);
 });
 
 //Formerly /:user/packages but this is now a UI endpoint
