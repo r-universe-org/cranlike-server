@@ -184,8 +184,11 @@ function send_tar_data(query, filename, req, res, next){
         return tar_stream_files(input, res.type('application/wasm'));
       } else {
         return tar_stream_files(input).then(function(index){
+          index.files.forEach(function(x){
+            x.filename = x.filename.match(/\/.*/)[0]; //strip pkg root dir
+          });
           res.send(index);
-        })
+        });
       }
     }
   }).catch(error_cb(404, next));
