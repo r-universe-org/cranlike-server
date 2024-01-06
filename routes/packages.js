@@ -15,6 +15,7 @@ const router = express.Router();
 
 /* Local code */
 const tools = require("../src/tools.js");
+const match_macos_arch = tools.match_macos_arch;
 
 /* Error generator */
 function error_cb(status, next) {
@@ -363,6 +364,9 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
+      if(type == 'mac' && description.Built.Platform){
+        query['Built.Platform'] = match_macos_arch(description.Built.Platform);
+      }
       return packages.findOneAndDelete(query).then(function(result) {
         var original = result.value;
         if(original && original['MD5sum'] !== md5){
@@ -443,6 +447,9 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
         description['_indexed'] = is_indexed(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
+      }
+      if(type == 'mac' && description.Built.Platform){
+        query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
       return packages.findOneAndDelete(query).then(function(result) {
         var original = result.value;

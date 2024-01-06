@@ -9,6 +9,7 @@ const pkgfields = tools.pkgfields;
 const doc_to_dcf = tools.doc_to_dcf;
 const group_package_data = tools.group_package_data;
 const tar_stream_files = tools.tar_stream_files;
+const match_macos_arch = tools.match_macos_arch;
 
 function error_cb(status, next) {
   return function(err) {
@@ -203,11 +204,6 @@ function find_by_user(_user, _type){
   return out;
 }
 
-/* Use negative match, because on packages without compiled code Built.Platform is empty */
-function arch_to_built(xcode){
-  return (xcode && xcode.match("arm64")) ? {$not : /x86_64/} : {$not : /aarch64/ };
-}
-
 router.get('/:user/src', function(req, res, next) {
   res.redirect('/' + req.params.user + '/src/contrib');
 });
@@ -247,13 +243,13 @@ router.get('/:user/bin/windows/contrib/:built/', function(req, res, next) {
 /* CRAN-like index for MacOS packages */
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/PACKAGES\.:ext?', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
-  query['Built.Platform'] = arch_to_built(req.params.xcode);
+  query['Built.Platform'] = match_macos_arch(req.params.xcode || "legacy-x86_64");
   packages_index(query, req.params.ext, req, res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
-  query['Built.Platform'] = arch_to_built(req.params.xcode);
+  query['Built.Platform'] = match_macos_arch(req.params.xcode || "legacy-x86_64");
   packages_index(query, 'json', req, res, next);
 });
 
@@ -314,7 +310,7 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
-  query['Built.Platform'] = arch_to_built(req.params.xcode);
+  query['Built.Platform'] = match_macos_arch(req.params.xcode || "legacy-x86_64");
   send_binary(query, `${req.params.pkg}.tgz`, req, res, next);
 });
 

@@ -420,6 +420,17 @@ function group_package_data(docs){
   return src;
 }
 
+/* Use negative match, because on packages without compiled code Built.Platform is empty */
+function match_macos_arch(platform){
+  if(platform.match("arm64")){
+    return {$not : /x86_64/};
+  }
+  if(platform.match("x86_64")){
+    return {$not : /aarch64/};
+  }
+  throw `Unknown platform: ${platform}`;
+}
+
 module.exports = {
   group_package_data: group_package_data,
   pkgfields: pkgfields,
@@ -434,7 +445,8 @@ module.exports = {
   get_submodule_hash : get_submodule_hash,
   trigger_rebuild : trigger_rebuild,
   get_cran_desc : get_cran_desc,
-  doc_to_dcf : doc_to_dcf
+  doc_to_dcf : doc_to_dcf,
+  match_macos_arch : match_macos_arch
 };
 
 /* Tests
