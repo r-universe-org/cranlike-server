@@ -411,6 +411,7 @@ function group_package_data(docs){
       version: x.Version,
       date: x._created,
       distro: x['_type'] == 'linux' && x._distro || undefined,
+      arch: x.Built.Platform && x.Built.Platform.split("-")[0] || undefined,
       commit: x._commit.id,
       fileid: x['_fileid'],
       status: x['_status'],
