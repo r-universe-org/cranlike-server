@@ -422,7 +422,7 @@ function group_package_data(docs){
 
 /* Use negative match, because on packages without compiled code Built.Platform is empty */
 function match_macos_arch(platform){
-  if(platform.match("arm64")){
+  if(platform.match("arm64|aarch64")){
     return {$not : /x86_64/};
   }
   if(platform.match("x86_64")){
