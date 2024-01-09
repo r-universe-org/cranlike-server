@@ -41,8 +41,9 @@ function make_filename(doc){
     return `bin/windows/contrib/${built}/${doc.Package}_${doc.Version}.zip`;
   }
   if(type == 'mac'){
-    //TODO: fix arm64 m1 distro here, once supported
-    var distro = built == '4.2' ? 'macosx' : 'macosx/big-sur-x86_64';
+    //TODO: copy universal binaries to arm64 dir too?
+    var arch = doc.Built.Platform.match("arm64|aarch64") ? 'arm64' : 'x86_64';
+    var distro = built == '4.2' ? 'macosx' : `macosx/big-sur-${arch}`;
     return `bin/${distro}/contrib/${built}/${doc.Package}_${doc.Version}.tgz`;
   }
   if(type == 'linux'){
