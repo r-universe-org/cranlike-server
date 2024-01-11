@@ -5,7 +5,7 @@ var router = express.Router();
 
 function error_cb(status, next) {
   return function(err){
-    console.log("[Debug] HTTP " + status + ": " + err)
+    //console.log("[Debug] HTTP " + status + ": " + err)
     next(createError(status, err));
   }
 }
@@ -28,7 +28,7 @@ function find_package(package){
     }
     var total = res.hits.total.value;
     if(total < 1){
-      throw `No entry found for R package ${package} not found`;
+      throw `No science-miner data found for R package ${package}`;
     }
     if(total > 1){
       console.log(`ScienceMiner found more than 1 package found for ${package} (using first hit).`);

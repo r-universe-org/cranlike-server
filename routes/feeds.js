@@ -8,7 +8,8 @@ const { version } = require('../package.json');
 const opts = { pretty: false, allowEmpty: false };
 
 function error_cb(status, next) {
-  return function(err) {
+  return function(err){
+    console.log("[Debug] HTTP " + status + ": " + err)
     next(createError(status, err));
   }
 }
@@ -129,6 +130,10 @@ router.get('/shared/sitemap_index.xml', function(req, res, next) {
     users.forEach(x => xml.ele('sitemap').ele('loc', `https://${x}.r-universe.dev/sitemap_index.xml`));
     res.type('application/xml').send(xml.end({ pretty: true}));
   }).catch(error_cb(400, next));
+});
+
+router.get('/:user/sitemap.xml', function(req, res, next) {
+  res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${req.params.user}.r-universe.dev/sitemap_index.xml`);
 });
 
 router.get('/:user/sitemap_index.xml', function(req, res, next) {

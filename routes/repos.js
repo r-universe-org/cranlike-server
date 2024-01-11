@@ -13,6 +13,7 @@ const match_macos_arch = tools.match_macos_arch;
 
 function error_cb(status, next) {
   return function(err) {
+    console.log("[Debug] HTTP " + status + ": " + err)
     next(createError(status, err));
   }
 }
