@@ -236,10 +236,10 @@ router.get('/:user/:package/sitemap.xml', function(req, res, next) {
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/manual.html`);
     var assets = x._assets || [];
     if(assets.includes('extra/NEWS.html')){
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/NEWS`);
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/NEWS`);
     }
     if(assets.includes('extra/NEWS.txt')){
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/NEWS.txt`);
+      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/NEWS.txt`);
     }
     if(assets.includes('extra/citation.html')){
       xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/citation`);
