@@ -123,6 +123,16 @@ router.get("/:user/:package/files", function(req, res, next) {
   packages.find(query).sort({"Built.R" : -1}).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
 });
 
+router.get("/:user/:package/buildlog", function(req, res, next) {
+  var user = req.params.user;
+  var package = req.params.package;
+  var query = {_user : user, Package : package};
+  packages.find(query).sort({"_created" : -1}).limit(1).next().then(function(x){
+    console.log(x)
+    res.redirect(x['_buildurl'])
+  }).catch(error_cb(400, next));
+});
+
 /* Match CRAN / R dynamic help */
 router.get("/:user/:package/DESCRIPTION", function(req, res, next) {
   var package = req.params.package;
