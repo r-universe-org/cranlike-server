@@ -370,6 +370,9 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
   }
   if(package){
     packages.find({_user : user, Package : package}).project(projection).toArray().then(function(docs){
+      if(!docs.length){
+        return res.status(404).send(`No package '${package}' found in https://${user}.r-universe.dev`);
+      }
       res.send(group_package_data(docs));
     }).catch(error_cb(400, next));
   } else {
