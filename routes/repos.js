@@ -59,6 +59,14 @@ function packages_index(query, format, req, res, next){
   if(format && format !== 'gz' && format !== 'json'){
     return next(createError(404, 'Unsupported PACKAGES format: ' + format));
   }
+
+  let projection = {...pkgfields};
+  if(req.query.fields){
+    req.query.fields.split(",").forEach(function (f) {
+      projection[f] = 1;
+    });
+  }
+
   // Preflight to revalidate cache.
   packages.find(query).sort({"_id" : -1}).limit(1).project({"_id": 1}).next().then(function(doc){
     if(!doc){
@@ -79,7 +87,7 @@ function packages_index(query, format, req, res, next){
     }
 
     // Get actual package data
-    var cursor = packages.find(query).project(pkgfields).sort({"Package" : 1});
+    var cursor = packages.find(query).project(projection).sort({"Package" : 1});
     if(!format){
       cursor
         .transformStream({transform: doc_to_dcf})
