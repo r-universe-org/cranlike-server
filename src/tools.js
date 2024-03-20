@@ -174,6 +174,15 @@ function extract_file(input, filename, res){
     extract.on('entry', function(header, file_stream, next_entry) {
       if (!done && header.name === filename) {
         done = true;
+        if(res){
+          var contenttype = mime.getType(filename);
+          if(contenttype == 'text/plain' || filename.endsWith('.cff') || filename.endsWith('.Rmd')){
+            contenttype = 'text/plain; charset=utf-8';
+          }
+          if(contenttype){
+            res.type(contenttype);
+          }
+        }
         var promise = res ? pipe_everything_to(file_stream, res) : stream2string(file_stream);
         promise.then(function(buf){
           resolve(buf);
