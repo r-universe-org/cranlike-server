@@ -523,6 +523,26 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
   }).catch(err => res.status(400).send(err));
 });
 
+router.post("/:user/api/recheck/:target",function(req, res, next) {
+  var user = req.params.user;
+  var target = req.params.target;
+  var query = {_user : user, _type : 'src', '_commit.id': target};
+  return packages.find(query).next().then(function(doc){
+    if(doc['_recheck_pending']){
+      return res.status(429).send(`A recheck of ${doc} was already triggered ${Math.round(minutes)} minutes ago.`);
+    }
+    const now = new Date();
+    return tools.trigger_recheck(doc._user, doc.Package).then(function(){
+      return packages.updateOne(
+        { _id: doc['_id'] },
+        { "$set": {"_recheck_pending": now }}
+      ).then(function(){
+        res.send("Success");
+      });
+    });
+  }).catch(err => res.status(400).send(err));
+});
+
 router.post('/:user/api/reindex', function(req, res, next) {
   var owners = {};
   fetch('https://r-universe-org.github.io/cran-to-git/universes.csv')

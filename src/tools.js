@@ -467,6 +467,7 @@ module.exports = {
   get_registry_info : get_registry_info,
   get_submodule_hash : get_submodule_hash,
   trigger_rebuild : trigger_rebuild,
+  trigger_recheck : trigger_recheck,
   get_cran_desc : get_cran_desc,
   doc_to_dcf : doc_to_dcf,
   match_macos_arch : match_macos_arch
