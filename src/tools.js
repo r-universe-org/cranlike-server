@@ -15,7 +15,7 @@ function fetch_github(url, opt = {}){
     opt.headers = opt.headers || {'Authorization': 'token ' + process.env.REBUILD_TOKEN};
   }
   return fetch(url, opt).then(function(response){
-    return response.json().then(function(data){
+    return response.json().catch(e => response.text()).then(function(data){
       if (!response.ok) {
         throw "GitHub API returned HTTP " + response.status + ": " + (data.message || data);
       }
@@ -61,6 +61,19 @@ function trigger_rebuild(run_path){
   const url = `https://api.github.com/repos/${run_path}/rerun-failed-jobs`;
   return fetch_github(url, {
     method: 'POST',
+    headers: {'Authorization': 'token ' + rebuild_token}
+  });
+}
+
+function trigger_recheck(user, package, which = 'strong'){
+  const rebuild_token = process.env.REBUILD_TOKEN;
+  if(!rebuild_token)
+    throw "No rebuild_token available";
+  const url = `https://api.github.com/repos/r-universe/${user}/actions/workflows/recheck.yml/dispatches`;
+  const params = {ref: 'master', inputs: {package: package, which: which}};
+  return fetch_github(url, {
+    method: 'POST',
+    body: JSON.stringify(params),
     headers: {'Authorization': 'token ' + rebuild_token}
   });
 }
