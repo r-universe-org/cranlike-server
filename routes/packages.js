@@ -523,12 +523,16 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
   }).catch(err => res.status(400).send(err));
 });
 
-router.post("/:user/api/recheck/:target",function(req, res, next) {
+/* HTTP PATCH does not require authentication, so this API is public for now
+ * When the front-end has some auth, we can switch to post */
+router.patch("/:user/api/recheck/:target",function(req, res, next) {
   var user = req.params.user;
   var target = req.params.target;
   var query = {_user : user, _type : 'src', '_commit.id': target};
+  var now = new Date();
   return packages.find(query).next().then(function(doc){
     if(doc['_recheck_pending']){
+      var minutes = (doc['_recheck_pending'] - now) / 60000;
       return res.status(429).send(`A recheck of ${doc} was already triggered ${Math.round(minutes)} minutes ago.`);
     }
     const now = new Date();
