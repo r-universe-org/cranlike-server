@@ -531,20 +531,34 @@ router.patch("/:user/api/recheck/:target",function(req, res, next) {
   var query = {_user : user, _type : 'src', '_commit.id': target};
   var now = new Date();
   return packages.find(query).next().then(function(doc){
-    if(doc['_recheck_pending']){
-      var minutes = (doc['_recheck_pending'] - now) / 60000;
-      return res.status(429).send(`A recheck of ${doc} was already triggered ${Math.round(minutes)} minutes ago.`);
+    if(doc['_recheck_date']){
+      var minutes = (doc['_recheck_date'] - now) / 60000;
+      return res.status(429).send(`A recheck of ${doc.Package} was already triggered ${Math.round(minutes)} minutes ago.`);
     }
-    const now = new Date();
     return tools.trigger_recheck(doc._user, doc.Package).then(function(){
       return packages.updateOne(
         { _id: doc['_id'] },
-        { "$set": {"_recheck_pending": now }}
+        { "$set": {"_recheck_date": now }}
       ).then(function(){
         res.send("Success");
       });
     });
-  }).catch(err => res.status(400).send(err));
+  }).catch(error_cb(400, next));
+});
+
+/* This API is called by the CI to update the status */
+router.post("/:user/api/recheck/:package",function(req, res, next) {
+  var user = req.params.user;
+  var package = req.params.package;
+  var query = {_user : user, _type : 'src', Package: package};
+  return packages.find(query).next().then(function(doc){
+    return packages.updateOne(
+      { _id: doc['_id'] },
+      { "$set": {"_recheck_url": req.body.url }}
+    ).then(function(){
+      res.send("Update OK");
+    });
+  }).catch(error_cb(400, next));
 });
 
 router.post('/:user/api/reindex', function(req, res, next) {
