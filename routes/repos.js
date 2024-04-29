@@ -896,9 +896,13 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
 });
 
 
-router.get("/:user/stats/sysdeps", function(req, res, next) {
+router.get("/:user/stats/sysdeps/:distro?", function(req, res, next) {
+  var query = {_user: req.params.user, _type: 'src', '_sysdeps': {$exists: true}};
+  if(req.params.distro){
+    query['_distro'] = req.params.distro;
+  }
   var cursor = packages.aggregate([
-    {$match: qf({_user: req.params.user, _type: 'src', '_sysdeps': {$exists: true}}, req.query.all)},
+    {$match: qf(query, req.query.all)},
     {$unwind: '$_sysdeps'},
     {$group: {
       _id : '$_sysdeps.name',
