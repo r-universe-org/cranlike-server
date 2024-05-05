@@ -42,11 +42,7 @@ function fetch_github(url, opt = {}){
 function test_if_universe_exists(user){
   if(user === ':any') return Promise.resolve(true);
   const url = 'https://github.com/r-universe/' + user;
-  const query = {'$or': [
-    {'_user': user},
-    {'_maintainer.login': user, '_indexed': true}
-  ]};
-  return packages.findOne(query).then(function(x){
+  return packages.findOne({'_universes': user}).then(function(x){
     if(x) return true;
     console.log("Testing if " + url + " exists...");
     return fetch(url).then(response => response.ok);
