@@ -10,6 +10,7 @@ const doc_to_dcf = tools.doc_to_dcf;
 const group_package_data = tools.group_package_data;
 const tar_stream_files = tools.tar_stream_files;
 const match_macos_arch = tools.match_macos_arch;
+const qf = tools.qf;
 
 function error_cb(status, next) {
   return function(err) {
@@ -33,26 +34,6 @@ function doc_to_filename(x){
 
 function etagify(x){
   return 'W/"' +  x + '"';
-}
-
-function qf(x, query_by_user_or_maintainer){
-  const user = x._user;
-  if(user == ":any"){
-    delete x._user;
-    if(query_by_user_or_maintainer){
-      x['_indexed'] = true;
-    }
-  } else if(user === 'bioconductor' && query_by_user_or_maintainer){
-    delete x._user;
-    x['_bioc'] = {'$exists':1};
-  } else if(query_by_user_or_maintainer) {
-    delete x._user;
-    x['$or'] = [
-      {'_user': user},
-      {'_maintainer.login': user, '_indexed': true}
-    ];
-  }
-  return x;
 }
 
 function packages_index(query, format, req, res, next){
@@ -386,9 +367,7 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
   } else {
     /* Only src pkg has _indexed field, so first group and then filter again by _indexed
        otherwise we don't get the binaries for non-indexed packages */
-    var query = req.query.all ?
-      {'$or' : [{'_user': user}, {'_maintainer.login': user}]} :
-      {'_user': user};
+    var query = req.query.all ? {'_universes': user} : {'_user': user};
     if(user == ":any" || user == 'cran'){
       query['_commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
     }

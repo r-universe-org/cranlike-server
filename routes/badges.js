@@ -3,26 +3,13 @@ const createError = require('http-errors');
 const badgen = require('badgen');
 const router = express.Router();
 const tools = require("../src/tools.js");
+const qf = tools.qf;
 
 function error_cb(status, next) {
   return function(err){
     console.log("[Debug] HTTP " + status + ": " + err)
     next(createError(status, err));
   }
-}
-
-function qf(x, query_by_user_or_maintainer){
-  const user = x._user;
-  if(user == ":any"){
-    delete x._user;
-  } else if(query_by_user_or_maintainer) {
-    delete x._user;
-    x['$or'] = [
-      {'_user': user},
-      {'_maintainer.login': user, '_indexed': true}
-    ];
-  }
-  return x;
 }
 
 function send_badge(badge, user, res, linkto){

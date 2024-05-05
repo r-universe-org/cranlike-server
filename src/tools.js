@@ -10,6 +10,20 @@ const pkgfields = {_id: 1, _type:1, _dependencies: 1, Distro: '$_distro',
   NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
   OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
 
+function qf(x, query_by_user_or_maintainer){
+  const user = x._user;
+  if(user == ":any"){
+    delete x._user;
+    if(query_by_user_or_maintainer){
+      x['_indexed'] = true; //is this still needed?
+    }
+  } else if(query_by_user_or_maintainer) {
+    x['_universes'] = user;
+    delete x._user;
+  }
+  return x;
+}
+
 function fetch_github(url, opt = {}){
   if(process.env.REBUILD_TOKEN){
     opt.headers = opt.headers || {'Authorization': 'token ' + process.env.REBUILD_TOKEN};
@@ -455,6 +469,7 @@ function match_macos_arch(platform){
 }
 
 module.exports = {
+  qf: qf,
   group_package_data: group_package_data,
   pkgfields: pkgfields,
   send_frontend_js : send_frontend_js,

@@ -4,28 +4,14 @@ const xmlbuilder = require('xmlbuilder');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const { version } = require('../package.json');
-
 const opts = { pretty: false, allowEmpty: false };
+const qf = tools.qf;
 
 function error_cb(status, next) {
   return function(err){
     console.log("[Debug] HTTP " + status + ": " + err)
     next(createError(status, err));
   }
-}
-
-function qf(x, query_by_user_or_maintainer){
-  const user = x._user;
-  if(user == ":any"){
-    delete x._user;
-  } else if(query_by_user_or_maintainer) {
-    delete x._user;
-    x['$or'] = [
-      {'_user': user},
-      {'_maintainer.login': user, '_indexed': true}
-    ];
-  }
-  return x;
 }
 
 router.get('/:user/feed.xml', function(req, res, next) {

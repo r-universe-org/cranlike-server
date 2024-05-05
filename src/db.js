@@ -46,12 +46,12 @@ async function rebuild_indexes(){
   await packages.createIndex("_user");
   await packages.createIndex("_published");
   await packages.createIndex("_commit.time");
-  await packages.createIndex("_maintainer.login");
+  await packages.createIndex("_universes");
+  await packages.createIndex({"_universes":1, "_commit.time":1});
   await packages.createIndex({"_user":1, "_type":1, "Package":1});
   await packages.createIndex({"_user":1, "_commit.id":1, "Package":1});
   await packages.createIndex({"_user":1, "_type":1, "_commit.time":1});
   await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_commit.time":1});
-  await packages.createIndex({"_maintainer.login":1, "_indexed":1, "_commit.time":1});
   await packages.createIndex({"_type":1, "_rundeps":1});
   await packages.createIndex({"_type":1, "_dependencies.package":1});
 
