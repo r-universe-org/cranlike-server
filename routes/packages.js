@@ -262,10 +262,9 @@ function parse_major_version(built){
   return r_major_version;
 }
 
-function get_repo_owner(description){
-  const url = description._upstream || "";
+function get_repo_owner(url){
   const re = new RegExp('.*://([a-z]+).*/([^/]*)/.*')
-  const match = url.toLowerCase().match(re);
+  const match = (url || "").toLowerCase().match(re);
   if(match){
     return match[1] == 'github' ? match[2] : `${match[1]}-${match[2]}`;
   }
@@ -302,6 +301,19 @@ function is_indexed(description){
   if(!owner)
     return true;
   return universe == owner;
+}
+
+function set_universes(description){
+  var universes = [description._user];
+  if(is_indexed(description)){
+    if(description._maintainer.login){
+      universes.push(description._maintainer.login);
+    }
+    if(description._devurl){
+      universes.push(get_repo_owner(description._devurl));
+    }
+  }
+  description['_universes'] = [...new Set(universes)]; //unique values
 }
 
 function is_self_owned(description){
@@ -354,13 +366,14 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       add_meta_fields(description, builder);
       merge_dependencies(description);
       validate_description(description, package, version, type);
-      description['_owner'] = get_repo_owner(description);
+      description['_owner'] = get_repo_owner(description._upstream);
       description['_selfowned'] = is_self_owned(description);
       if(type == "src"){
         description['_usedby'] = metadata[1];
         add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
+        set_universes(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
@@ -395,7 +408,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   var description = {...query, Version: version, Maintainer: maintainer, _published: new Date()};
   add_meta_fields(description, builder);
   description['_created'] = new Date();
-  description['_owner'] = get_repo_owner(description);
+  description['_owner'] = get_repo_owner(description._upstream);
   description['_selfowned'] = description._owner === user;
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
@@ -438,13 +451,14 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       add_meta_fields(description, builder);
       merge_dependencies(description);
       validate_description(description, package, version, type);
-      description['_owner'] = get_repo_owner(description);
+      description['_owner'] = get_repo_owner(description._upstream);
       description['_selfowned'] = is_self_owned(description);
       if(type == "src"){
         description['_usedby'] = metadata[1];
         add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
+        set_universes(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
