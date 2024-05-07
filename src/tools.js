@@ -189,14 +189,18 @@ function send_extracted_file(query, filename, req, res, next){
   });
 }
 
-function extract_file(input, filename, res){
+//use the first match in findfile
+function extract_file(input, findfile, res){
   var extract = tar.extract({allowUnknownFormat: true});
   var done = false;
+  if(typeof findfile == 'string')
+    findfile = [findfile];
 
   return new Promise(function(resolve, reject) {
     extract.on('entry', function(header, file_stream, next_entry) {
-      if (!done && header.name === filename) {
+      if (!done && Array.isArray(findfile) && findfile.includes(header.name)) {
         done = true;
+        var filename = header.name;
         if(res){
           var contenttype = mime.getType(filename);
           if(contenttype == 'text/plain' || filename.endsWith('.cff') || filename.endsWith('.Rmd')){
@@ -236,10 +240,10 @@ function extract_file(input, filename, res){
     });
 
     var matches = [];
-    var dolist = filename instanceof RegExp;
+    var dolist = findfile instanceof RegExp;
     function add_to_list(header){
       if(dolist && header.name){
-        let m = header.name.match(filename);
+        let m = header.name.match(findfile);
         if(m && m.length){
           matches.push(m.pop());
         }
