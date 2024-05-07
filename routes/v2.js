@@ -172,9 +172,9 @@ router.get('/:user/:package/citation:ext?', function(req, res, next){
 function doc_path(file, package){
   switch(file.toLowerCase()) {
     case "readme.html":
-      return [`${package}/readme.html`, `${package}/inst/doc/readme.html`];
+      return [`${package}/readme.html`, `${package}/extra/readme.html`];
     case "readme.md":
-      return [`${package}/readme.md`, `${package}/inst/doc/readme.md`];
+      return [`${package}/readme.md`, `${package}/extra/readme.md`];
     case `manual.html`:
       return `${package}/extra/${package}.html`;
     default:
@@ -187,7 +187,7 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
   var user = req.params.user;
   var package = req.params.package;
   var query = {_user: user, _type: 'src', Package: package};
-  tools.get_extracted_file(query, [`${package}/inst/doc/readme.html`, `${package}/readme.html`]).then(function(res){
+  tools.get_extracted_file(query, [`${package}/extra/readme.html`, `${package}/readme.html`]).then(function(res){
     var html = res[0] || res[1];
     if(req.query.highlight === 'hljs'){
       const $ = cheerio.load(html, null, false);
