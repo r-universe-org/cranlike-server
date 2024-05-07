@@ -187,8 +187,8 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
   var user = req.params.user;
   var package = req.params.package;
   var query = {_user: user, _type: 'src', Package: package};
-  tools.get_extracted_file(query, [`${package}/extra/readme.html`, `${package}/readme.html`]).then(function(res){
-    var html = res[0] || res[1];
+  tools.get_extracted_file(query, [`${package}/extra/readme.html`, `${package}/readme.html`]).then(function(buf){
+    var html = buf[0] || buf[1];
     if(req.query.highlight === 'hljs'){
       const $ = cheerio.load(html, null, false);
       $('code[class^="language-"]').each(function(i, el){
