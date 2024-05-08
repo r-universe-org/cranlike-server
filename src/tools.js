@@ -229,7 +229,7 @@ function extract_file(input, findfile, res){
       if(dolist){
         res.send(matches);
       } else if (!done) {
-        reject(`file "${filename}" not found in tarball`);
+        reject(`file "${findfile}" not found in tarball`);
         extract.destroy();
       }
     });
