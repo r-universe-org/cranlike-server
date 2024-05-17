@@ -332,6 +332,10 @@ router.get('/:user/bin/emscripten/contrib/:built/:pkg.js.metadata', function(req
   send_tar_data(query, `${req.params.pkg}.js.metadata`, req, res, next);
 });
 
+router.get('/:user/api', function(req, res, next) {
+  res.redirect(301, `/${req.params.user}/api/ls`);
+});
+
 //Formerly /:user/packages but this is now a UI endpoint
 router.get('/:user/api/ls', function(req, res, next) {
   packages.distinct('Package', {_user : req.params.user}).then(function(x){
