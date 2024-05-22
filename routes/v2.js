@@ -209,6 +209,7 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
 
 /* extract single page from manual */
 router.get('/:user/:package/doc/page/:id', function(req, res, next){
+  var user = req.params.user;
   var page = req.params.id;
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
@@ -219,7 +220,7 @@ router.get('/:user/:package/doc/page/:id', function(req, res, next){
     el.find('a').each(function(i, elm) {
       var link = $(this).attr("href");
       if(link && link.charAt(0) == '#'){
-        $(this).attr("href", "../manual.html" + link);
+        $(this).attr("href", `https://${user}.r-universe.dev/${package}/doc/manual.html` + link);
       }
     });
     el.find('hr').remove();
