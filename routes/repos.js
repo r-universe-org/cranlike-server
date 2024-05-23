@@ -785,7 +785,7 @@ router.get("/:user/stats/updates", function(req, res, next) {
     }},
     {$unwind: "$updates"},
     {$group: {_id: "$updates.week", total: {$sum: '$updates.n'}, packages: {$addToSet: {k:'$package', v:'$updates.n'}}}},
-    {$project: {_id:0, week: '$_id', total: '$total', packages: {$arrayToObject: '$packages'}}},
+    {$project: {_id:0, week: '$_id', total: '$total', packages: {$arrayToObject:{$sortArray: { input: "$packages", sortBy: { v: -1 } }}}}},
     {$sort:{ week: 1}}
   ]);
   cursor.hasNext().then(function(){
