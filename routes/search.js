@@ -55,7 +55,8 @@ function build_query(query, str){
   match_insensitive('exports', '_exports');
   match_insensitive('package', 'Package');
   match_insensitive('owner', '_owner');
-  match_insensitive('universe', '_user');
+  match_insensitive('user', '_user');
+  match_insensitive('universe', '_universes');
   match_partial('data', '_datasets.title');
   str = str.trim();
   if(str){
