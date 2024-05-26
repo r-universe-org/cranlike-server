@@ -194,6 +194,21 @@ function find_by_user(_user, _type){
   return out;
 }
 
+function send_results(cursor, req, res, next, transform = (x) => x){
+  return cursor.hasNext().then(function(){  // wrap in promise
+    if(req.query.stream){
+      return cursor.transformStream({transform: x => doc_to_ndjson(transform(x))}).pipe(res.type('text/plain'));
+    } else {
+      var out = [];
+      return cursor.forEach(function(x){
+        out.push(transform(x));
+      }).then(function(){
+        return res.send(out.filter(x => x));
+      });
+    }
+  }).catch(error_cb(400, next));
+}
+
 router.get('/:user/src', function(req, res, next) {
   res.redirect('/' + req.params.user + '/src/contrib');
 });
@@ -389,18 +404,7 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
       {$sort : {timestamp : -1}},
       {$limit : limit}
     ]);
-    if(req.query.stream){
-      cursor.hasNext().then(function(){
-        cursor.transformStream({transform: x => doc_to_ndjson(group_package_data(x.files))}).pipe(res.type('text/plain'));
-      }).catch(error_cb(400, next));
-    } else {
-      var out = [];
-      cursor.forEach(function(x){
-        out.push(group_package_data(x.files));
-      }).then(function(){
-        res.send(out.filter(x => x));
-      }).catch(error_cb(400, next));
-    }
+    send_results(cursor, req, res, next, (x) => group_package_data(x.files));
   }
 });
 
