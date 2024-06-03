@@ -633,12 +633,13 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       _id : '$_maintainer.email',
       updated: { $max: '$_commit.time'},
       name : { $first: '$_maintainer.name'},
-      login : { $addToSet: '$_maintainer.login'}, //login can be null
-      orcid : { $addToSet: '$_maintainer.orcid'}, //login can be null
+      login : { $addToSet: '$_maintainer.login'}, //can be null
+      orcid : { $addToSet: '$_maintainer.orcid'}, //can be null
+      mastodon : { $addToSet: '$_maintainer.mastodon'}, //can be null
       orgs: { $push:  { "k": "$_user", "v": true}},
       count : { $sum: 1 }
     }},
-    {$set: {orgs: {$arrayToObject: '$orgs'}, orcid: {$first: '$orcid'}, login: {$first: '$login'}}},
+    {$set: {orgs: {$arrayToObject: '$orgs'}, orcid: {$first: '$orcid'}, mastodon: {$first: '$mastodon'}, login: {$first: '$login'}}},
     {$group: {
       _id : { $ifNull: [ "$login", "$_id" ]},
       login: { $first: '$login'},
@@ -646,6 +647,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       updated: { $max: '$updated'},
       name : { $first: '$name'},
       orcid : { $addToSet: "$orcid"},
+      mastodon : { $addToSet: "$mastodon"},
       count : { $sum: '$count'},
       orgs: {$mergeObjects: '$orgs'}
     }},
@@ -657,6 +659,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       name: 1,
       count : 1,
       orcid: {$first: '$orcid'},
+      mastodon: {$first: '$mastodon'},
       orgs: {$objectToArray: "$orgs"}
     }},
     {$set: {orgs: '$orgs.k'}},
