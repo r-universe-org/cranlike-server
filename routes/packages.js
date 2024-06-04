@@ -282,14 +282,19 @@ function get_created(x){
 
 function calculate_score(description){
   var score = 3 * description['_usedby'];
-  if(description._cranurl)
+  if(description._cranurl){
     score += 5;
+    if(description._crandownloads){
+      score += Math.min(500, description._crandownloads/1000);
+    }
+  }
   if(description._stars)
     score += (description._stars || 0);
   if(Array.isArray(description._updates))
     score += (description._updates.length || 0)
   if(typeof description._contributions === 'object')
     score += Object.keys(description._contributions).length;
+
   return 1 + Math.log10(Math.max(1, score));
 }
 
