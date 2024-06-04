@@ -294,18 +294,14 @@ function calculate_score(description){
     score += (description._updates.length || 0)
   if(typeof description._contributions === 'object')
     score += Object.keys(description._contributions).length;
-
   return 1 + Math.log10(Math.max(1, score));
 }
 
 function is_indexed(description){
   if(description['_registered'] === false)
     return false; //remotes
-  var universe = description._user;
-  var owner = description._realowner;
-  if(!owner)
-    return true;
-  return universe == owner;
+  var owner = description._realowner || description._owner;
+  return description._user == owner;
 }
 
 function set_universes(description){
