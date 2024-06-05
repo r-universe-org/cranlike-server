@@ -298,10 +298,13 @@ function calculate_score(description){
 }
 
 function is_indexed(description){
+  var universe = description._user;
   if(description['_registered'] === false)
-    return false; //remotes
+    return false; // never index remotes
+  if((description.URL || "").toLowerCase().includes(`${universe}.r-universe.dev`))
+    return true; // package names this universe in description
   var owner = description._realowner || description._owner;
-  return description._user == owner;
+  return universe == owner;
 }
 
 function set_universes(description){
