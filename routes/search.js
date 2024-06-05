@@ -2,8 +2,6 @@
 const express = require('express');
 const createError = require('http-errors');
 const router = express.Router();
-const tools = require("../src/tools.js");
-const qf = tools.qf;
 
 function error_cb(status, next) {
   return function(err) {
@@ -62,12 +60,13 @@ function build_query(query, str){
   if(str){
     query['$text'] = { $search: str, $caseSensitive: false};
   }
-  return query;
 }
 
-router.get("/:user/stats/powersearch", function(req, res, next) {
-  var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
-  var query = build_query(query, req.query.q || "");
+router.get("/:user/api/search", function(req, res, next) {
+  var query = req.params.user == ":any" ?
+    {_type: 'src', _indexed : true} :
+    {_type: 'src', _registered : true, _universes: req.params.user};
+  build_query(query, req.query.q || "");
   var project = {
     Package: 1,
     Title: 1,
@@ -115,6 +114,10 @@ router.get("/:user/stats/powersearch", function(req, res, next) {
     delete out.stat;
     return res.send(out);
   }).catch(error_cb(400, next));
+});
+
+router.get("/:user/stats/powersearch", function(req, res, next) {
+  res.redirect(req.url.replace("stats/powersearch", "api/search"))
 });
 
 module.exports = router;
