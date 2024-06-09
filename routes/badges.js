@@ -28,7 +28,8 @@ router.get('/:user/badges', function(req, res, next) {
   packages.distinct('Package', {_user : req.params.user, '_registered' : true}).then(function(x){
     x.push(":name");
     x.push(":registry");
-    x.push(":total");
+    x.push(":packages");
+    x.push(":articles")
     res.send(x);
   }).catch(error_cb(400, next));
 });
@@ -43,16 +44,25 @@ router.get('/:user/badges/::meta', function(req, res, next) {
     scale: req.query.scale
   };
   tools.test_if_universe_exists(user).then(function(x){
+    var meta = req.params.meta;
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
-    if(req.params.meta == 'name'){
+    if(meta == 'name'){
       badge.status = user;
       send_badge(badge, user, res);
-    } else if(req.params.meta == 'total'){
-      return packages.distinct('Package', qf({_user : user, _type: 'src', '_registered' : true})).then(function(x){
+    } else if(meta == 'packages' || meta == 'total'){
+      return packages.distinct('Package', {_universes : user, _type: 'src', '_registered' : true}).then(function(x){
         badge.status = x.length + " packages";
-        send_badge(badge, user, res);
+        send_badge(badge, user, res, `https://${user}.r-universe.dev/packages`);
       });
-    } else if(req.params.meta == 'registry'){
+    } else if(meta == 'articles' ){
+      return packages.aggregate([
+        {$match: {_universes : user, _type: 'src', '_vignettes' : {$exists: true}}},
+        {$group: { _id: null, count: { $sum: { $size: '$_vignettes' }}}}
+      ]).next().then(function(x){
+        badge.status = x.count + " articles";
+        send_badge(badge, user, res, `https://${user}.r-universe.dev/articles`);
+      });
+    } else if(meta == 'registry'){
       /* This badge mimics https://github.com/r-universe/jeroen/actions/workflows/sync.yml/badge.svg (which is super slow) */
         return tools.get_registry_info(user).then(function(data){
           if(data && data.workflow_runs && data.workflow_runs.length){
@@ -67,7 +77,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
           }
         });
     } else {
-      throw "Unsupported badge type :" + req.params.meta;
+      throw "Unsupported badge type :" + meta;
     }
   }).catch(error_cb(400, next));
 });
