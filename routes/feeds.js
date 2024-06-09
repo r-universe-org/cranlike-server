@@ -110,11 +110,23 @@ router.get('/:user/feed.xml', function(req, res, next) {
 });
 
 router.get('/shared/sitemap_index.xml', function(req, res, next) {
-  packages.distinct('_user', {_registered: true, _type: 'src'}).then(function(users){
-    var xml = xmlbuilder.create('sitemapindex', {encoding:"UTF-8"});
-    xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
-    users.forEach(x => xml.ele('sitemap').ele('loc', `https://${x}.r-universe.dev/sitemap_index.xml`));
-    res.type('application/xml').send(xml.end({ pretty: true}));
+  var cursor = packages.find({_type: 'src', _indexed: true}).sort({'_score' : -1}).project({
+    _id: 0,
+    package: '$Package',
+    user: '$_user'
+  });
+  return cursor.hasNext().then(function(ok){
+    if(!ok)
+      throw createError(404, "No data found");
+    res.type('application/xml');
+    res.write('<?xml version="1.0" encoding="UTF-8"?>\n');
+    res.write('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n');
+    cursor.forEach(function(x){
+      return res.write(`<sitemap><loc>https://${x.user}.r-universe.dev/${x.package}/sitemap.xml</loc></sitemap>\n`);
+    }).finally(function(){
+      res.write('</sitemapindex>\n');
+      res.end();
+    });
   }).catch(error_cb(400, next));
 });
 
