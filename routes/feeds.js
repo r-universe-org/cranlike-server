@@ -109,8 +109,8 @@ router.get('/:user/feed.xml', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-router.get('/shared/sitemap_index.xml', function(req, res, next) {
-  var cursor = packages.find({_type: 'src', _indexed: true}).sort({'_score' : -1}).project({
+function send_sitemap_index(query, res){
+  var cursor = packages.find(query).sort({'_score' : -1}).project({
     _id: 0,
     package: '$Package',
     user: '$_user'
@@ -118,7 +118,7 @@ router.get('/shared/sitemap_index.xml', function(req, res, next) {
   return cursor.hasNext().then(function(ok){
     if(!ok)
       throw createError(404, "No data found");
-    res.type('application/xml');
+    res.set('Cache-Control', 'max-age=3600, public').type('application/xml');
     res.write('<?xml version="1.0" encoding="UTF-8"?>\n');
     res.write('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n');
     cursor.forEach(function(x){
@@ -127,30 +127,19 @@ router.get('/shared/sitemap_index.xml', function(req, res, next) {
       res.write('</sitemapindex>\n');
       res.end();
     });
-  }).catch(error_cb(400, next));
-});
+  })
+}
 
-router.get('/:user/sitemap.xml', function(req, res, next) {
-  res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${req.params.user}.r-universe.dev/sitemap_index.xml`);
+router.get('/shared/sitemap_index.xml', function(req, res, next) {
+  return send_sitemap_index({_type: 'src', _indexed: true}, res).catch(error_cb(400, next));
 });
 
 router.get('/:user/sitemap_index.xml', function(req, res, next) {
-  var user = req.params.user;
-  var query = qf({_user: user, _registered: true, _type: 'src'}, true);
-  return packages.find(query).sort({'Package' : 1}).project({
-    _id: 0,
-    package: '$Package',
-    user: '$_user'
-  }).toArray().then(function(docs){
-    if(docs.length){
-      var xml = xmlbuilder.create('sitemapindex', {encoding:"UTF-8"});
-      xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
-      docs.forEach(x => xml.ele('sitemap').ele('loc', `https://${x.user}.r-universe.dev/${x.package}/sitemap.xml`));
-      res.type('application/xml').send(xml.end({ pretty: true}));
-    } else {
-      res.status(404).send('No packages found');
-    }
-  }).catch(error_cb(400, next));
+  return send_sitemap_index({_type: 'src', _universes: req.params.user, _registered: true}, res).catch(error_cb(400, next));
+});
+
+router.get('/:user/sitemap.xml', function(req, res, next) {
+  res.set('Cache-Control', 'max-age=3600, public').redirect(301, `https://${req.params.user}.r-universe.dev/sitemap_index.xml`);
 });
 
 function convert_date(timestamp){
