@@ -55,11 +55,8 @@ router.get('/:user/badges/::meta', function(req, res, next) {
         send_badge(badge, user, res, `https://${user}.r-universe.dev/packages`);
       });
     } else if(meta == 'articles' ){
-      return packages.aggregate([
-        {$match: {_universes : user, _type: 'src', '_vignettes' : {$exists: true}}},
-        {$group: { _id: null, count: { $sum: { $size: '$_vignettes' }}}}
-      ]).next().then(function(x){
-        badge.status = x.count + " articles";
+      return packages.distinct('_vignettes.title', {_universes : user, _type: 'src', '_registered' : true}).then(function(x){
+        badge.status = x.length + " articles";
         send_badge(badge, user, res, `https://${user}.r-universe.dev/articles`);
       });
     } else if(meta == 'registry'){
