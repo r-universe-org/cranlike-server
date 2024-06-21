@@ -41,7 +41,7 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
             api:  `https://cran.r-universe.dev/api/packages/${x.Package}`
           }
         };
-        packages.findOne({Package : x.Package, _user : realowner, _type: 'src'}).then(function(y){
+        packages.find({Package : x.Package, _user : realowner, _type: 'src'}).sort({'_score' : -1}).limit(1).then(function(y){
           if(y){
             out.home = `https://${y._user}.r-universe.dev/${y.Package}`;
             if(y._owner != 'cran') {
