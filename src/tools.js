@@ -209,6 +209,9 @@ function extract_file(input, findfile, res){
           if(contenttype){
             res.type(contenttype);
           }
+          if(header.size){
+            res.set('Content-Length', header.size);
+          }
         }
         var promise = res ? pipe_everything_to(file_stream, res) : stream2string(file_stream);
         promise.then(function(buf){
