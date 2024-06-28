@@ -6,7 +6,6 @@ var path = require('path');
 var logger = require('morgan');
 
 /* Routers */
-var manRouter = require('./routes/man');
 var cdnRouter = require('./routes/cdn');
 var packagesRouter = require('./routes/packages');
 var reposRouter = require('./routes/repos');
@@ -34,7 +33,6 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use('/', manRouter);
 app.use('/', cdnRouter);
 app.use('/', packagesRouter);
 app.use('/', reposRouter);
