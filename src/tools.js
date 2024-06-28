@@ -436,6 +436,7 @@ function group_package_data(docs){
       commit: x._commit.id,
       fileid: x['_fileid'],
       status: x['_status'],
+      check: x['_check'],
       buildurl: x['_buildurl']
     }
   });

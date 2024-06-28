@@ -369,6 +369,7 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
       if(f == '_binaries'){
         projection['Built'] = 1;
         projection['_status'] = 1;
+        projection['_check'] = 1;
         if(!fields.includes("_commit"))
           projection['_commit.id'] = 1;
       } else {
