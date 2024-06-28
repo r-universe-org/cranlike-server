@@ -3,7 +3,6 @@ const createError = require('http-errors');
 const badgen = require('badgen');
 const router = express.Router();
 const tools = require("../src/tools.js");
-const qf = tools.qf;
 
 function error_cb(status, next) {
   return function(err){
@@ -19,20 +18,6 @@ function send_badge(badge, user, res, linkto){
   svg = svg.replace('</svg>', '  </a>\n</svg>');
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60').send(svg);
 }
-
-router.get('/:user/badges', function(req, res, next) {
-  res.set('Cache-control', 'private'); //html or json
-  if((req.headers['accept'] || "").includes("html")){
-    return next(); //fall through to virtual dashboard
-  }
-  packages.distinct('Package', {_user : req.params.user, '_registered' : true}).then(function(x){
-    x.push(":name");
-    x.push(":registry");
-    x.push(":packages");
-    x.push(":articles")
-    res.send(x);
-  }).catch(error_cb(400, next));
-});
 
 router.get('/:user/badges/::meta', function(req, res, next) {
   var user = req.params.user;

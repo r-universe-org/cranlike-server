@@ -50,16 +50,6 @@ function delete_by_query(query){
   });
 }
 
-router.get('/:user/packages', function(req, res, next) {
-  res.set('Cache-control', 'private'); //html or json
-  if((req.headers['accept'] || "").includes("html")){
-    return next(); //fall through to virtual dashboard
-  }
-  packages.distinct('Package', {_user : req.params.user}).then(function(x){
-    res.send(x);
-  }).catch(error_cb(400, next));
-});
-
 /*
 router.get('/:user/packages/:package', function(req, res, next) {
   var user = req.params.user;

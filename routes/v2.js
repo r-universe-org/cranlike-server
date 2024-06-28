@@ -6,8 +6,6 @@ const hljs = require('highlight.js');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
-const send_frontend_html = tools.send_frontend_html;
-const send_frontend_js = tools.send_frontend_js;
 const group_package_data = tools.group_package_data;
 const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'snapshot', 'api'];
 
@@ -39,32 +37,6 @@ router.get('/:user', function(req, res, next) {
 /* robot.txt is not a package */
 router.get('/:user/robots.txt', function(req, res, next) {
   res.type('text/plain').send(`Sitemap: https://${req.params.user}.r-universe.dev/sitemap_index.xml\n`);
-});
-
-/* Articles is now a fake endpoint for the front-end only */
-router.get('/:user/articles', function(req, res, next){
-  res.set('Cache-control', 'private'); //html or json
-  if((req.headers['accept'] || "").includes("html")){
-    return next(); //fall through to virtual dashboard
-  }
-  var query = qf({_user: req.params.user, _type: 'src', '_vignettes' : { $exists: true }}, req.query.all);
-  packages.distinct('Package', query).then(function(x){
-    res.send(x);
-  }).catch(error_cb(400, next));
-});
-
-router.get("/:user/articles/:package?/:filename?", function(req, res, next) {
-  //should we check for existence here?
-  send_frontend_html(req, res);
-});
-
-router.get("/:user/frontend/frontend.js", function(req, res, next) {
-  send_frontend_js(req, res);
-});
-
-//hack to support <base href="/"> locally
-router.get("/frontend/frontend.js", function(req, res, next) {
-  send_frontend_js(req, res);
 });
 
 // Pre-middleware for all requests:
@@ -101,15 +73,9 @@ router.get("/:user/:package*", function(req, res, next) {
   }
 });
 
+/* This endpoint should be masked by new frontend */
 router.get("/:user/:package", function(req, res, next) {
-  var user = req.params.user;
-  var package = req.params.package;
-  var accept = req.headers['accept'] || "";
-  if(req.path.substr(-1) == '/'){
-    res.redirect(`/${user}/${package}`);
-  } else {
-    send_frontend_html(req, res);
-  }
+  res.redirect(`/${req.params.user}/${req.params.package}/json`);
 });
 
 router.get("/:user/:package/json", function(req, res, next) {
