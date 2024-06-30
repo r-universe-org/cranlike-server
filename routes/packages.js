@@ -278,6 +278,8 @@ function calculate_score(description){
       score += Math.min(500, description._crandownloads/1000);
     }
   }
+  if(description._mentions)
+    score += (description._mentions * 3 || 0);
   if(description._stars)
     score += (description._stars || 0);
   if(Array.isArray(description._updates))
