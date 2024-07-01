@@ -394,6 +394,20 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   }).catch(error_cb(400, next));
 });
 
+router.post('/:user/packages/:package/:version/update', upload.none(), function(req, res, next) {
+  var user = req.params.user;
+  var package = req.params.package;
+  var version = req.params.version;
+  var query = {_type : 'src', _user : user, Package : package, Version: version};
+  var payload = req.body;
+  Promise.resolve().then(function(){
+    var fields = Object.keys(payload);
+    if(!fields.includes("$set") && !fields.includes("$unset"))
+      throw "Object must contain either $set or $unset operation";
+    return packages.findOneAndUpdate(query, payload).then(doc => res.send(doc.value));
+  }).catch(error_cb(400, next));
+});
+
 router.post('/:user/packages/:package/:version/failure', upload.none(), function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
