@@ -279,7 +279,7 @@ function calculate_score(description){
     }
   }
   if(description._mentions)
-    score += (description._mentions * 3 || 0);
+    score += Math.min(300, description._mentions * 3 || 0);
   if(description._stars)
     score += (description._stars || 0);
   if(Array.isArray(description._updates))
