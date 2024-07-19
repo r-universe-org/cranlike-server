@@ -10,6 +10,7 @@ function error_cb(status, next) {
   }
 }
 
+/* NB: regex queries are slow because not indexable! */
 function build_query(query, str){
   function substitute(name, field, insensitive, partial){
     var re = new RegExp(`${name}:(\\S+)`, "i"); //the name is insensitive e.g.: "Package:jsonlite"

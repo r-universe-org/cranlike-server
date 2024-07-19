@@ -369,6 +369,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
         add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
+        description['_nocasepkg'] = package.toLowerCase();
         set_universes(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
@@ -469,6 +470,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
         add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
+        description['_nocasepkg'] = package.toLowerCase();
         set_universes(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};

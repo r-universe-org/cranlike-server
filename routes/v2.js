@@ -7,7 +7,6 @@ const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
 const group_package_data = tools.group_package_data;
-const tablist = ['builds', 'packages', 'contributors', 'articles', 'badges', 'snapshot', 'api'];
 
 /* Error generator */
 function error_cb(status, next) {
@@ -44,33 +43,25 @@ router.get('/:user/robots.txt', function(req, res, next) {
 router.get("/:user/:package*", function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
-  if(tablist.includes(package)) {
-    tools.test_if_universe_exists(user).then(function(x){
-      if(!x) {
-        throw `No universe for user: ${user}`;
-      }
+  real_package_home(user, package).then(function(x){
+    var realowner = x._realowner || x._user;
+    if(x._user != user){
+      /* nginx does not understand cross-domain redirect with relative path */
+      res.redirect(req.path.replace(`/${user}/${package}`, `https://${x._user}.r-universe.dev/${x.Package}`));
+    } else if(x.Package != package){
+      res.redirect(req.path.replace(`/${user}/${package}`, `/${user}/${x.Package}`));
+    } else if(req.params['0'] === "" && user === 'cran' && realowner !== 'cran' ) {
+      /* req.params['0'] means only redirect the html dasbhoard, not pkg content */
+      res.redirect(req.path.replace(`/${user}/${package}`, `https://${realowner}.r-universe.dev/${x.Package}`));
+    } else {
       next();
-    }).catch(error_cb(404, next));
-  } else {
-    real_package_home(user, package).then(function(x){
-      var realowner = x._realowner || x._user;
-      if(x._user != user){
-        /* nginx does not understand cross-domain redirect with relative path */
-        res.redirect(req.path.replace(`/${user}/${package}`, `https://${x._user}.r-universe.dev/${x.Package}`));
-      } else if(x.Package != package){
-        res.redirect(req.path.replace(`/${user}/${package}`, `/${user}/${x.Package}`));
-      } else if(req.params['0'] === "" && user === 'cran' && realowner !== 'cran' ) {
-        /* req.params['0'] means only redirect the html dasbhoard, not pkg content */
-        res.redirect(req.path.replace(`/${user}/${package}`, `https://${realowner}.r-universe.dev/${x.Package}`));
-      } else {
-        next();
-      }
-    }).catch(function(){
-      return find_package(user, package, 'failure').then(function(y){
-        res.status(404).type('text/plain').send(`Package ${user}/${package} exists but failed to build: ${y._buildurl}`);
-      });
-    }).catch(error_cb(404, next));
-  }
+    }
+  }).catch(function(){
+    return find_package(user, package, 'failure').then(function(y){
+      res.status(404).type('text/plain').send(`Package ${user}/${package} exists but failed to build: ${y._buildurl}`);
+    });
+  }).catch(error_cb(404, next));
+
 });
 
 /* This endpoint should be masked by new frontend */
@@ -256,10 +247,7 @@ function find_package(user, package, type = 'src'){
     query = {
       Package : {$regex: `^${package}$`, $options: 'i'},
       '_type' : 'src',
-      '$or' : [
-        {'_user': user},
-        {'_indexed': true, '_selfowned': true} //eg 'tiledbsoma' is not on cran but multiple universes. Avoid random redirects.
-      ]
+      '_universes' : user
     };
     return packages.findOne(query).then(function(x){
       if(x) return x;

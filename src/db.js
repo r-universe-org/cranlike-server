@@ -45,6 +45,7 @@ async function rebuild_indexes(){
   await packages.createIndex("Package");
   await packages.createIndex("_user");
   await packages.createIndex("_published");
+  await packages.createIndex("_nocasepkg");
   await packages.createIndex("_commit.time");
   await packages.createIndex("_universes");
   await packages.createIndex({"_universes":1, "_commit.time":1});
