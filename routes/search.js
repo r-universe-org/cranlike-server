@@ -22,6 +22,8 @@ function build_query(query, str){
         var regex = partial ? search : `^${search}$`;
         var opt = insensitive ? 'i' : '';
         query[field] = {$regex: regex, $options: opt}
+      } if (field == '_nocasepkg'){
+        query[field] = search.toLowerCase();
       } else {
         query[field] = search;
       }
@@ -49,10 +51,10 @@ function build_query(query, str){
   match_partial('author', 'Author');
   match_partial('maintainer', 'Maintainer');
   match_exact('needs', '_rundeps');
+  match_exact('package', '_nocasepkg'); //always case insenstive
   match_exists('contributor', '_contributions');
   match_insensitive('topic', '_topics');
   match_insensitive('exports', '_exports');
-  match_insensitive('package', 'Package');
   match_insensitive('owner', '_owner');
   match_insensitive('user', '_user');
   match_insensitive('universe', '_universes');
