@@ -240,12 +240,13 @@ function real_package_home(user, package){
 }
 
 function find_package(user, package, type = 'src'){
-  var query = {'_user': user, 'Package': package, '_type': type};
+  var nocasepkg = package.toLowerCase();
+  var query = {'_user': user, '_nocasepkg': nocasepkg, '_type': type};
   return packages.findOne(query).then(function(x){
     if(x) return x;
-    /* try case insensitive */
+    /* try other universes as well */
     query = {
-      Package : {$regex: `^${package}$`, $options: 'i'},
+      '_nocasepkg' : nocasepkg,
       '_type' : 'src',
       '_universes' : user
     };

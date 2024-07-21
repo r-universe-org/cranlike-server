@@ -93,11 +93,11 @@ router.get('/shared/mongostatus', function(req, res, next) {
 });
 
 function find_cran_package(package, type = 'src'){
-  var regex = {$regex: `^${package}$`, $options: 'i'};
-  return packages.findOne({Package : regex, _type : type, _user : 'cran'}).then(function(x){
+  var pkgname = package.toLowerCase();
+  return packages.findOne({_nocasepkg : pkgname, _type : type, _user : 'cran'}).then(function(x){
     if(x) return x;
     /* fallback for packages misssing from the CRAN mirror for whatever reason */
-    return packages.findOne({Package : regex, _type : type, _indexed : true}).then(function(y){
+    return packages.findOne({_nocasepkg : pkgname, _type : type, _indexed : true}).then(function(y){
       if(y && y._realowner == y['_user']){
         return y;
       }

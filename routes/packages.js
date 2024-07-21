@@ -422,6 +422,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
   description['_owner'] = get_repo_owner(description._upstream);
   description['_selfowned'] = description._owner === user;
   description['_universes'] = [user]; //show failures in dashboard
+  description['_nocasepkg'] = package.toLowerCase();
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
     .catch(error_cb(400, next))
