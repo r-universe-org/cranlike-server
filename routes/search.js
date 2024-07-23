@@ -22,7 +22,7 @@ function build_query(query, str){
         var regex = partial ? search : `^${search}$`;
         var opt = insensitive ? 'i' : '';
         query[field] = {$regex: regex, $options: opt}
-      } if (field == '_nocasepkg'){
+      } else if (field == '_nocasepkg'){
         query[field] = search.toLowerCase();
       } else {
         query[field] = search;
