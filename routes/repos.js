@@ -196,18 +196,15 @@ function find_by_user(_user, _type){
 }
 
 function send_results(cursor, req, res, next, transform = (x) => x){
-  return cursor.hasNext().then(function(){  // wrap in promise
+  return Promise.resolve().then(function(){
     if(req.query.stream){
       return cursor.stream({transform: x => doc_to_ndjson(transform(x))}).pipe(res.type('text/plain'));
     } else {
-      var out = [];
-      return cursor.forEach(function(x){
-        out.push(transform(x));
-      }).then(function(){
-        return res.send(out.filter(x => x));
+      return cursor.toArray().then(function(out){
+        return res.send(out.filter(x => x).map(transform))
       });
     }
-  }).catch(error_cb(400, next));
+  });
 }
 
 router.get('/:user/src', function(req, res, next) {
