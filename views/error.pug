@@ -1,6 +1,17 @@
-extends layout
+html
+  body
+    h1 R-universe error!
 
-block content
-  h1= message
-  h2= error.status
-  pre #{error.stack}
+    if error.path
+      pre Failed to render #{error.path.split('/').at(-1)}
+      h2 Stack trace
+      pre #{error.message}
+
+    else
+      pre #{error.message}
+      h2 Stack trace
+      pre #{error.stack}
+
+    p Server mode: #{mode}
+    hr
+    p If this seems like a bug and keeps happening, please report to: https://github.com/r-universe-org/help
