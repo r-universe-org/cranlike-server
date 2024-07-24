@@ -110,28 +110,24 @@ function read_description(stream){
 
 function store_stream_file(stream, key, filename){
   return new Promise(function(resolve, reject) {
-    stream.pipe(bucket.openUploadStreamWithId(key, filename))
-    .on('error', function(err){
+    var upload = bucket.openUploadStreamWithId(key, filename);
+    var pipe = stream.pipe(upload);
+    pipe.on('error', function(err){
       console.log("Error in openUploadStreamWithId()" + err);
       /* Clear possible orphaned chunks, then reject */
       chunks.deleteMany({files_id: key}).finally(function(e){
         reject("Error in openUploadStreamWithId(): " + err);
       });
-    })
-    .on('finish', function(){
-      bucket.find({_id : key}).project({"md5":1, "length":1}).next().then(function(doc){
-        if(!doc){
-          console.log("Upload success but key not found?")
-          reject("Upload success but key not found?")
-        } else if(doc.md5 != key) {
-          /* Automatic .md5 value no longer exists in mongo-node 4.0 (npm)
-             https://github.com/r-universe-org/bugs/issues/118 */
+    });
+    pipe.on('finish', function(){
+      db.command({filemd5: key, root: "files"}).then(function(check){
+        if(check.md5 != key) {
           bucket.delete(key).finally(function(){
-            console.log("md5 did not match key")
+            console.log("md5 did not match key");
             reject("md5 did not match key");
           });
         } else {
-          resolve(doc);
+          resolve({_id: key, length: upload.length});
         }
       });
     });
@@ -341,7 +337,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   var filename = get_filename(package, version, type, builder.distro);
   crandb_store_file(req, md5, filename).then(function(filedata){
     if(type == 'src'){
-      var p1 = packages.find({_type: 'src', _indexed: true, '_rundeps': package}).count();
+      var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': package});
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
       return Promise.all([filedata, p1, p2]);
     } else {
@@ -377,8 +373,8 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       if(type == 'mac' && description.Built.Platform){
         query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
-      return packages.findOneAndDelete(query).then(function(result) {
-        var original = result.value;
+      return packages.findOneAndDelete(query).then(function(original) {
+        // This callback API changed in recent mongo-nodejs
         if(original && original['MD5sum'] !== md5){
           return delete_file(original['MD5sum']);
         }
@@ -444,7 +440,7 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
   var stream = fs.createReadStream(filepath);
   crandb_store_file(stream, md5, filename).then(function(filedata){
     if(type == 'src'){
-      var p1 = packages.find({_type: 'src', _indexed: true, '_rundeps': package}).count();
+      var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': package});
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
       return Promise.all([filedata, p1, p2]);
     } else {
@@ -479,8 +475,8 @@ router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'f
       if(type == 'mac' && description.Built.Platform){
         query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
-      return packages.findOneAndDelete(query).then(function(result) {
-        var original = result.value;
+      return packages.findOneAndDelete(query).then(function(original) {
+        // This callback API changed in recent mongo-nodejs
         if(original && original['MD5sum'] !== md5){
           return delete_file(original['MD5sum']);
         }

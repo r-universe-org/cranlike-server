@@ -71,16 +71,16 @@ function packages_index(query, format, req, res, next){
     var cursor = packages.find(query).project(projection).sort({"Package" : 1});
     if(!format){
       cursor
-        .transformStream({transform: doc_to_dcf})
+        .stream({transform: doc_to_dcf})
         .pipe(res.type('text/plain'));
     } else if(format == 'gz'){
       cursor
-        .transformStream({transform: doc_to_dcf})
+        .stream({transform: doc_to_dcf})
         .pipe(zlib.createGzip())
         .pipe(res.type('application/x-gzip'));
     } else if(format == 'json'){
       cursor
-        .transformStream({transform: doc_to_ndjson})
+        .stream({transform: doc_to_ndjson})
         .pipe(res.type('text/plain'));
     } else {
       cursor.close();
@@ -93,7 +93,7 @@ function html_index(query, res){
   packages
     .find(query)
     .project({_id:0, Package:1, Version:1, _type:1})
-    .transformStream({transform: doc_to_filename})
+    .stream({transform: doc_to_filename})
     .pipe(res.type('text/plain'));
 }
 
@@ -102,7 +102,7 @@ function count_by_user(){
     {$group:{_id: "$_user", count: { $sum: 1 }}}
   ])
   .project({_id: 0, user: "$_id", count: 1})
-  .transformStream({transform: doc_to_ndjson});
+  .stream({transform: doc_to_ndjson});
 }
 
 function count_by_type(user){
@@ -111,7 +111,7 @@ function count_by_type(user){
     {$group:{_id: "$_type", count: { $sum: 1 }}}
   ])
   .project({_id: 0, type: "$_id", count: 1})
-  .transformStream({transform: function(x){
+  .stream({transform: function(x){
     const dirname = {
       src : 'src/contrib',
       win : 'bin/windows/contrib',
@@ -128,7 +128,7 @@ function count_by_built(user, type){
     {$group:{_id: {R: "$Built.R", Platform: "$Built.Platform"}, count: { $sum: 1 }}}
   ])
   .project({_id: 0, R: "$_id.R", Platform:"$_id.Platform", count: 1})
-  .transformStream({transform: doc_to_ndjson});
+  .stream({transform: doc_to_ndjson});
 }
 
 function query_stream_info(query){
@@ -196,15 +196,12 @@ function find_by_user(_user, _type){
 }
 
 function send_results(cursor, req, res, next, transform = (x) => x){
-  return cursor.hasNext().then(function(){  // wrap in promise
+  return Promise.resolve().then(function(){
     if(req.query.stream){
-      return cursor.transformStream({transform: x => doc_to_ndjson(transform(x))}).pipe(res.type('text/plain'));
+      return cursor.stream({transform: x => doc_to_ndjson(transform(x))}).pipe(res.type('text/plain'));
     } else {
-      var out = [];
-      return cursor.forEach(function(x){
-        out.push(transform(x));
-      }).then(function(){
-        return res.send(out.filter(x => x));
+      return cursor.toArray().then(function(out){
+        return res.send(out.filter(x => x).map(transform))
       });
     }
   }).catch(error_cb(400, next));
@@ -432,7 +429,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
     {$unwind: '$vignette'}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -458,7 +455,7 @@ router.get("/:user/stats/datasets", function(req, res, next) {
     {$unwind: '$dataset'}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -472,7 +469,7 @@ router.get('/:user/stats/descriptions', function(req, res, next) {
   }
   var cursor = packages.find(query, {limit:limit}).sort({"_commit.time" : -1}).project({_id:0, _type:0});
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -481,7 +478,7 @@ router.get('/:user/stats/failures', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'failure'}, req.query.all);
   var cursor = packages.find(query).sort({"_id" : -1}).project({_id:0, _type:0});
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -517,7 +514,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
     }}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -574,7 +571,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
     {$limit: limit}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -616,7 +613,7 @@ router.get("/:user/stats/pkgsbymaintainer", function(req, res, next) {
     {$sort:{ updated: -1}}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -669,7 +666,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
     {$limit: limit}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -702,7 +699,7 @@ router.get("/:user/stats/universes", function(req, res, next) {
     {$sort:{ updated: -1}}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -730,7 +727,7 @@ router.get("/:user/stats/contributions", function(req, res, next) {
     {$limit: limit}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -757,7 +754,7 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$limit: limit}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -776,7 +773,7 @@ router.get("/:user/stats/updates", function(req, res, next) {
     {$sort:{ week: 1}}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -796,7 +793,7 @@ router.get("/:user/stats/pkgdeps", function(req,res,next){
     {$sort:{total: -1}}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -823,7 +820,7 @@ router.get("/:user/stats/pkgrevdeps", function(req,res,next){
       {$sort:{total: -1}}
     ]);
     return cursor.hasNext().then(function(){
-      cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+      cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
     })
   }).catch(error_cb(400, next));
 });
@@ -861,7 +858,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
     {$sort:{count: -1}}
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -889,7 +886,7 @@ router.get("/:user/stats/sysdeps/:distro?", function(req, res, next) {
     {$sort:{ library: 1}}
   ])
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -909,7 +906,7 @@ router.get("/:user/stats/topics", function(req, res, next) {
     {$limit: limit}
   ])
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -937,7 +934,7 @@ router.get("/:user/stats/files", function(req, res, next) {
   }
   var cursor = packages.find(query).project(projection);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -947,7 +944,7 @@ router.get("/:user/stats/search", function(req, res, next) {
   var limit =  parseInt(req.query.limit) || 100;
   var cursor = packages.find(query, {limit:limit}).project({match:{$meta: "textScore"}}).sort({match:{$meta:"textScore"}});
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -1031,7 +1028,7 @@ router.get("/:user/stats/ranksearch", function(req, res, next) {
     { $limit: limit }
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -1041,7 +1038,7 @@ router.get('/:user/stats/usedby', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'src', '_dependencies.package': package, '_indexed': true}, req.query.all);
   var cursor = packages.find(query).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1});
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 
@@ -1060,7 +1057,7 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
     {$sort : {allstars : -1}},
   ]);
   cursor.hasNext().then(function(){
-    cursor.transformStream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
+    cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   }).catch(error_cb(400, next));
 });
 

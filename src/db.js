@@ -10,10 +10,10 @@ const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
 
 /* Connect to database */
 console.log("Connecting to database....")
-const connection = mongodb.MongoClient.connect(URL, {useUnifiedTopology: true});
+const connection = mongodb.MongoClient.connect(URL, { useUnifiedTopology: true });
 connection.then(async function(client) {
   console.log("Connected to MongoDB!")
-  const db = client.db('cranlike');
+  global.db = client.db('cranlike');
   //console.log(client)
   //console.log(db)
   global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
