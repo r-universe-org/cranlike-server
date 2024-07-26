@@ -110,24 +110,22 @@ router.get('/:user/feed.xml', function(req, res, next) {
 });
 
 function send_sitemap_index(query, res){
-  var cursor = packages.find(query).sort({'_score' : -1}).project({
+  return packages.find(query).sort({'_score' : -1}).project({
     _id: 0,
     package: '$Package',
     user: '$_user'
-  });
-  return cursor.hasNext().then(function(ok){
-    if(!ok)
-      throw createError(404, "No data found");
+  }).toArray().then(function(data){
+    if(!data.length)
+      throw createError(404, "No data found this universe");
     res.set('Cache-Control', 'max-age=3600, public').type('application/xml');
     res.write('<?xml version="1.0" encoding="UTF-8"?>\n');
     res.write('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n');
-    cursor.forEach(function(x){
+    data.forEach(function(x){
       return res.write(`<sitemap><loc>https://${x.user}.r-universe.dev/${x.package}/sitemap.xml</loc></sitemap>\n`);
-    }).finally(function(){
-      res.write('</sitemapindex>\n');
-      res.end();
     });
-  })
+    res.write('</sitemapindex>\n');
+    res.end();
+  });
 }
 
 router.get('/shared/sitemap_index.xml', function(req, res, next) {
