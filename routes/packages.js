@@ -10,7 +10,7 @@ const tar = require('tar-stream');
 const dependency_types = require('r-constants').dependency_types;
 
 /* Local variables */
-const upload = multer({ dest: '/tmp/' });
+const multerstore = multer({ dest: '/tmp/' });
 const router = express.Router();
 
 /* Local code */
@@ -391,7 +391,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
   }).catch(error_cb(400, next));
 });
 
-router.post('/:user/packages/:package/:version/update', upload.none(), function(req, res, next) {
+router.post('/:user/packages/:package/:version/update', multerstore.none(), function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   var version = req.params.version;
@@ -405,7 +405,7 @@ router.post('/:user/packages/:package/:version/update', upload.none(), function(
   }).catch(error_cb(400, next));
 });
 
-router.post('/:user/packages/:package/:version/failure', upload.none(), function(req, res, next) {
+router.post('/:user/packages/:package/:version/failure', multerstore.none(), function(req, res, next) {
   var user = req.params.user;
   var package = req.params.package;
   var version = req.params.version;
@@ -424,7 +424,7 @@ router.post('/:user/packages/:package/:version/failure', upload.none(), function
     .catch(error_cb(400, next))
 });
 
-router.post('/:user/packages/:package/:version/:type', upload.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
+router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
   if(!req.files.file || !req.files.file[0]){
     return next(createError(400, "Missing parameter 'file' in upload"));
   }
