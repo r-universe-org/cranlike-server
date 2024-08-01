@@ -64,12 +64,15 @@ function new_pool(){
   }
 
   var workers = {};
-  Object.values(pkgmap).forEach(pkg => {
-    workers[pkg] = workers[pkg] || new_rsession(pkg);
-  });
+  if(process.env.PRELOAD_WEBR){
+    Object.values(pkgmap).forEach(pkg => {
+      workers[pkg] = workers[pkg] || new_rsession(pkg);
+    });
+  }
 
   return function(format){
     var pkg = pkgmap[format] || 'base';
+    workers[pkg] = workers[pkg] || new_rsession(pkg);
     return workers[pkg].get();
   }
 }
