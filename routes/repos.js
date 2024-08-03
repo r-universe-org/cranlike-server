@@ -1100,6 +1100,31 @@ router.get('/:user/stats/everyone', function(req, res, next){
   }).catch(error_cb(400, next));
 });
 
+router.get('/:user/stats/percentiles', function(req, res, next){
+  var length = Math.min(parseInt(req.query.length) || 10, 100);
+  var fields = req.query.fields ? req.query.fields.split(",") : ['_score', '_crandownloads', '_stars'];
+  var percentiles = Array.from({ length: length + 1 }, (value, index) => index/length)
+  console.log(percentiles)
+  var groups = {_id: null};
+  fields.forEach(function(x){
+    groups[x] = {$percentile : {input: `$${x}`, method: 'approximate', p: percentiles}}
+  });
+  var cursor = packages.aggregate([
+    {$match: { _type: "src", _indexed: true}},
+    {$group: groups}
+  ]);
+  cursor.next().then(function(x){
+    var out = percentiles.map(function(pct, i){
+      var val = {percentile: pct};
+      fields.forEach(function(f){
+        val[f] = x[f][i];
+      });
+      return val;
+    });
+    res.send(out);
+  }).catch(error_cb(400, next));
+});
+
 /* Legacy redirects */
 router.get('/:user/docs/:pkg/NEWS:ext?', function(req, res, next){
   res.redirect(301, `/${req.params.user}/${req.params.pkg}/NEWS${req.params.ext || ""}`);
