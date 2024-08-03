@@ -37,6 +37,9 @@ function etagify(x){
 }
 
 function packages_index(query, format, req, res, next){
+  if(format == 'rds'){
+    return res.status(404).send("PACKAGES.rds format not supported for now");
+  }
   if(format && format !== 'gz' && format !== 'json'){
     return next(createError(404, 'Unsupported PACKAGES format: ' + format));
   }
