@@ -50,23 +50,6 @@ function delete_by_query(query){
   });
 }
 
-function score_percentiles(){
-  var cursor = packages.aggregate([
-    {$match: { _type: "src", _indexed: true}},
-    {$group: {
-      _id: null,
-      percentiles: {
-        $percentile: {
-          input: "$_score",
-          p: Array.from({ length: 100 }, (v, i) => i/100),
-          method: 'approximate'
-        }
-      }
-    }}
-  ]);
-  return cursor.next();
-}
-
 /*
 router.get('/:user/packages/:package', function(req, res, next) {
   var user = req.params.user;
@@ -356,8 +339,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': package});
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
-      var p3 = score_percentiles().then(x => x && x.percentiles);
-      return Promise.all([filedata, p1, p2, p3]);
+      return Promise.all([filedata, p1, p2]);
     } else {
       return [filedata];
     }
@@ -382,8 +364,6 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
         description['_usedby'] = metadata[1];
         add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
-        if(Array.isArray(metadata[3]))
-          description['_percentile'] = metadata[3].findLastIndex(x => description['_score'] > x) + 1;
         description['_indexed'] = is_indexed(description);
         description['_nocasepkg'] = package.toLowerCase();
         set_universes(description);
@@ -462,8 +442,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': package});
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
-      var p3 = score_percentiles().then(x => x && x.percentiles);
-      return Promise.all([filedata, p1, p2, p3]);
+      return Promise.all([filedata, p1, p2]);
     } else {
       return [filedata];
     }
@@ -487,8 +466,6 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
         description['_usedby'] = metadata[1];
         add_meta_fields(description, metadata[2]); //contents.json
         description['_score'] = calculate_score(description);
-        if(Array.isArray(metadata[3]))
-          description['_percentile'] = metadata[3].findLastIndex(x => description['_score'] > x) + 1;
         description['_indexed'] = is_indexed(description);
         description['_nocasepkg'] = package.toLowerCase();
         set_universes(description);
