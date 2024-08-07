@@ -2,13 +2,14 @@
 const express = require('express');
 const createError = require('http-errors');
 const zlib = require('zlib');
+const gunzip = require('gunzip-maybe');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
 const pkgfields = tools.pkgfields;
 const doc_to_dcf = tools.doc_to_dcf;
 const group_package_data = tools.group_package_data;
-const tar_stream_files = tools.tar_stream_files;
+const tar_index_files = tools.tar_index_files;
 const match_macos_arch = tools.match_macos_arch;
 const qf = tools.qf;
 
@@ -176,12 +177,13 @@ function send_tar_data(query, filename, req, res, next){
     } else {
       var input = bucket.openDownloadStream(hash);
       if(filename.endsWith('.data')){
-        return tar_stream_files(input, res.type('application/wasm'));
+        return input.pipe(gunzip()).pipe(res.type('application/wasm'));
       } else {
-        return tar_stream_files(input).then(function(index){
+        return tar_index_files(input).then(function(index){
           index.files.forEach(function(x){
             x.filename = x.filename.match(/\/.*/)[0]; //strip pkg root dir
           });
+          index.gzip = true;
           res.send(index);
         });
       }
@@ -327,7 +329,7 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
   send_binary(query, `${req.params.pkg}-${req.params.distro}.tar.gz`, req, res, next);
 });
 
-router.get('/:user/bin/emscripten/contrib/:built/:pkg.tgz', function(req, res, next) {
+router.get('/:user/bin/emscripten/contrib/:built/:pkg.(tgz|data.gz)', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});

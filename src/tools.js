@@ -300,23 +300,17 @@ function get_extracted_file(query, filename){
   });
 }
 
-function tar_stream_files(input, res){
+function tar_index_files(input){
   let files = [];
   let extract = tar.extract({allowUnknownFormat: true});
   return new Promise(function(resolve, reject) {
-    var total = 0;
     function process_entry(header, stream, next) {
       if(header.size > 0){
-        var end = (total + header.size);
         files.push({
           filename: header.name,
-          start: total,
-          end: end
+          start: extract._buffer.shifted,
+          end: extract._buffer.shifted + header.size
         });
-        total = end;
-        if(res){
-          stream.on("data", (chunk) => res.write(chunk));
-        }
       }
       stream.on('end', function () {
         next() //read for next file
@@ -326,10 +320,7 @@ function tar_stream_files(input, res){
     }
 
     function finish_stream(){
-      if(res){
-        res.end();
-      }
-      resolve({files: files,remote_package_size: total});
+      resolve({files: files, remote_package_size: extract._buffer.shifted});
     }
 
     var extract = tar.extract({allowUnknownFormat: true})
@@ -461,7 +452,7 @@ module.exports = {
   send_extracted_file : send_extracted_file,
   extract_file : extract_file,
   get_extracted_file: get_extracted_file,
-  tar_stream_files : tar_stream_files,
+  tar_index_files : tar_index_files,
   test_if_universe_exists : test_if_universe_exists,
   get_registry_info : get_registry_info,
   get_submodule_hash : get_submodule_hash,
