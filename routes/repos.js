@@ -163,7 +163,7 @@ function send_binary(query, filename, req, res, next){
       const host = req.headers.host || "";
       const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
       res.set("ETag", etag).set('Cache-Control', 'public, max-age=10, must-revalidate');
-      res.redirect(`${cdn}/${hash}/${x.filename}?ref=${btoa(req.path)}`);
+      res.redirect(`${cdn}/${hash}/${x.filename}`);
     }
   }).catch(error_cb(404, next));
 }
