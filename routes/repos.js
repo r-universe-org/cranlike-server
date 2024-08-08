@@ -5,7 +5,6 @@ const zlib = require('zlib');
 const gunzip = require('gunzip-maybe');
 const router = express.Router();
 const tools = require("../src/tools.js");
-const send_extracted_file = tools.send_extracted_file;
 const pkgfields = tools.pkgfields;
 const doc_to_dcf = tools.doc_to_dcf;
 const group_package_data = tools.group_package_data;

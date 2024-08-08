@@ -260,8 +260,10 @@ function extract_file(input, findfile, res){
 function extract_multi_files(input, files){
   var output = Array(files.length);
   return new Promise(function(resolve, reject) {
-    function process_entry(header, filestream, next_file) {
+    function process_entry(header, filestream, next_entry) {
       var index = files.indexOf(header.name);
+      filestream.on('end', next_entry)
+      filestream.on('error', reject);
       if(index > -1){
         stream2buffer(filestream).then(function(buf){
           output[index] = buf;
@@ -269,12 +271,14 @@ function extract_multi_files(input, files){
       } else {
         filestream.resume();
       }
-      next_file(); //ready for next entry
     }
     function finish_stream(){
       resolve(output);
     }
-    var extract = tar.extract({allowUnknownFormat: true}).on('entry', process_entry).on('finish', finish_stream);
+    var extract = tar.extract({allowUnknownFormat: true})
+      .on('entry', process_entry)
+      .on('finish', finish_stream)
+      .on('error', reject);
     input.pipe(gunzip()).pipe(extract);
   }).finally(function(){
     input.destroy();
@@ -451,6 +455,7 @@ module.exports = {
   pkgfields: pkgfields,
   send_extracted_file : send_extracted_file,
   extract_file : extract_file,
+  extract_multi_files: extract_multi_files,
   get_extracted_file: get_extracted_file,
   tar_index_files : tar_index_files,
   test_if_universe_exists : test_if_universe_exists,

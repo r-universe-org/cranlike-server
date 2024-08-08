@@ -6,7 +6,6 @@ const hljs = require('highlight.js');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
-const group_package_data = tools.group_package_data;
 
 /* Error generator */
 function error_cb(status, next) {

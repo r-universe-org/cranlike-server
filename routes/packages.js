@@ -612,8 +612,11 @@ router.post('/:user/api/reindex', function(req, res, next) {
 });
 
 function extract_json_metadata(input, package){
-  return tools.extract_file(input, `${package}/extra/contents.json`).then(function(str){
-    var metadata = JSON.parse(str);
+  return tools.extract_multi_files(input, [`${package}/extra/contents.json`]).then(function(files){
+    if(!files[0]){
+      throw `Source package did not contain ${package}/extra/contents.json`;
+    }
+    var metadata = JSON.parse(files[0]);
     if(!metadata.assets){
       throw "contents.json seems invalid";
     }
