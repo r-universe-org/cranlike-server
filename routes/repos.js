@@ -9,7 +9,6 @@ const send_extracted_file = tools.send_extracted_file;
 const pkgfields = tools.pkgfields;
 const doc_to_dcf = tools.doc_to_dcf;
 const group_package_data = tools.group_package_data;
-const tar_index_files = tools.tar_index_files;
 const match_macos_arch = tools.match_macos_arch;
 const qf = tools.qf;
 
@@ -148,45 +147,17 @@ function query_stream_info(query){
   });
 }
 
-function send_binary(query, filename, req, res, next){
+function send_binary(query, req, res, next, filename){
   return query_stream_info(query).then(function(x){
     var hash = x['_id'];
     var etag = etagify(hash);
     if(etag === req.header('If-None-Match')){
       res.status(304).send();
-    } else if(req.query.nocdn) {
-      let type = x.filename.endsWith('.zip') ? 'application/zip' : 'application/x-gzip';
-      return bucket.openDownloadStream(hash).pipe(
-        res.type(type).set("ETag", etag).set('Content-Length', x.length)
-      );
     } else {
       const host = req.headers.host || "";
       const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
       res.set("ETag", etag).set('Cache-Control', 'public, max-age=10, must-revalidate');
-      res.redirect(`${cdn}/${hash}/${x.filename}`);
-    }
-  }).catch(error_cb(404, next));
-}
-
-function send_tar_data(query, filename, req, res, next){
-  return query_stream_info(query).then(function(x){
-    var hash = x['_id'];
-    var etag = etagify(hash);
-    if(etag === req.header('If-None-Match')){
-      res.status(304).send();
-    } else {
-      var input = bucket.openDownloadStream(hash);
-      if(filename.endsWith('.data')){
-        return input.pipe(gunzip()).pipe(res.type('application/wasm'));
-      } else {
-        return tar_index_files(input).then(function(index){
-          index.files.forEach(function(x){
-            x.filename = x.filename.match(/\/.*/)[0]; //strip pkg root dir
-          });
-          index.gzip = true;
-          res.send(index);
-        });
-      }
+      res.redirect(`${cdn}/${hash}/${filename || x.filename}`);
     }
   }).catch(error_cb(404, next));
 }
@@ -304,14 +275,14 @@ router.get('/:user/bin/emscripten/contrib', function(req, res, next) {
 router.get('/:user/src/contrib/:pkg.tar.gz', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]});
-  send_binary(query, `${req.params.pkg}.tar.gz`, req, res, next);
+  send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/windows/contrib/:built/:pkg.zip', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
-  send_binary(query, `${req.params.pkg}.zip`, req, res, next);
+  send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, res, next) {
@@ -319,35 +290,35 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
   var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
   query['Built.Platform'] = match_macos_arch(req.params.xcode || "legacy-x86_64");
-  send_binary(query, `${req.params.pkg}.tgz`, req, res, next);
+  send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'linux', 'Built.R' : {$regex: '^' + req.params.built},
     '_distro' : req.params.distro, Package: pkg[0], Version: pkg[1]});
-  send_binary(query, `${req.params.pkg}-${req.params.distro}.tar.gz`, req, res, next);
+  send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/emscripten/contrib/:built/:pkg.(tgz|data.gz)', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
-  send_binary(query, `${req.params.pkg}.tgz`, req, res, next);
+  send_binary(query, req, res, next, `${req.params.pkg}.tgz`);
 });
 
 router.get('/:user/bin/emscripten/contrib/:built/:pkg.data', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
-  send_tar_data(query, `${req.params.pkg}.data`, req, res, next);
+  send_binary(query, req, res, next, `${req.params.pkg}.tar`);
 });
 
 router.get('/:user/bin/emscripten/contrib/:built/:pkg.js.metadata', function(req, res, next) {
   var pkg = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
     Package: pkg[0], Version: pkg[1]});
-  send_tar_data(query, `${req.params.pkg}.js.metadata`, req, res, next);
+  send_binary(query, req, res, next, `${req.params.pkg}.tgz.index`);
 });
 
 router.get('/:user/api', function(req, res, next) {
