@@ -382,6 +382,29 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
   }
 });
 
+router.get("/:user/api/universes", function(req, res, next) {
+  var query = {_type: 'src'};
+  if(req.query.indexed){
+    query._indexed = true;
+  }
+  if(req.query.organization){
+    query._usertype = 'organization';
+  }
+  var cursor = packages.aggregate([
+    {$match: query},
+    {$group: {
+      _id : '$_user',
+      updated: { $max: '$_commit.time'},
+      packages: { $sum: 1 },
+      type: { $first: '$_usertype'},
+      emails: { $addToSet: '$_maintainer.email'}
+    }},
+    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1, maintainers: { $size: '$emails' }}},
+    {$sort:{ updated: -1}}
+  ]);
+  send_results(cursor, req, res, next);
+});
+
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
