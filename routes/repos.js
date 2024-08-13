@@ -383,21 +383,27 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
 });
 
 router.get("/:user/api/universes", function(req, res, next) {
-  var query = {_type: 'src'};
-  if(req.query.organization){
-    query._usertype = 'organization';
-  }
+  var postquery = req.query.organization ? {type : 'organization'} : {};
   var cursor = packages.aggregate([
-    {$match: query},
+    {$match: {_type: 'src'}},
+    {$sort:{ _id: -1}},
     {$group: {
       _id : '$_user',
       updated: { $max: '$_commit.time'},
       packages: { $sum: 1 },
       indexed: { $sum: { $toInt: '$_indexed' }},
-      type: { $first: '$_usertype'},
+      name: { $addToSet: '$_userbio.name'},
+      type: { $addToSet: '$_userbio.type'},
+      bio: { $addToSet: '$_userbio.description'},
       emails: { $addToSet: '$_maintainer.email'}
     }},
-    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1, indexed:1, maintainers: { $size: '$emails' }}},
+    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1, indexed:1,
+      maintainers: { $size: '$emails' },
+      name: {$first: '$name'},
+      type: {$first: '$type'},
+      bio: {$first: '$bio'}
+    }},
+    {$match: postquery},
     {$sort:{ updated: -1}}
   ]);
   send_results(cursor, req, res, next);
