@@ -384,9 +384,6 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
 
 router.get("/:user/api/universes", function(req, res, next) {
   var query = {_type: 'src'};
-  if(req.query.indexed){
-    query._indexed = true;
-  }
   if(req.query.organization){
     query._usertype = 'organization';
   }
@@ -396,10 +393,11 @@ router.get("/:user/api/universes", function(req, res, next) {
       _id : '$_user',
       updated: { $max: '$_commit.time'},
       packages: { $sum: 1 },
+      indexed: { $sum: { $toInt: '$_indexed' }},
       type: { $first: '$_usertype'},
       emails: { $addToSet: '$_maintainer.email'}
     }},
-    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1, maintainers: { $size: '$emails' }}},
+    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1, indexed:1, maintainers: { $size: '$emails' }}},
     {$sort:{ updated: -1}}
   ]);
   send_results(cursor, req, res, next);
