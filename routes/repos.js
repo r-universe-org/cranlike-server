@@ -383,9 +383,10 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
 });
 
 router.get("/:user/api/universes", function(req, res, next) {
-  var query = {_type: 'src'};
-  if(req.query.organization){
-    query['_userbio.type'] = 'organization';
+  var query = {_type: 'src', _registered: true};
+  var limit = parseInt(req.query.limit) || 100000;
+  if(req.query.type){
+    query['_userbio.type'] = req.query.type;
   }
   if(req.query.skipcran){
     query['_user'] = {$ne: 'cran'};
@@ -405,7 +406,9 @@ router.get("/:user/api/universes", function(req, res, next) {
     }},
     {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1,
       indexed:1, name: 1, type: 1, bio: 1, maintainers: { $size: '$emails' },
-    }}
+    }},
+    {$sort:{ indexed: -1}},
+    {$limit : limit},
   ]);
   send_results(cursor, req, res, next);
 });
