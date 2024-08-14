@@ -383,28 +383,29 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
 });
 
 router.get("/:user/api/universes", function(req, res, next) {
-  var postquery = req.query.organization ? {type : 'organization'} : {};
+  var query = {_type: 'src'};
+  if(req.query.organization){
+    query['_userbio.type'] = 'organization';
+  }
+  if(req.query.skipcran){
+    query['_user'] = {$ne: 'cran'};
+  }
   var cursor = packages.aggregate([
-    {$match: {_type: 'src'}},
+    {$match: query},
     {$sort:{ _id: -1}},
     {$group: {
       _id : '$_user',
       updated: { $max: '$_commit.time'},
       packages: { $sum: 1 },
       indexed: { $sum: { $toInt: '$_indexed' }},
-      name: { $addToSet: '$_userbio.name'},
-      type: { $addToSet: '$_userbio.type'},
-      bio: { $addToSet: '$_userbio.description'},
+      name: { $first: '$_userbio.name'},
+      type: { $first: '$_userbio.type'},
+      bio: { $first: '$_userbio.description'},
       emails: { $addToSet: '$_maintainer.email'}
     }},
-    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1, indexed:1,
-      maintainers: { $size: '$emails' },
-      name: {$first: '$name'},
-      type: {$first: '$type'},
-      bio: {$first: '$bio'}
-    }},
-    {$match: postquery},
-    {$sort:{ updated: -1}}
+    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1,
+      indexed:1, name: 1, type: 1, bio: 1, maintainers: { $size: '$emails' },
+    }}
   ]);
   send_results(cursor, req, res, next);
 });
