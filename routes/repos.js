@@ -424,7 +424,7 @@ router.get("/:user/api/scores", function(req, res, next) {
     universe: "$_user",
     score: '$_score',
     stars: "$_stars",
-    downloads: "$_crandownloads",
+    downloads: "$_downloads.count",
     scripts: "$_searchresults",
     dependents: '$_usedby',
     commits: {$sum: '$_updates.n'},
@@ -1132,7 +1132,7 @@ router.get('/:user/stats/everyone', function(req, res, next){
 
 router.get('/:user/stats/percentiles', function(req, res, next){
   var length = Math.min(parseInt(req.query.length) || 10, 100);
-  var fields = req.query.fields ? req.query.fields.split(",") : ['_score', '_crandownloads', '_stars'];
+  var fields = req.query.fields ? req.query.fields.split(",") : ['_score', '_downloads.count', '_stars'];
   var percentiles = Array.from({ length: length + 1 }, (value, index) => index/length)
   console.log(percentiles)
   var groups = {_id: null};
