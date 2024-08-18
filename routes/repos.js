@@ -413,6 +413,30 @@ router.get("/:user/api/universes", function(req, res, next) {
   send_results(cursor, req, res, next);
 });
 
+router.get("/:user/api/scores", function(req, res, next) {
+  function array_size(key){
+    return {$cond: [{ $isArray: key }, {$size: key}, 0 ]};
+  }
+  var query = {_type: 'src', _indexed: true};
+  var projection = {
+    _id: 0,
+    package: '$Package',
+    universe: "$_user",
+    score: '$_score',
+    stars: "$_stars",
+    downloads: "$_crandownloads",
+    scripts: "$_searchresults",
+    dependents: '$_usedby',
+    commits: {$sum: '$_updates.n'},
+    contributors: array_size({$objectToArray: '$_contributions'}),
+    datasets: array_size('$_datasets'),
+    vignettes: array_size('$_vignettes'),
+    releases: array_size('$_releases')
+  }
+  var cursor = packages.find(query).sort({_score: -1}).project(projection)
+  send_results(cursor, req, res, next);
+});
+
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
@@ -508,10 +532,10 @@ router.get('/:user/stats/checks', function(req, res, next) {
     {$sort : {timestamp : -1}},
     {$limit : limit},
     {$project: {
-      _id: 0, 
-      user: '$_id.user', 
-      maintainer:'$_id.maintainer', 
-      package: '$_id.package', 
+      _id: 0,
+      user: '$_id.user',
+      maintainer:'$_id.maintainer',
+      package: '$_id.package',
       version:'$_id.version',
       os_restriction:{ $first: "$os_restriction" },
       timestamp: 1,
@@ -851,7 +875,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
     {$unwind: '$dependencies'},
     {$group: {
       _id : '$dependencies.package',
-      revdeps : { $addToSet: 
+      revdeps : { $addToSet:
         {user: '$user', package: '$package', maintainer:'$maintainer', role: '$dependencies.role'}
       }, //in theory the pkg can have multiple owners in case of a fork or name conflict
       owner: {$addToSet : '$dependencies.owner'},
