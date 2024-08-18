@@ -702,6 +702,9 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 
 router.get("/:user/stats/universes", function(req, res, next) {
   var query = {_user: req.params.user, _type: 'src', '_registered' : true};
+  if(req.query.organization){
+    query['_userbio.type'] = 'organization';
+  }
   var cursor = packages.aggregate([
     {$match: qf(query, req.query.all)},
     {$project: {
@@ -710,22 +713,15 @@ router.get("/:user/stats/universes", function(req, res, next) {
       user: '$_user',
       updated: '$_commit.time',
       name: '$_maintainer.name',
-      email: '$_maintainer.email',
-      owner: '$_owner',
-      organization: '$_organization'
+      email: '$_maintainer.email'
     }},
     {$group: {
       _id : '$user',
       updated: { $max: '$updated'},
       maintainers: { $addToSet: '$email'},
-      owners: { $addToSet: {
-        owner: '$owner',
-        organization: '$organization'
-      }},
       packages : { $addToSet: '$package'},
     }},
-    {$match: req.query.organization ? {$expr: {$in: [ {owner:'$_id', organization: true}, '$owners']}} : {}},
-    {$project: {_id: 0, universe: '$_id', packages: 1, maintainers: 1, updated: 1, owners: 1}},
+    {$project: {_id: 0, universe: '$_id', packages: 1, maintainers: 1, updated: 1}},
     {$sort:{ updated: -1}}
   ]);
   cursor.hasNext().then(function(){
