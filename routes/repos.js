@@ -401,10 +401,11 @@ router.get("/:user/api/universes", function(req, res, next) {
       indexed: { $sum: { $toInt: '$_indexed' }},
       name: { $first: '$_userbio.name'},
       type: { $first: '$_userbio.type'},
+      uuid: { $first: '$_userbio.uuid'},
       bio: { $first: '$_userbio.description'},
       emails: { $addToSet: '$_maintainer.email'}
     }},
-    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1,
+    {$project: {_id: 0, universe: '$_id', packages: 1, updated: 1, type: 1, uuid: 1,
       indexed:1, name: 1, type: 1, bio: 1, maintainers: { $size: '$emails' },
     }},
     {$sort:{ indexed: -1}},

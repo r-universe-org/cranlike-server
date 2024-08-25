@@ -1,6 +1,6 @@
 {
   "name": "cranlike",
-  "version": "0.18.38",
+  "version": "0.18.39",
   "description": "High-performance R package server",
   "author": "Jeroen Ooms <jeroen@berkeley.edu>",
   "license": "MIT",
