@@ -577,7 +577,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
       macbinary: { $addToSet : '$_macbinary' },
       winbinary: { $addToSet : '$_winbinary' },
       runs : { $addToSet:
-        { type: "$_type", built: '$Built', date:'$_published', url: '$_buildurl', status: '$_status', distro: '$_distro'}
+        { type: "$_type", built: '$Built', date:'$_published', url: '$_buildurl', status: '$_status', distro: '$_distro', check: '$_check'}
       }
     }},
     {$sort : {"timestamp" : -1}},
