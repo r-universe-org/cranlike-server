@@ -4,10 +4,6 @@ RUN apk add --no-cache bash tini
 
 EXPOSE 3000
 
-# Copied from mongodb-express image
-ENV CRANLIKE_MONGODB_SERVER="mongo" \
-    VCAP_APP_HOST="0.0.0.0"
-
 RUN mkdir /app && cd /app && npm install cranlike@0.18.40
 
 WORKDIR /app/node_modules/cranlike
