@@ -620,6 +620,9 @@ function extract_json_metadata(input, package){
     if(!metadata.assets){
       throw "contents.json seems invalid";
     }
+    if(!metadata.userbio || !metadata.userbio.type){
+      throw "userbio is missing from contents.json";
+    }
     return metadata;
   });
 }
