@@ -1095,20 +1095,22 @@ router.get('/:user/stats/summary', function(req, res, next){
   var p2 = packages.distinct('_maintainer.email', query);
   var p3 = packages.distinct('_vignettes.title', query);
   var p4 = packages.distinct('_datasets.title', query);
-  var p5 = packages.aggregate([
+  var p5 = packages.distinct('_user', {'_userbio.type': 'organization', ...query});
+  var p6 = packages.aggregate([
     {$match:query},
     {$project: {contrib: {$objectToArray:"$_contributions"}}},
     {$unwind: "$contrib"},
     {$group: {_id: "$contrib.k"}},
     {$count: "total"}
   ]).next();
-  Promise.all([p1, p2, p3, p4, p5]).then((values) => {
+  Promise.all([p1, p2, p3, p4, p5, p6]).then((values) => {
     const out = {
       packages: values[0].length,
       maintainers: values[1].length,
       articles: values[2].length,
       datasets: values[3].length,
-      contributors: values[4] && values[4].total
+      organizations: values[4].length,
+      contributors: values[5] && values[5].total
     };
     res.send(out);
   }).catch(error_cb(400, next));
