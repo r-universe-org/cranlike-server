@@ -38,9 +38,11 @@ function delete_file(MD5sum){
   });
 }
 
-function delete_doc(doc){
+function delete_doc(doc, keep_file_md5){
   return packages.deleteOne({_id: doc['_id']}).then(function(){
-    return delete_file(doc.MD5sum).then(()=>doc);
+    if(doc.MD5sum !== keep_file_md5){
+      return delete_file(doc.MD5sum).then(()=>doc);
+    }
   });
 }
 
@@ -373,11 +375,12 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       if(type == 'mac' && description.Built.Platform){
         query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
-      return packages.findOneAndDelete(query).then(function(original) {
-        // This callback API changed in recent mongo-nodejs
-        if(original && original['MD5sum'] !== md5){
-          return delete_file(original['MD5sum']);
-        }
+      return packages.find(query).project({_id:1, MD5sum:1}).toArray().then(function(docs){
+        if(docs.length > 1)
+          console.log(`WARNING: deleting duplicates for ${JSON.stringify(query)}`);
+        if(docs.length > 5)
+          throw `Found too many duplicates, something seems off`;
+        return Promise.all(docs.map(x => delete_doc(x, md5)));
       }).then(function(x){
         return packages.insertOne(description);
       }).then(function(){
@@ -475,11 +478,12 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
       if(type == 'mac' && description.Built.Platform){
         query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
-      return packages.findOneAndDelete(query).then(function(original) {
-        // This callback API changed in recent mongo-nodejs
-        if(original && original['MD5sum'] !== md5){
-          return delete_file(original['MD5sum']);
-        }
+      return packages.find(query).project({_id:1, MD5sum:1}).toArray().then(function(docs){
+        if(docs.length > 1)
+          console.log(`WARNING: deleting duplicates for ${JSON.stringify(query)}`);
+        if(docs.length > 5)
+          throw `Found too many duplicates, something seems off`;
+        return Promise.all(docs.map(x => delete_doc(x, md5)));
       }).then(function(x){
         return packages.insertOne(description);
       }).then(function(){
