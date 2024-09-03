@@ -438,6 +438,31 @@ router.get("/:user/api/scores", function(req, res, next) {
   send_results(cursor, req, res, next);
 });
 
+router.get("/:user/api/articles", function(req, res, next) {
+  var cursor = packages.aggregate([
+    {$match: {_type: 'src', _indexed: true, '_vignettes' : {$exists: true}}},
+    {$project: {
+      _id: 0,
+      universe: '$_user',
+      package: '$Package',
+      maintainer: '$_maintainer.name',
+      vignette: '$_vignettes'
+    }},
+    {$unwind: '$vignette'},
+    {$project: {
+      _id: 0,
+      universe: 1,
+      package: 1,
+      title: '$vignette.title',
+      filename: '$vignette.filename',
+      author: { $ifNull: [ '$vignette.author', '$maintainer' ]},
+      updated: '$vignette.modified'
+    }},
+    {$sort:{ updated: -1}},
+  ]);
+  send_results(cursor, req, res, next);
+});
+
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
