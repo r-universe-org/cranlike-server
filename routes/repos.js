@@ -463,6 +463,31 @@ router.get("/:user/api/articles", function(req, res, next) {
   send_results(cursor, req, res, next);
 });
 
+router.get("/:user/api/datasets", function(req, res, next) {
+  var cursor = packages.aggregate([
+    {$match: {_type: 'src', _indexed: true, '_datasets' : {$exists: true}}},
+    {$sort:{ _id: -1}},
+    {$project: {
+      _id: 0,
+      universe: '$_user',
+      package: '$Package',
+      dataset: '$_datasets'
+    }},
+    {$unwind: '$dataset'},
+    {$project: {
+      _id: 0,
+      universe: 1,
+      package: 1,
+      name: '$dataset.name',
+      title: '$dataset.title',
+      class: {$first: '$dataset.class'},
+      rows: '$dataset.rows',
+      fields: {$size: '$dataset.fields'}
+    }}
+  ]);
+  send_results(cursor, req, res, next);
+});
+
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
