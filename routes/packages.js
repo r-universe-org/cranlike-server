@@ -345,10 +345,9 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
     } else {
       return [filedata];
     }
-  }).then(function(metadata){
+  }).then(function([filedata, usedby, headerdata]){
     //console.log(`Successfully stored file ${filename} with ${runrevdeps} runreveps`);
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
-      const filedata = metadata[0];
       description['MD5sum'] = md5;
       description['_user'] = user;
       description['_type'] = type;
@@ -363,8 +362,8 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_owner'] = get_repo_owner(description._upstream);
       description['_selfowned'] = is_self_owned(description);
       if(type == "src"){
-        description['_usedby'] = metadata[1];
-        add_meta_fields(description, metadata[2]); //contents.json
+        description['_usedby'] = usedby;
+        add_meta_fields(description, headerdata); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
         description['_nocasepkg'] = package.toLowerCase();
@@ -449,9 +448,8 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
     } else {
       return [filedata];
     }
-  }).then(function(metadata){
+  }).then(function([filedata, usedby, headerdata]){
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
-      const filedata = metadata[0];
       description['MD5sum'] = md5;
       description['_user'] = user;
       description['_type'] = type;
@@ -466,8 +464,8 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
       description['_owner'] = get_repo_owner(description._upstream);
       description['_selfowned'] = is_self_owned(description);
       if(type == "src"){
-        description['_usedby'] = metadata[1];
-        add_meta_fields(description, metadata[2]); //contents.json
+        description['_usedby'] = usedby;
+        add_meta_fields(description, headerdata); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
         description['_nocasepkg'] = package.toLowerCase();
@@ -595,9 +593,7 @@ router.post('/:user/api/reindex', function(req, res, next) {
   .then((result) => result.text())
   .then(function(txt){
     return txt.trim().split('\n').forEach(function(doc){
-      var arr = doc.split(',');
-      var pkg = arr[0];
-      var owner = arr[1];
+      var [pkg, owner] = doc.split(',');
       owners[pkg] = owner;
     })
   }).then(function(){
@@ -616,11 +612,11 @@ router.post('/:user/api/reindex', function(req, res, next) {
 });
 
 function extract_json_metadata(input, package){
-  return tools.extract_multi_files(input, [`${package}/extra/contents.json`]).then(function(files){
-    if(!files[0]){
+  return tools.extract_multi_files(input, [`${package}/extra/contents.json`]).then(function([contents]){
+    if(!contents){
       throw `Source package did not contain ${package}/extra/contents.json`;
     }
-    var metadata = JSON.parse(files[0]);
+    var metadata = JSON.parse(contents);
     if(!metadata.assets){
       throw "contents.json seems invalid";
     }
