@@ -341,11 +341,12 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': package});
       var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
-      return Promise.all([filedata, p1, p2]);
+      var p3 = packages.find({_type: 'src', Package: package, _indexed: true}).project({_user:1}).next();
+      return Promise.all([filedata, p1, p2, p3]);
     } else {
       return [filedata];
     }
-  }).then(function([filedata, usedby, headerdata]){
+  }).then(function([filedata, usedby, headerdata, canonical]){
     //console.log(`Successfully stored file ${filename} with ${runrevdeps} runreveps`);
     return read_description(bucket.openDownloadStream(md5)).then(function(description){
       description['MD5sum'] = md5;
@@ -368,6 +369,9 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
         description['_indexed'] = is_indexed(description);
         description['_nocasepkg'] = package.toLowerCase();
         set_universes(description);
+        if(description['_indexed'] === false && canonical){
+          description['_indexurl'] = `https://${canonical['_user']}.r-universe.dev/${package}`;
+        }
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
