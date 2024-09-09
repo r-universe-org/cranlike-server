@@ -158,6 +158,15 @@ function send_binary(query, req, res, next, filename){
       res.set("ETag", etag).set('Cache-Control', 'public, max-age=10, must-revalidate');
       res.redirect(`${cdn}/${hash}/${filename || x.filename}`);
     }
+  }).catch(function(err){
+    // Workaround for race conditions: redirect to new version if just updated
+    return packages.findOne({...query, _previous: query.Version, Version:{ $exists: true }}).then(function(doc){
+      if(doc){
+        res.redirect(req.path.replace(`_${query.Version}.`, `_${doc.Version}.`));
+      } else {
+        throw err;
+      }
+    });
   }).catch(error_cb(404, next));
 }
 

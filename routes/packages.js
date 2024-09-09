@@ -378,11 +378,14 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       if(type == 'mac' && description.Built.Platform){
         query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
-      return packages.find(query).project({_id:1, MD5sum:1}).toArray().then(function(docs){
+      return packages.find(query).project({_id:1, MD5sum:1, Version: 1}).toArray().then(function(docs){
         if(docs.length > 1)
           console.log(`WARNING: deleting duplicates for ${JSON.stringify(query)}`);
-        if(docs.length > 5)
+        if(docs.length > 3)
           throw `Found too many duplicates, something seems off`;
+        var previous = docs[0];
+        if(previous && (previous.Version !== description.Version))
+          description._previous = previous.Version;
         return Promise.all(docs.map(x => delete_doc(x, md5)));
       }).then(function(x){
         return packages.insertOne(description);
@@ -480,11 +483,14 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
       if(type == 'mac' && description.Built.Platform){
         query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
-      return packages.find(query).project({_id:1, MD5sum:1}).toArray().then(function(docs){
+      return packages.find(query).project({_id:1, MD5sum:1, Version: 1}).toArray().then(function(docs){
         if(docs.length > 1)
           console.log(`WARNING: deleting duplicates for ${JSON.stringify(query)}`);
-        if(docs.length > 5)
+        if(docs.length > 3)
           throw `Found too many duplicates, something seems off`;
+        var previous = docs[0];
+        if(previous && (previous.Version !== description.Version))
+          description._previous = previous.Version;
         return Promise.all(docs.map(x => delete_doc(x, md5)));
       }).then(function(x){
         return packages.insertOne(description);
