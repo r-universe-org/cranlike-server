@@ -78,6 +78,7 @@ router.get("/:user/api/search", function(req, res, next) {
     _owner: 1,
     _score: 1,
     _usedby: 1,
+    _uuid: '$_userbio.uuid',
     maintainer: '$_maintainer',
     updated: '$_commit.time',
     stars: '$_stars',
