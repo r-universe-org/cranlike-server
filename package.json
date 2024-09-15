@@ -30,7 +30,7 @@
     "multer": "^1.4.5-lts.1",
     "pug": "^3.0.3",
     "r-constants": "^1.0.0",
-    "rdesc-parser": "https://github.com/jeroen/rdesc-parser/archive/refs/heads/master.tar.gz",
+    "rdesc-parser": "^3.0.3",
     "tar-stream": "^3.1.7",
     "xmlbuilder": "^15.1.1"
   }
