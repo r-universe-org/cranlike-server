@@ -6,6 +6,7 @@ const hljs = require('highlight.js');
 const router = express.Router();
 const tools = require("../src/tools.js");
 const send_extracted_file = tools.send_extracted_file;
+const tar_index_files = tools.tar_index_files;
 
 /* Error generator */
 function error_cb(status, next) {
@@ -94,7 +95,7 @@ router.get("/:user/:package/DESCRIPTION", function(req, res, next) {
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
   var filename = `${package}/DESCRIPTION`;
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
+  send_extracted_file(query, filename, req, res).catch(error_cb(400, next));
 });
 
 /* Match CRAN / R dynamic help */
@@ -103,7 +104,7 @@ router.get('/:user/:package/NEWS:ext?', function(req, res, next){
   var query = {_user: req.params.user, _type: 'src', Package: package};
   var ext = req.params.ext || '.html';
   var filename = `${package}/extra/NEWS${ext}`
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
+  send_extracted_file(query, filename, req, res).catch(error_cb(400, next));
 });
 
 /* Match CRAN */
@@ -113,7 +114,7 @@ router.get('/:user/:package/:file.pdf', function(req, res, next){
     return res.status(404).send(`Did you mean ${package}.pdf`)
   }
   var query = {_user: req.params.user, _type: 'src', Package: package};
-  send_extracted_file(query, `${package}/manual.pdf`, req, res, next).catch(error_cb(400, next));
+  send_extracted_file(query, `${package}/manual.pdf`, req, res).catch(error_cb(400, next));
 });
 
 /* Match CRAN */
@@ -122,15 +123,15 @@ router.get('/:user/:package/citation:ext?', function(req, res, next){
   var query = {_user: req.params.user, _type: 'src', Package: package};
   var ext = req.params.ext || '.html';
   var filename = `${package}/extra/citation${ext}`
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
+  send_extracted_file(query, filename, req, res).catch(error_cb(400, next));
 });
 
 function doc_path(file, package){
   switch(file.toLowerCase()) {
     case "readme.html":
-      return [`${package}/readme.html`, `${package}/extra/readme.html`];
+      return `${package}/extra/readme.html`;
     case "readme.md":
-      return [`${package}/readme.md`, `${package}/extra/readme.md`];
+      return `${package}/extra/readme.md`;
     case `manual.html`:
       return `${package}/extra/${package}.html`;
     default:
@@ -143,8 +144,7 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
   var user = req.params.user;
   var package = req.params.package;
   var query = {_user: user, _type: 'src', Package: package};
-  tools.get_extracted_file(query, [`${package}/extra/readme.html`, `${package}/readme.html`]).then(function(buf){
-    var html = buf[0] || buf[1];
+  tools.get_extracted_file(query, `${package}/extra/readme.html`).then(function(html){
     if(req.query.highlight === 'hljs'){
       const $ = cheerio.load(html, null, false);
       $('code[class^="language-"]').each(function(i, el){
@@ -159,7 +159,7 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
       });
       html = $.html();
     }
-    res.send(html);
+    res.type('text/html; charset=utf-8').send(html);
   }).catch(error_cb(400, next));
 });
 
@@ -184,12 +184,27 @@ router.get('/:user/:package/doc/page/:id', function(req, res, next){
   }).catch(error_cb(400, next));
 });
 
-router.get('/:user/:package/doc/:file?', function(req, res, next){
+router.get('/:user/:package/doc', function(req, res, next){
   var package = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: package};
-  var file = req.params.file;
-  var filename = file ? doc_path(file, package) : new RegExp(`^${package}/inst/doc/(.+)$`);
-  send_extracted_file(query, filename, req, res, next).catch(error_cb(400, next));
+  return packages.find(query, {limit:1}).sort({"_created" : -1}).next().then(function(x){
+    if(!x)
+      throw `Package ${query.Package} not found in ${query['_user']}`;
+    return tar_index_files(bucket.openDownloadStream(x.MD5sum));
+  }).then(function(index){
+    var output = [];
+    index.files.forEach(function(x){
+      var m = x.filename.match(`^${package}/inst/doc/(.+)$`);
+      if(m) output.push(m[1]);
+    });
+    res.send(output);
+  }).catch(error_cb(400, next));
+});
+
+router.get('/:user/:package/doc/:file', function(req, res, next){
+  var package = req.params.package;
+  var query = {_user: req.params.user, _type: 'src', Package: package};
+  send_extracted_file(query, doc_path(req.params.file, package), req, res).catch(error_cb(400, next));
 });
 
 router.get('/:user/:package/sitemap.xml', function(req, res, next) {

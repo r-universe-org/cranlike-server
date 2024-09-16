@@ -62,7 +62,7 @@ function packages_snapshot(files, archive, types){
   files.forEach(function(x){
     var package = x.Package;
     var date = x._created;
-    if(!types || types.includes(x._type)){
+    if(types.includes(x._type)){
       var hash = x.MD5sum;
       var filename = make_filename(x);
       var dirname = path.dirname(filename);
@@ -79,15 +79,13 @@ function packages_snapshot(files, archive, types){
   });
 
   /* Extract html manual pages. This is a bit slower so doing this last */
-  if(!types || types.includes('docs')){
+  if(types.includes('docs')){
     files.filter(x => x._type == 'src').forEach(function(x){
       var package = x.Package;
       var date = x._created;
-      promises.push(tools.get_extracted_file({_id: x._id}, [`${package}/extra/${package}.html`]).then(function(buffers){
-        if(buffers[0]){
-          return archive.append(buffers[0], { name: `docs/${package}.html`, date: date });
-        }
-      }));
+      promises.push(tools.get_extracted_file({_id: x._id}, `${package}/extra/${package}.html`).then(function(buf){
+        return archive.append(buf, { name: `docs/${package}.html`, date: date });
+      }).catch(err => console.log(err)));
     });
   }
 
@@ -104,7 +102,7 @@ function packages_snapshot(files, archive, types){
 router.get('/:user/api/snapshot/:format?', function(req, res, next) {
   var user = req.params.user;
   var query = {_user: user, _type: {'$ne' : 'failure'}};
-  var types = req.query.types ? req.query.types.split(',') : ['src', 'win', 'mac', 'linux']; //skip wasm
+  var types = req.query.types ? req.query.types.split(',') : ['src', 'win', 'mac', 'linux', 'docs']; //skip wasm
   if(req.query.packages)
     query.Package = {'$in' : req.query.packages.split(",")};
   var cursor = packages.find(query).project(pkgfields).sort({"_type" : 1});

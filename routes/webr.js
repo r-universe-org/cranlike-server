@@ -124,7 +124,7 @@ router.get('/:user/:package/data/:name/:format?', function(req, res, next){
     } else {
       throw "Unable to extract this data";
     }
-    var buffers = await tools.get_extracted_file(query, files.map(x => `${package}/data/${x}`));
+    var buffers = await tools.get_extracted_file_multi(query, files.map(x => `${package}/data/${x}`));
     for (var i = 0; i < files.length; i++) {
       if(!buffers[i] || !buffers[i].length)
         throw `Failed to extract ${files[i]}`;

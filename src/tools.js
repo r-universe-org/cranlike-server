@@ -49,6 +49,15 @@ function test_if_universe_exists(user){
   });
 }
 
+function find_by_query(query){
+  // try to get most recent build to avoid binaries for old versions
+  return packages.findOne(query, {sort: {'_id': -1}}).then(function(x){
+    if(!x)
+      throw `Package ${query.Package} not found in ${query['_user']}`;
+    return x.MD5sum;
+  });
+}
+
 function get_registry_info(user){
   const url = 'https://api.github.com/repos/r-universe/' + user + '/actions/workflows/sync.yml/runs?per_page=1&status=completed';
   return fetch_github(url);
@@ -166,94 +175,51 @@ function pipe_everything_to(stream, output) {
   });
 }
 
-function send_extracted_file(query, filename, req, res, next){
-  return packages.findOne(query).then(function(x){
-    if(!x){
-      throw `Package ${query.Package} not found in ${query['_user']}`;
+function send_extracted_file(query, filename, req, res){
+  return find_by_query(query).then(function(hash){
+    var etag = etagify(hash);
+    if(etag === req.header('If-None-Match')){
+      return res.status(304).send();
     } else {
-      var hash = x.MD5sum;
-      var etag = etagify(hash);
-      if(etag === req.header('If-None-Match')){
-        res.status(304).send();
-      } else {
-        return bucket.find({_id: hash}, {limit:1}).hasNext().then(function(x){
-          if(!x)
-            throw `Failed to locate file in gridFS: ${hash}`;
-          var input = bucket.openDownloadStream(hash);
-          return extract_file(input, filename, res).finally(function(){
-            input.destroy();
-          });
-        });
-      }
+      return send_file_from_tar(bucket.openDownloadStream(hash), res, filename);
     }
   });
 }
 
-//use the first match in findfile
-function extract_file(input, findfile, res){
-  var extract = tar.extract({allowUnknownFormat: true});
-  var done = false;
-  if(typeof findfile == 'string')
-    findfile = [findfile];
-
+function send_file_from_tar(input, res, filename){
   return new Promise(function(resolve, reject) {
-    extract.on('entry', function(header, file_stream, next_entry) {
-      if (!done && Array.isArray(findfile) && findfile.includes(header.name)) {
-        done = true;
-        var filename = header.name;
-        if(res){
-          var contenttype = mime.getType(filename);
-          if(contenttype == 'text/plain' || filename.endsWith('.cff') || filename.endsWith('.Rmd')){
-            contenttype = 'text/plain; charset=utf-8';
-          }
-          if(contenttype){
-            res.type(contenttype);
-          }
-          if(header.size){
-            res.set('Content-Length', header.size);
-          }
+    var found = false;
+    function process_entry(header, filestream, next_entry) {
+      filestream.on('end', next_entry);
+      filestream.on('error', reject);
+      if(!found && filename == header.name){
+        found = true;
+        var contenttype = mime.getType(filename);
+        if(contenttype == 'text/plain' || filename.endsWith('.cff') || filename.endsWith('.Rmd')){
+          contenttype = 'text/plain; charset=utf-8';
         }
-        var promise = res ? pipe_everything_to(file_stream, res) : stream2string(file_stream);
-        promise.then(function(buf){
-          resolve(buf);
-        }).catch(function(err){
-          reject(err);
-        }).finally(function(){
-          extract.destroy();
-        });
+        if(contenttype){
+          res.type(contenttype);
+        }
+        if(header.size){
+          res.set('Content-Length', header.size);
+        }
+        filestream.pipe(res);
       } else {
-        add_to_list(header);
-        next_entry();
-      }
-      file_stream.resume();
-    });
-
-    extract.on('finish', function() {
-      if(dolist){
-        res.send(matches);
-      } else if (!done) {
-        reject(`file "${findfile}" not found in tarball`);
-        extract.destroy();
-      }
-    });
-
-    extract.on('error', function(err) {
-      reject(err);
-      extract.destroy();
-    });
-
-    var matches = [];
-    var dolist = findfile instanceof RegExp;
-    function add_to_list(header){
-      if(dolist && header.name){
-        let m = header.name.match(findfile);
-        if(m && m.length){
-          matches.push(m.pop());
-        }
+        filestream.resume();
       }
     }
-
-    return input.pipe(gunzip()).pipe(extract);
+    var extract = tar.extract({allowUnknownFormat: true})
+      .on('entry', process_entry)
+      .on('error', reject)
+      .on('finish', function(){
+        if(found) {
+          resolve();
+        } else {
+          reject(`File ${filename} not found in tarball`);
+        }
+      });
+    input.pipe(gunzip()).pipe(extract);
   });
 }
 
@@ -261,9 +227,9 @@ function extract_multi_files(input, files){
   var output = Array(files.length);
   return new Promise(function(resolve, reject) {
     function process_entry(header, filestream, next_entry) {
-      var index = files.indexOf(header.name);
-      filestream.on('end', next_entry)
+      filestream.on('end', next_entry);
       filestream.on('error', reject);
+      var index = files.indexOf(header.name);
       if(index > -1){
         stream2buffer(filestream).then(function(buf){
           output[index] = buf;
@@ -280,46 +246,40 @@ function extract_multi_files(input, files){
       .on('finish', finish_stream)
       .on('error', reject);
     input.pipe(gunzip()).pipe(extract);
-  }).finally(function(){
-    input.destroy();
+  });
+}
+
+function get_extracted_file_multi(query, files){
+  return find_by_query(query).then(function(hash){
+    return extract_multi_files(bucket.openDownloadStream(hash), files).then(function(buffers){
+      files.forEach(function(x, i){
+        if(buffers[i] === undefined){
+          throw `Failed to find file ${x} in tarball`;
+        }
+      });
+      return buffers;
+    });
   });
 }
 
 function get_extracted_file(query, filename){
-  // try to get most recent build to avoid binaries for old versions
-  return packages.find(query, {limit:1}).sort({"_created" : -1}).next().then(function(x){
-    if(!x){
-      throw `Package ${query.Package} not found in ${query['_user']}`;
-    }
-    var hash = x.MD5sum;
-    return bucket.find({_id: hash}, {limit:1}).hasNext().then(function(x){
-      if(!x)
-        throw `Failed to locate file in gridFS: ${hash}`;
-      if(Array.isArray(filename)){
-        return extract_multi_files(bucket.openDownloadStream(hash), filename);
-      } else {
-        return extract_file(bucket.openDownloadStream(hash), filename);
-      }
-    });
-  });
+  return get_extracted_file_multi(query, [filename]).then(x => x[0]);
 }
 
 function tar_index_files(input){
   let files = [];
   let extract = tar.extract({allowUnknownFormat: true});
   return new Promise(function(resolve, reject) {
-    function process_entry(header, stream, next) {
-      if(header.size > 0){
+    function process_entry(header, stream, next_entry) {
+      stream.on('end', next_entry);
+      stream.on('error', reject);
+      if(header.size > 0 && header.name.match(/\/.*/)){
         files.push({
           filename: header.name,
           start: extract._buffer.shifted,
           end: extract._buffer.shifted + header.size
         });
       }
-      stream.on('end', function () {
-        next() //read for next file
-      })
-      stream.on('error', reject);
       stream.resume();
     }
 
@@ -330,7 +290,13 @@ function tar_index_files(input){
     var extract = tar.extract({allowUnknownFormat: true})
       .on('entry', process_entry)
       .on('finish', finish_stream)
-      .on('error', reject);
+      .on('error', function(err){
+        if (err.message.includes('Unexpected end') && files.length > 0){
+          finish_stream(); //workaround tar-stream error for webr 0.4.2 trailing junk
+        } else {
+          reject(err);
+        }
+      });
     input.pipe(gunzip()).pipe(extract);
   });
 }
@@ -454,9 +420,9 @@ module.exports = {
   group_package_data: group_package_data,
   pkgfields: pkgfields,
   send_extracted_file : send_extracted_file,
-  extract_file : extract_file,
   extract_multi_files: extract_multi_files,
   get_extracted_file: get_extracted_file,
+  get_extracted_file_multi: get_extracted_file_multi,
   tar_index_files : tar_index_files,
   test_if_universe_exists : test_if_universe_exists,
   get_registry_info : get_registry_info,
