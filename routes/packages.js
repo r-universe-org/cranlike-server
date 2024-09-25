@@ -7,6 +7,7 @@ const rdesc = require('rdesc-parser');
 const fs = require('fs');
 const zlib = require('zlib');
 const tar = require('tar-stream');
+const crypto = require('node:crypto')
 const dependency_types = require('r-constants').dependency_types;
 
 /* Local variables */
@@ -113,7 +114,8 @@ function read_description(stream){
 function store_stream_file(stream, key, filename){
   return new Promise(function(resolve, reject) {
     var upload = bucket.openUploadStreamWithId(key, filename);
-    var pipe = stream.pipe(upload);
+    var hash = crypto.createHash('sha256');
+    var pipe = stream.on('data', data => hash.update(data)).pipe(upload);
     pipe.on('error', function(err){
       console.log("Error in openUploadStreamWithId()" + err);
       /* Clear possible orphaned chunks, then reject */
@@ -129,7 +131,7 @@ function store_stream_file(stream, key, filename){
             reject("md5 did not match key");
           });
         } else {
-          resolve({_id: key, length: upload.length});
+          resolve({_id: key, length: upload.length, sha256: hash.digest('hex')});
         }
       });
     });
@@ -355,6 +357,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_file'] = filename;
       description['_fileid'] = filedata['_id'];
       description['_filesize'] = filedata.length;
+      description['_sha256'] = filedata.sha256;
       description['_created'] = get_created(description);
       description['_published'] = new Date();
       add_meta_fields(description, builder);
@@ -463,6 +466,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
       description['_file'] = filename;
       description['_fileid'] = filedata['_id'];
       description['_filesize'] = filedata.length;
+      description['_sha256'] = filedata.sha256;
       description['_created'] = get_created(description);
       description['_published'] = new Date();
       add_meta_fields(description, builder);
