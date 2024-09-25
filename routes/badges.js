@@ -44,6 +44,11 @@ router.get('/:user/badges/::meta', function(req, res, next) {
         badge.status = x.length + " articles";
         send_badge(badge, user, res, `https://${user}.r-universe.dev/articles`);
       });
+    } else if(meta == 'datasets' ){
+      return packages.distinct('_datasets.title', {_universes : user, _type: 'src', '_registered' : true}).then(function(x){
+        badge.status = x.length + " datasets";
+        send_badge(badge, user, res, `https://${user}.r-universe.dev/datasets`);
+      });
     } else if(meta == 'registry'){
       /* This badge mimics https://github.com/r-universe/jeroen/actions/workflows/sync.yml/badge.svg (which is super slow) */
         return tools.get_registry_info(user).then(function(data){
