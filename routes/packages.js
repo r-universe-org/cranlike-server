@@ -270,23 +270,33 @@ function get_created(x){
   }
 }
 
+//weigh scores relative to github-stars
+//each metric is scored on a log10 scale, e.g. 10 star is 1 point, 100 stars is 2 points, etc.
 function calculate_score(description){
-  var score = 3 * description['_usedby'];
-  if(description._cranurl){
-    score += 5;
-    if(description._downloads && description._downloads.count > 0){
-      score += Math.min(500, description._downloads.count/1000);
-    }
+  var score = 1;
+  function add_score(value){
+    score += Math.log10(Math.max(1, value || 0));
   }
-  if(description._mentions)
-    score += Math.min(300, description._mentions * 3 || 0);
-  if(description._stars)
-    score += (description._stars || 0);
+  add_score(description._stars);
+  add_score(description._usedby * 3); //one revdep ~ 3 stars
+  add_score(description._searchresults / 10); //10 scripts ~ one star
+  if(Array.isArray(description._vignettes))
+    add_score(description._vignettes.length * 10); //one vignette ~ 10 stars
+  if(Array.isArray(description._datasets * 5)) //one dataset ~ 5 stars
+    add_score(description._datasets.length);
   if(Array.isArray(description._updates))
-    score += (description._updates.length || 0)
+    add_score(description._updates.length);
   if(typeof description._contributions === 'object')
-    score += Object.keys(description._contributions).length;
-  return 1 + Math.log10(Math.max(1, score));
+    add_score(Object.keys(description._contributions).length - 1)
+  if(description._cranurl || description._bioc)
+    add_score(10); //on cran/bioc ~ 10 stars
+  if(description._readme)
+    add_score(5); //has readme ~ 5 stars
+  if(description._downloads && description._downloads.count > 0)
+    add_score(description._downloads.count / 1000); //1000 downloads ~ one star
+  if(description._mentions)
+    add_score(Math.min(description._mentions, 10)); //some false positives, add max 1 point
+  return score;
 }
 
 function is_indexed(description){
