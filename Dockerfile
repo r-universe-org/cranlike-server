@@ -1,10 +1,10 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk add --no-cache bash tini
 
 EXPOSE 3000
 
-RUN mkdir /app && cd /app && npm install cranlike@0.18.68
+RUN mkdir /app && cd /app && npm install cranlike@0.22.0
 
 WORKDIR /app/node_modules/cranlike
 
