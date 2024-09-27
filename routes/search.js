@@ -53,11 +53,11 @@ function build_query(query, str){
   match_exact('needs', '_rundeps');
   match_exact('package', '_nocasepkg'); //always case insenstive
   match_exists('contributor', '_contributions');
-  match_insensitive('topic', '_topics');
-  match_insensitive('exports', '_exports');
-  match_insensitive('owner', '_owner');
-  match_insensitive('user', '_user');
-  match_insensitive('universe', '_universes');
+  match_exact('topic', '_topics');
+  match_exact('exports', '_exports');
+  match_exact('owner', '_owner');
+  match_exact('user', '_user');
+  match_exact('universe', '_universes');
   match_partial('data', '_datasets.title');
   str = str.trim();
   if(str){
