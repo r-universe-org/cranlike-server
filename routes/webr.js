@@ -1,8 +1,9 @@
-const express = require('express');
-const createError = require('http-errors');
-const webr = require("@r-universe/webr");
+import express from 'express';
+import createError from 'http-errors';
+import webr from '@r-universe/webr';
+import {get_extracted_file_multi} from '../src/tools.js';
+
 const router = express.Router();
-const tools = require("../src/tools.js");
 
 function etagify(x){
   return 'W/"' +  x + '"';
@@ -82,9 +83,7 @@ function new_pool(){
 var get_session = new new_pool();
 
 router.get('/:user/:package/data', function(req, res, next){
-  var user =  req.params.user;
-  var package = req.params.package;
-  var query = {'_user': user, 'Package': package, '_type': 'src'};
+  var query = {'_user': req.params.user, 'Package': req.params.package, '_type': 'src'};
   return packages.findOne(query).then(function(x){
     return res.send(x._datasets || []);
   }).catch(err => next(createError(400, err)));
@@ -92,11 +91,11 @@ router.get('/:user/:package/data', function(req, res, next){
 
 router.get('/:user/:package/data/:name/:format?', function(req, res, next){
   var user =  req.params.user;
-  var package = req.params.package;
+  var pkgname = req.params.package;
   var name = req.params.name;
   var format = req.params.format;
-  var query = {'_user': user, 'Package': package, '_type': 'src'};
-  var key = `${package}_${name}`.replace(/\W+/g, "");
+  var query = {'_user': user, 'Package': pkgname, '_type': 'src'};
+  var key = `${pkgname}_${name}`.replace(/\W+/g, "");
   var session = get_session(format);
   var supported = ['csv', 'csv.gz', 'xlsx', 'json', 'ndjson', 'rda', 'rds'];
   return packages.findOne(query).then(async function(x){
@@ -115,7 +114,7 @@ router.get('/:user/:package/data/:name/:format?', function(req, res, next){
     }
     var ds = datasets.find(x => x.name == name);
     if(!ds)
-      throw `No data "${name}" found in ${package}`;
+      throw `No data "${name}" found in ${pkgname}`;
     query['_type'] = {'$in' : ['mac', 'linux']};
     if(lazydata){
       var files = [`Rdata.rdb`, `Rdata.rdx`];
@@ -124,7 +123,7 @@ router.get('/:user/:package/data/:name/:format?', function(req, res, next){
     } else {
       throw "Unable to extract this data";
     }
-    var buffers = await tools.get_extracted_file_multi(query, files.map(x => `${package}/data/${x}`));
+    var buffers = await get_extracted_file_multi(query, files.map(x => `${pkgname}/data/${x}`));
     for (var i = 0; i < files.length; i++) {
       if(!buffers[i] || !buffers[i].length)
         throw `Failed to extract ${files[i]}`;
@@ -173,4 +172,4 @@ router.get('/:user/:package/data/:name/:format?', function(req, res, next){
   });
 });
 
-module.exports = router;
+export default router;

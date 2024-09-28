@@ -1,6 +1,7 @@
 /* Packages */
-const express = require('express');
-const createError = require('http-errors');
+import express from 'express';
+import createError from 'http-errors';
+
 const router = express.Router();
 
 function error_cb(status, next) {
@@ -124,4 +125,4 @@ router.get("/:user/stats/powersearch", function(req, res, next) {
   res.redirect(req.url.replace("stats/powersearch", "api/search"))
 });
 
-module.exports = router;
+export default router;

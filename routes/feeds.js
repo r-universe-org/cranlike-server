@@ -1,11 +1,10 @@
-const express = require('express');
-const createError = require('http-errors');
-const xmlbuilder = require('xmlbuilder');
+import express from 'express';
+import createError from 'http-errors';
+import xmlbuilder from 'xmlbuilder';
+import {qf, test_if_universe_exists} from '../src/tools.js';
+
 const router = express.Router();
-const tools = require("../src/tools.js");
-const { version } = require('../package.json');
 const opts = { pretty: false, allowEmpty: false };
-const qf = tools.qf;
 
 function error_cb(status, next) {
   return function(err){
@@ -18,7 +17,7 @@ router.get('/:user/feed.xml', function(req, res, next) {
   var user = req.params.user;
   const query = qf({_user: user, _registered: true, _type: {$in: ['src', 'failure']}}, true);
   const limit = parseInt(req.query.limit) || 50;
-  tools.test_if_universe_exists(user).then(function(x){
+  test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
     var cursor = packages.find(query)
       .sort({'_commit.time' : -1})
@@ -65,7 +64,7 @@ router.get('/:user/feed.xml', function(req, res, next) {
           .ele('title', title).up()
           .ele('link', repo).up()
           .ele('description', 'Package updated in ' + user).up()
-          .ele('generator', 'cranlike-server ' + version).up()
+          .ele('generator', 'cranlike-server ').up()
           .ele('image')
             .ele('url', 'https://github.com/' + user + '.png?size=400').up()
             .ele('title', title).up()
@@ -155,4 +154,4 @@ function convert_maintainer(str){
   return str;
 }
 
-module.exports = router;
+export default router;

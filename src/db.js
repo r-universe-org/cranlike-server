@@ -1,6 +1,6 @@
 /* Database */
-const assert = require('assert');
-const mongodb = require('mongodb');
+import {MongoClient, GridFSBucket} from 'mongodb';
+
 const HOST = process.env.CRANLIKE_MONGODB_SERVER || '127.0.0.1';
 const PORT = process.env.CRANLIKE_MONGODB_PORT || 27017;
 const USER = process.env.CRANLIKE_MONGODB_USERNAME || 'root';
@@ -10,13 +10,13 @@ const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
 
 /* Connect to database */
 console.log("Connecting to database....")
-const connection = mongodb.MongoClient.connect(URL, { useUnifiedTopology: true });
+const connection = MongoClient.connect(URL, { useUnifiedTopology: true });
 connection.then(async function(client) {
   console.log("Connected to MongoDB!")
   global.db = client.db('cranlike');
   //console.log(client)
   //console.log(db)
-  global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
+  global.bucket = new GridFSBucket(db, {bucketName: 'files'});
   global.packages = db.collection('packages');
   global.chunks = db.collection('files.chunks');
 
@@ -97,4 +97,4 @@ async function rebuild_indexes(){
   console.log(indexes.map(x => x.name));
 }
 
-module.exports = connection;
+export default connection;

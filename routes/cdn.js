@@ -1,5 +1,6 @@
-const express = require('express');
-const createError = require('http-errors');
+import express from 'express';
+import createError from 'http-errors';
+
 const router = express.Router();
 
 /* Error generator */
@@ -41,4 +42,4 @@ router.get("/cdn/", function(req, res, next) {
   next(createError(400, "Invalid request"));
 });
 
-module.exports = router;
+export default router;

@@ -1,13 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env
 
-/**
- * Module dependencies.
- */
-
-var app = require('../app');
-var debug = require('debug')('cranlike:server');
-var http = require('http');
-var dbcon = require('../src/db');
+import app from '../app.js';
+import http from 'node:http';
+import dbcon from '../src/db.js';
 
 /* Last resort error handler, that should never happen but somehow it sometimes does.
    We quit because in a case of OOM/DOS, a restart may just be the best solution.
