@@ -1,5 +1,6 @@
 import express from 'express';
 import createError from 'http-errors';
+import {bucket} from '../src/db.js';
 
 const router = express.Router();
 

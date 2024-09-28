@@ -2,6 +2,7 @@ import express from 'express';
 import createError from 'http-errors';
 import webr from '@r-universe/webr';
 import {get_extracted_file_multi} from '../src/tools.js';
+import {packages} from '../src/db.js';
 
 const router = express.Router();
 

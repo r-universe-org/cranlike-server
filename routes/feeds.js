@@ -2,6 +2,7 @@ import express from 'express';
 import createError from 'http-errors';
 import xmlbuilder from 'xmlbuilder';
 import {qf, test_if_universe_exists} from '../src/tools.js';
+import {packages} from '../src/db.js';
 
 const router = express.Router();
 const opts = { pretty: false, allowEmpty: false };

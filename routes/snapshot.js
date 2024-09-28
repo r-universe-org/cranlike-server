@@ -4,6 +4,7 @@ import zlib from 'node:zlib';
 import archiver from 'archiver';
 import path from 'node:path';
 import {pkgfields, doc_to_dcf, get_extracted_file} from '../src/tools.js';
+import {packages, bucket} from '../src/db.js';
 
 const router = express.Router();
 

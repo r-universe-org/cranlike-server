@@ -4,6 +4,7 @@ import createError from 'http-errors';
 import zlib from 'node:zlib';
 import gunzip from 'gunzip-maybe';
 import {qf, pkgfields, doc_to_dcf, group_package_data, match_macos_arch} from '../src/tools.js';
+import {packages, bucket} from '../src/db.js';
 
 const router = express.Router();
 

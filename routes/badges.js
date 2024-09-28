@@ -2,6 +2,7 @@ import express from 'express';
 import createError from 'http-errors';
 import badgen from 'badgen';
 import {test_if_universe_exists, get_registry_info} from '../src/tools.js';
+import {packages} from '../src/db.js';
 
 const router = express.Router();
 

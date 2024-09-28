@@ -1,7 +1,8 @@
 import express from 'express';
 import createError from 'http-errors';
-import {get_cran_desc} from '../src/tools.js';
 import webr from '@r-universe/webr';
+import {get_cran_desc} from '../src/tools.js';
+import {packages} from '../src/db.js';
 
 const router = express.Router();
 const session = new webr.WebR();
