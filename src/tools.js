@@ -3,6 +3,7 @@ import tar from 'tar-stream';
 import gunzip from 'gunzip-maybe';
 import mime from 'mime';
 import {packages, bucket} from '../src/db.js';
+import {Buffer} from "node:buffer";
 
 /* Fields included in PACKAGES indices */
 export const pkgfields = {_id: 1, _type:1, _dependencies: 1, Filesize: '$_filesize', Distro: '$_distro',

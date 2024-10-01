@@ -11,6 +11,7 @@ import crypto from 'node:crypto';
 import rconstants from 'r-constants';
 import {match_macos_arch, trigger_rebuild, trigger_recheck, get_submodule_hash, extract_multi_files} from '../src/tools.js';
 import {packages, bucket, chunks, db} from '../src/db.js';
+import {Buffer} from "node:buffer";
 
 /* Local variables */
 const multerstore = multer({ dest: '/tmp/' });
