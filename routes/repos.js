@@ -1,15 +1,12 @@
 /* Packages */
-const express = require('express');
-const createError = require('http-errors');
-const zlib = require('zlib');
-const gunzip = require('gunzip-maybe');
+import express from 'express';
+import createError from 'http-errors';
+import zlib from 'node:zlib';
+import gunzip from 'gunzip-maybe';
+import {qf, pkgfields, doc_to_dcf, group_package_data, match_macos_arch} from '../src/tools.js';
+import {packages, bucket} from '../src/db.js';
+
 const router = express.Router();
-const tools = require("../src/tools.js");
-const pkgfields = tools.pkgfields;
-const doc_to_dcf = tools.doc_to_dcf;
-const group_package_data = tools.group_package_data;
-const match_macos_arch = tools.match_macos_arch;
-const qf = tools.qf;
 
 function error_cb(status, next) {
   return function(err) {
@@ -342,7 +339,7 @@ router.get('/:user/api/ls', function(req, res, next) {
 
 router.get('/:user/api/packages/:package?', function(req, res, next) {
   var user = req.params.user;
-  var package = req.params.package;
+  var pkgname = req.params.package;
   var projection = {_id:0};
   if(req.query.fields){
     var projection = {Package:1, _type:1, _user:1, _indexed: 1, _id:0};
@@ -359,10 +356,10 @@ router.get('/:user/api/packages/:package?', function(req, res, next) {
       }
     });
   }
-  if(package){
-    packages.find({_user : user, Package : package}).project(projection).toArray().then(function(docs){
+  if(pkgname){
+    packages.find({_user : user, Package : pkgname}).project(projection).toArray().then(function(docs){
       if(!docs.length){
-        return res.status(404).send(`No package '${package}' found in https://${user}.r-universe.dev`);
+        return res.status(404).send(`No package '${pkgname}' found in https://${user}.r-universe.dev`);
       }
       res.send(group_package_data(docs));
     }).catch(error_cb(400, next));
@@ -1123,8 +1120,8 @@ router.get("/:user/stats/ranksearch", function(req, res, next) {
 
 /* Simple 1 package revdep cases; see above for aggregates */
 router.get('/:user/stats/usedby', function(req, res, next) {
-  var package = req.query.package;
-  var query = qf({_user: req.params.user, _type: 'src', '_dependencies.package': package, '_indexed': true}, req.query.all);
+  var pkgname = req.query.package;
+  var query = qf({_user: req.params.user, _type: 'src', '_dependencies.package': pkgname, '_indexed': true}, req.query.all);
   var cursor = packages.find(query).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1});
   cursor.hasNext().then(function(){
     cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
@@ -1133,8 +1130,8 @@ router.get('/:user/stats/usedby', function(req, res, next) {
 
 router.get('/:user/stats/usedbyorg', function(req, res, next) {
   var user = req.params.user;
-  var package = req.query.package;
-  var query = qf({_user: user, _type: 'src', '_dependencies.package': package, '_indexed': true}, req.query.all);
+  var pkgname = req.query.package;
+  var query = qf({_user: user, _type: 'src', '_dependencies.package': pkgname, '_indexed': true}, req.query.all);
   var cursor = packages.aggregate([
     {$match:query},
     {$group : {
@@ -1245,4 +1242,4 @@ router.get('/:user/readme/:pkg.html', function(req, res, next){
   res.redirect(301, `/${req.params.user}/${req.params.pkg}/doc/readme.html`);
 });
 
-module.exports = router;
+export default router;

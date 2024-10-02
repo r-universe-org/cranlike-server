@@ -1,6 +1,7 @@
 /* Database */
-const assert = require('assert');
-const mongodb = require('mongodb');
+import {MongoClient, GridFSBucket} from 'mongodb';
+import process from "node:process";
+
 const HOST = process.env.CRANLIKE_MONGODB_SERVER || '127.0.0.1';
 const PORT = process.env.CRANLIKE_MONGODB_PORT || 27017;
 const USER = process.env.CRANLIKE_MONGODB_USERNAME || 'root';
@@ -10,25 +11,18 @@ const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
 
 /* Connect to database */
 console.log("Connecting to database....")
-const connection = mongodb.MongoClient.connect(URL, { useUnifiedTopology: true });
-connection.then(async function(client) {
-  console.log("Connected to MongoDB!")
-  global.db = client.db('cranlike');
-  //console.log(client)
-  //console.log(db)
-  global.bucket = new mongodb.GridFSBucket(db, {bucketName: 'files'});
-  global.packages = db.collection('packages');
-  global.chunks = db.collection('files.chunks');
+export const client = await MongoClient.connect(URL, { useUnifiedTopology: true });
+export const db = client.db('cranlike');
+export const bucket = new GridFSBucket(db, {bucketName: 'files'});
+export const packages = db.collection('packages');
+export const chunks = db.collection('files.chunks');
+console.log("Connected to MongoDB!");
 
-  //removes and recreates all indexes
-  if(process.env.REBUILD_INDEXES){
-    console.log("REBUILDING INDEXES!")
-    rebuild_indexes();
-  }
-}).catch(function(error){
-  console.log("Failed to connect to mongodb!\n" + error)
-  throw error;
-});
+//removes and recreates all indexes
+if(process.env.REBUILD_INDEXES){
+  console.log("REBUILDING INDEXES!")
+  rebuild_indexes();
+}
 
 async function rebuild_indexes(){
   //print (or drop) indexes
@@ -96,5 +90,3 @@ async function rebuild_indexes(){
   var indexes = await packages.indexes();
   console.log(indexes.map(x => x.name));
 }
-
-module.exports = connection;

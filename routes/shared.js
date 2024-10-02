@@ -1,9 +1,11 @@
-var express = require('express');
-var createError = require('http-errors');
-var router = express.Router();
-var tools = require("../src/tools.js");
-var webr = require("@r-universe/webr");
-var session = new webr.WebR();
+import express from 'express';
+import createError from 'http-errors';
+import webr from '@r-universe/webr';
+import {get_cran_desc} from '../src/tools.js';
+import {packages} from '../src/db.js';
+
+const router = express.Router();
+const session = new webr.WebR();
 session.init();
 
 function error_cb(status, next) {
@@ -14,14 +16,14 @@ function error_cb(status, next) {
 }
 
 router.get('/shared/redirect/:package*', function(req, res, next) {
-  var package = req.params.package;
-  find_cran_package(package).then(function(x){
+  var pkgname = req.params.package;
+  find_cran_package(pkgname).then(function(x){
     if(!x){
-      find_cran_package(package, 'failure').then(function(y){
+      find_cran_package(pkgname, 'failure').then(function(y){
         if(y){
-          res.status(404).type('text/plain').send(`CRAN package ${package} failed to build on r-universe: ${y._buildurl}`);
+          res.status(404).type('text/plain').send(`CRAN package ${pkgname} failed to build on r-universe: ${y._buildurl}`);
         } else {
-          res.status(404).type('text/plain').send(`Package ${package} not found on CRAN.`);
+          res.status(404).type('text/plain').send(`Package ${pkgname} not found on CRAN.`);
         }
       });
     } else {
@@ -66,7 +68,7 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
 });
 
 router.get('/shared/cranstatus/:package', function(req, res, next) {
-  tools.get_cran_desc(req.params.package).then(function(info){
+  get_cran_desc(req.params.package).then(function(info){
     res.set('Cache-Control', 'max-age=3600, public').send(info);
   }).catch(error_cb(400, next));
 });
@@ -92,8 +94,8 @@ router.get('/shared/mongostatus', function(req, res, next) {
   }).catch(error_cb(400, next))
 });
 
-function find_cran_package(package, type = 'src'){
-  var pkgname = package.toLowerCase();
+function find_cran_package(pkgname, type = 'src'){
+  var pkgname = pkgname.toLowerCase();
   return packages.findOne({_nocasepkg : pkgname, _type : type, _user : 'cran'}).then(function(x){
     if(x) return x;
     /* fallback for packages misssing from the CRAN mirror for whatever reason */
@@ -105,4 +107,4 @@ function find_cran_package(package, type = 'src'){
   });
 }
 
-module.exports = router;
+export default router;

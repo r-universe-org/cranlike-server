@@ -1,13 +1,7 @@
 #!/usr/bin/env node
 
-/**
- * Module dependencies.
- */
-
-var app = require('../app');
-var debug = require('debug')('cranlike:server');
-var http = require('http');
-var dbcon = require('../src/db');
+import http from 'node:http';
+import app from '../app.js';
 
 /* Last resort error handler, that should never happen but somehow it sometimes does.
    We quit because in a case of OOM/DOS, a restart may just be the best solution.
@@ -18,55 +12,20 @@ process.on('uncaughtException', function(err) {
   process.exit(1);
 });
 
-/**
- * Get port from environment and store in Express.
- */
-
-var port = normalizePort(process.env.PORT || '3000');
+var port = parseInt(process.env.PORT || '3000');
 app.set('port', port);
 
-/**
- * Create HTTP server.
- */
-
 var server = http.createServer(app);
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
 
 /**
- * Listen on provided port, on all network interfaces.
+ * This must be greater than the nginx timeout (60s)
+ * https://shuheikagawa.com/blog/2019/04/25/keep-alive-timeout/
  */
-
-dbcon.then(function(){
-  server.listen(port);
-  server.on('error', onError);
-  server.on('listening', onListening);
-
-  /**
-   * This must be greater than the nginx timeout (60s)
-   * https://shuheikagawa.com/blog/2019/04/25/keep-alive-timeout/
-   */
-  server.keepAliveTimeout = 62*1000;
-  server.headersTimeout = 65*1000;
-});
-
-/**
- * Normalize a port into a number, string, or false.
- */
-
-function normalizePort(val) {
-  var port = parseInt(val, 10);
-
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
-
-  if (port >= 0) {
-    // port number
-    return port;
-  }
-
-  return false;
-}
+server.keepAliveTimeout = 62*1000;
+server.headersTimeout = 65*1000;
 
 /**
  * Event listener for HTTP server "error" event.

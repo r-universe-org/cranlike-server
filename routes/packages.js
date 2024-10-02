@@ -1,22 +1,21 @@
 /* Packages */
-const express = require('express');
-const createError = require('http-errors');
-const multer  = require('multer')
-const md5file = require('md5-file');
-const rdesc = require('rdesc-parser');
-const fs = require('fs');
-const zlib = require('zlib');
-const tar = require('tar-stream');
-const crypto = require('node:crypto')
-const dependency_types = require('r-constants').dependency_types;
+import express from 'express';
+import createError from 'http-errors';
+import multer from 'multer';
+import md5file from 'md5-file';
+import rdesc from 'rdesc-parser';
+import fs from 'node:fs';
+import zlib from 'node:zlib';
+import tar from 'tar-stream';
+import crypto from 'node:crypto';
+import rconstants from 'r-constants';
+import {match_macos_arch, trigger_rebuild, trigger_recheck, get_submodule_hash, extract_multi_files} from '../src/tools.js';
+import {packages, bucket, chunks, db} from '../src/db.js';
+import {Buffer} from "node:buffer";
 
 /* Local variables */
 const multerstore = multer({ dest: '/tmp/' });
 const router = express.Router();
-
-/* Local code */
-const tools = require("../src/tools.js");
-const match_macos_arch = tools.match_macos_arch;
 
 /* Error generator */
 function error_cb(status, next) {
@@ -65,8 +64,7 @@ router.get('/:user/packages/:package', function(req, res, next) {
 
 router.get('/:user/packages/:package/:version?/:type?/:built?', function(req, res, next) {
   var user = req.params.user;
-  var package = req.params.package;
-  var query = {_user : user, Package : package};
+  var query = {_user : user, Package : req.params.package};
   if(req.params.version && req.params.version != "any")
     query.Version = req.params.version;
   if(req.params.type)
@@ -78,7 +76,6 @@ router.get('/:user/packages/:package/:version?/:type?/:built?', function(req, re
 
 router.delete('/:user/packages/:package/:version?/:type?/:built?', function(req, res, next){
   var user = req.params.user;
-  var package = req.params.package;
   var query = {_user: req.params.user, Package: req.params.package};
   if(req.params.version && req.params.version != "any")
     query.Version = req.params.version
@@ -150,7 +147,7 @@ function crandb_store_file(stream, key, filename){
   });
 }
 
-function get_filename(package, version, type, distro){
+function get_filename(pkgname, version, type, distro){
   const ext = {
     src : '.tar.gz',
     mac : '.tgz',
@@ -158,14 +155,14 @@ function get_filename(package, version, type, distro){
     wasm: '.tgz',
     linux: `-${distro || "linux"}.tar.gz`
   }
-  return package + "_" + version + ext[type];
+  return pkgname + "_" + version + ext[type];
 }
 
-function validate_description(data, package, version, type){
+function validate_description(data, pkgname, version, type){
   if(['src', 'win', 'mac', 'linux', 'wasm'].indexOf(type) < 0){
     throw "Parameter 'type' must be one of src, win, mac, linux, wasm";
   } 
-  if(data.Package != package || data.Version != version) {
+  if(data.Package != pkgname || data.Version != version) {
     throw 'Package name or version does not match upload';
   }
   if(type == 'src' && data.Built) {
@@ -233,7 +230,7 @@ function parse_builder_fields(x){
 
 function merge_dependencies(x){
   var deps = [];
-  dependency_types.forEach(function(key){
+  rconstants.dependency_types.forEach(function(key){
     if(x[key]){
       deps = deps.concat(x[key].map(function(y){y.role = key; return y;}));
     }
@@ -342,18 +339,18 @@ function add_meta_fields(description, meta){
 
 router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
   var user = req.params.user;
-  var package = req.params.package;
+  var pkgname = req.params.package;
   var version = req.params.version;
   var type = req.params.type;
   var md5 = req.params.md5;
-  var query = {_user : user, _type : type, Package : package};
+  var query = {_user : user, _type : type, Package : pkgname};
   var builder = parse_builder_fields(req.headers) || {};
-  var filename = get_filename(package, version, type, builder.distro);
+  var filename = get_filename(pkgname, version, type, builder.distro);
   crandb_store_file(req, md5, filename).then(function(filedata){
     if(type == 'src'){
-      var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': package});
-      var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
-      var p3 = packages.find({_type: 'src', Package: package, _indexed: true}).project({_user:1}).next();
+      var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
+      var p2 = extract_json_metadata(bucket.openDownloadStream(md5), pkgname);
+      var p3 = packages.find({_type: 'src', Package: pkgname, _indexed: true}).project({_user:1}).next();
       return Promise.all([filedata, p1, p2, p3]);
     } else {
       return [filedata];
@@ -372,7 +369,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       description['_published'] = new Date();
       add_meta_fields(description, builder);
       merge_dependencies(description);
-      validate_description(description, package, version, type);
+      validate_description(description, pkgname, version, type);
       description['_owner'] = get_repo_owner(description._upstream);
       description['_selfowned'] = is_self_owned(description);
       if(type == "src"){
@@ -380,10 +377,10 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
         add_meta_fields(description, headerdata); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
-        description['_nocasepkg'] = package.toLowerCase();
+        description['_nocasepkg'] = pkgname.toLowerCase();
         set_universes(description);
         if(description['_indexed'] === false && canonical){
-          description['_indexurl'] = `https://${canonical['_user']}.r-universe.dev/${package}`;
+          description['_indexurl'] = `https://${canonical['_user']}.r-universe.dev/${pkgname}`;
         }
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
@@ -404,7 +401,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
         return packages.insertOne(description);
       }).then(function(){
         if(type === 'src'){
-          return packages.deleteMany({_type : 'failure', _user : user, Package : package});
+          return packages.deleteMany({_type : 'failure', _user : user, Package : pkgname});
         }
       }).then(() => res.send(description));  
     }).catch(function(e){
@@ -415,9 +412,8 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
 
 router.post('/:user/packages/:package/:version/update', multerstore.none(), function(req, res, next) {
   var user = req.params.user;
-  var package = req.params.package;
   var version = req.params.version;
-  var query = {_type : 'src', _user : user, Package : package, Version: version};
+  var query = {_type : 'src', _user : user, Package : req.params.package, Version: version};
   var payload = req.body;
   Promise.resolve().then(function(){
     var fields = Object.keys(payload);
@@ -429,18 +425,18 @@ router.post('/:user/packages/:package/:version/update', multerstore.none(), func
 
 router.post('/:user/packages/:package/:version/failure', multerstore.none(), function(req, res, next) {
   var user = req.params.user;
-  var package = req.params.package;
+  var pkgname = req.params.package;
   var version = req.params.version;
   var builder = parse_builder_fields(req.body);
   var maintainer = `${builder.maintainer.name} <${builder.maintainer.email}>`;
-  var query = {_type : 'failure', _user : user, Package : package};
+  var query = {_type : 'failure', _user : user, Package : pkgname};
   var description = {...query, Version: version, Maintainer: maintainer, _published: new Date()};
   add_meta_fields(description, builder);
   description['_created'] = new Date();
   description['_owner'] = get_repo_owner(description._upstream);
   description['_selfowned'] = description._owner === user;
   description['_universes'] = [user]; //show failures in dashboard
-  description['_nocasepkg'] = package.toLowerCase();
+  description['_nocasepkg'] = pkgname.toLowerCase();
   packages.findOneAndReplace(query, description, {upsert: true})
     .then(() => res.send(description))
     .catch(error_cb(400, next))
@@ -451,10 +447,10 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
     return next(createError(400, "Missing parameter 'file' in upload"));
   }
   var user = req.params.user;
-  var package = req.params.package;
+  var pkgname = req.params.package;
   var version = req.params.version;
   var type = req.params.type;
-  var query = {_user : user, _type : type, Package : package};
+  var query = {_user : user, _type : type, Package : pkgname};
   var filepath = req.files.file[0].path;
   var filename = req.files.file[0].originalname;
   var md5 = md5file.sync(filepath);
@@ -462,8 +458,8 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
   var stream = fs.createReadStream(filepath);
   crandb_store_file(stream, md5, filename).then(function(filedata){
     if(type == 'src'){
-      var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': package});
-      var p2 = extract_json_metadata(bucket.openDownloadStream(md5), package);
+      var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
+      var p2 = extract_json_metadata(bucket.openDownloadStream(md5), pkgname);
       return Promise.all([filedata, p1, p2]);
     } else {
       return [filedata];
@@ -481,7 +477,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
       description['_published'] = new Date();
       add_meta_fields(description, builder);
       merge_dependencies(description);
-      validate_description(description, package, version, type);
+      validate_description(description, pkgname, version, type);
       description['_owner'] = get_repo_owner(description._upstream);
       description['_selfowned'] = is_self_owned(description);
       if(type == "src"){
@@ -489,7 +485,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
         add_meta_fields(description, headerdata); //contents.json
         description['_score'] = calculate_score(description);
         description['_indexed'] = is_indexed(description);
-        description['_nocasepkg'] = package.toLowerCase();
+        description['_nocasepkg'] = pkgname.toLowerCase();
         set_universes(description);
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
@@ -510,7 +506,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
         return packages.insertOne(description);
       }).then(function(){
         if(type === 'src'){
-          return packages.deleteMany({_type : 'failure', _user : user, Package : package});
+          return packages.deleteMany({_type : 'failure', _user : user, Package : pkgname});
         }
       }).then(() => res.send(description));
     }).catch(function(e){
@@ -524,13 +520,13 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
 /* HTTP PATCH does not require authentication, so this API is public */
 router.patch('/:user/packages/:package/:version/:type', function(req, res, next) {
   var user = req.params.user;
-  var package = req.params.package;
+  var pkgname = req.params.package;
   var version = req.params.version;
   var type = req.params.type || 'src'
-  var query = {_user : user, _type : type, Package : package, Version: version};
+  var query = {_user : user, _type : type, Package : pkgname, Version: version};
   packages.find(query).next().then(function(doc){
     if(!doc) {
-      throw `Failed to find package ${package} ${version} in ${user}`;
+      throw `Failed to find package ${pkgname} ${version} in ${user}`;
     }
     const now = new Date();
     /* Try to prevent hammering of the GH API. However note that the _rebuild_pending field
@@ -539,13 +535,13 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
     if(rebuild){
       const minutes = (now - rebuild) / 60000;
       if(minutes < 60){
-        res.status(429).send(`A rebuild of ${package} ${version} was already triggered ${Math.round(minutes)} minutes ago.`);
+        res.status(429).send(`A rebuild of ${pkgname} ${version} was already triggered ${Math.round(minutes)} minutes ago.`);
         return;
       }
     }
     var buildurl = doc._buildurl;
     if(!buildurl) {
-      throw `Failed to find _buildurl in ${package} ${version}`;
+      throw `Failed to find _buildurl in ${pkgname} ${version}`;
     }
     const pattern = new RegExp('https://github.com/(r-universe/.*/actions/runs/[0-9]+)');
     const match = buildurl.match(pattern);
@@ -553,12 +549,12 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
       throw 'Did not recognize github action url'
     }
     const run_path = match[1];
-    return tools.get_submodule_hash(user, package).then(function(sha){
+    return get_submodule_hash(user, pkgname).then(function(sha){
       if(sha !== doc._commit.id){
-        throw `Build version of ${package} not match ${user} monorepo. Package may have been updated or removed in the mean time.` +
+        throw `Build version of ${pkgname} not match ${user} monorepo. Package may have been updated or removed in the mean time.` +
           `\nUpstream: ${sha}\nThis build: ${doc._commit.id}`
       }
-      return tools.trigger_rebuild(run_path).then(function(){
+      return trigger_rebuild(run_path).then(function(){
         return packages.updateOne(
           { _id: doc['_id'] },
           { "$set": {"_rebuild_pending": now }}
@@ -585,7 +581,7 @@ router.patch("/:user/api/recheck/:target",function(req, res, next) {
       var minutes = (doc['_recheck_date'] - now) / 60000;
       return res.status(429).send(`A recheck of ${doc.Package} was already triggered ${Math.round(minutes)} minutes ago.`);
     }
-    return tools.trigger_recheck(doc._user, doc.Package).then(function(){
+    return trigger_recheck(doc._user, doc.Package).then(function(){
       return packages.updateOne(
         { _id: doc['_id'] },
         { "$set": {"_recheck_date": now }}
@@ -599,8 +595,7 @@ router.patch("/:user/api/recheck/:target",function(req, res, next) {
 /* This API is called by the CI to update the status */
 router.post("/:user/api/recheck/:package",function(req, res, next) {
   var user = req.params.user;
-  var package = req.params.package;
-  var query = {_user : user, _type : 'src', Package: package};
+  var query = {_user : user, _type : 'src', Package: req.params.package};
   return packages.find(query).next().then(function(doc){
     return packages.updateOne(
       { _id: doc['_id'] },
@@ -635,10 +630,10 @@ router.post('/:user/api/reindex', function(req, res, next) {
   });
 });
 
-function extract_json_metadata(input, package){
-  return tools.extract_multi_files(input, [`${package}/extra/contents.json`]).then(function([contents]){
+function extract_json_metadata(input, pkgname){
+  return extract_multi_files(input, [`${pkgname}/extra/contents.json`]).then(function([contents]){
     if(!contents){
-      throw `Source package did not contain ${package}/extra/contents.json`;
+      throw `Source package did not contain ${pkgname}/extra/contents.json`;
     }
     var metadata = JSON.parse(contents);
     if(!metadata.assets){
@@ -651,4 +646,4 @@ function extract_json_metadata(input, package){
   });
 }
 
-module.exports = router;
+export default router;

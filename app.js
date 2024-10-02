@@ -1,21 +1,20 @@
 /* Express template stuff */
-var createError = require('http-errors');
-var express = require('express');
-var cors = require('cors')
-var path = require('path');
-var logger = require('morgan');
+import createError from 'http-errors';
+import logger from 'morgan';
+import express from 'express';
+import cors from 'cors';
 
 /* Routers */
-var cdnRouter = require('./routes/cdn');
-var packagesRouter = require('./routes/packages');
-var reposRouter = require('./routes/repos');
-var searchRouter = require('./routes/search');
-var badgesRouter = require('./routes/badges');
-var feedsRouter = require('./routes/feeds');
-var sharedRouter = require('./routes/shared');
-var snapshotRouter = require('./routes/snapshot');
-var v2Router = require('./routes/v2');
-var webrRouter = require('./routes/webr');
+import cdnRouter from './routes/cdn.js';
+import packagesRouter from './routes/packages.js';
+import reposRouter from './routes/repos.js';
+import searchRouter from './routes/search.js';
+import badgesRouter from './routes/badges.js';
+import feedsRouter from './routes/feeds.js';
+import sharedRouter from './routes/shared.js';
+import snapshotRouter from './routes/snapshot.js';
+import v2Router from './routes/v2.js';
+import webrRouter from './routes/webr.js';
 
 /* Start App */
 var app = express();
@@ -24,14 +23,14 @@ var app = express();
 app.set('json spaces', 2)
 
 // view engine setup
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', 'views');
 app.set('view engine', 'pug');
 
 app.use(cors())
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/assets', express.static('assets'));
 app.use('/', cdnRouter);
 app.use('/', packagesRouter);
 app.use('/', reposRouter);
@@ -58,4 +57,4 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-module.exports = app;
+export default app;

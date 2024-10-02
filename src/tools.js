@@ -1,16 +1,18 @@
 /* dummy token for GH api limits */
-const tar = require('tar-stream');
-const gunzip = require('gunzip-maybe');
-const mime = require('mime');
-const path = require('path');
+import tar from 'tar-stream';
+import gunzip from 'gunzip-maybe';
+import mime from 'mime';
+import {packages, bucket} from '../src/db.js';
+import {Buffer} from "node:buffer";
+import process from "node:process";
 
 /* Fields included in PACKAGES indices */
-const pkgfields = {_id: 1, _type:1, _dependencies: 1, Filesize: '$_filesize', Distro: '$_distro',
+export const pkgfields = {_id: 1, _type:1, _dependencies: 1, Filesize: '$_filesize', Distro: '$_distro',
   Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
   NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
   OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
 
-function qf(x, query_by_user_or_maintainer){
+export function qf(x, query_by_user_or_maintainer){
   const user = x._user;
   if(user == ":any"){
     delete x._user;
@@ -39,7 +41,7 @@ function fetch_github(url, opt = {}){
 }
 
 /* true if we either have packages in the db, or an upstream monorepo exists */
-function test_if_universe_exists(user){
+export function test_if_universe_exists(user){
   if(user === ':any') return Promise.resolve(true);
   const url = 'https://github.com/r-universe/' + user;
   return packages.findOne({'_universes': user}).then(function(x){
@@ -58,12 +60,12 @@ function find_by_query(query){
   });
 }
 
-function get_registry_info(user){
+export function get_registry_info(user){
   const url = 'https://api.github.com/repos/r-universe/' + user + '/actions/workflows/sync.yml/runs?per_page=1&status=completed';
   return fetch_github(url);
 }
 
-function get_submodule_hash(user, submodule){
+export function get_submodule_hash(user, submodule){
   const url = `https://api.github.com/repos/r-universe/${user}/git/trees/HEAD`
   return fetch_github(url).then(function(data){
     var info = data.tree.find(file => file.path == submodule);
@@ -73,7 +75,7 @@ function get_submodule_hash(user, submodule){
   });
 }
 
-function trigger_rebuild(run_path){
+export function trigger_rebuild(run_path){
   const rebuild_token = process.env.REBUILD_TOKEN;
   if(!rebuild_token)
     throw "No rebuild_token available";
@@ -84,12 +86,12 @@ function trigger_rebuild(run_path){
   });
 }
 
-function trigger_recheck(user, package, which = 'strong'){
+export function trigger_recheck(user, pkg, which = 'strong'){
   const rebuild_token = process.env.REBUILD_TOKEN;
   if(!rebuild_token)
     throw "No rebuild_token available";
   const url = `https://api.github.com/repos/r-universe/${user}/actions/workflows/recheck.yml/dispatches`;
-  const params = {ref: 'master', inputs: {package: package, which: which}};
+  const params = {ref: 'master', inputs: {package: pkg, which: which}};
   return fetch_github(url, {
     method: 'POST',
     body: JSON.stringify(params),
@@ -99,7 +101,7 @@ function trigger_recheck(user, package, which = 'strong'){
 
 function parse_description(desc){
   var fields = desc.replace(/\n[\t ]+/g, ' ').split("\n")
-  var package = fields.find(x => x.match(/^Package:/i));
+  var pkg = fields.find(x => x.match(/^Package:/i));
   var version = fields.find(x => x.match(/^Version:/i));
   var date = fields.find(x => x.match(/^Date\/Publication:/i));
   var urls = fields.find(x => x.match(/^URL:/i));
@@ -109,7 +111,7 @@ function parse_description(desc){
     .map(x => x.replace('http://', 'https://'))
     .map(x => x.replace(/#.*/, ''));
   return {
-    package: package ? package.substring(9) : "parse failure",
+    package: pkg ? pkg.substring(9) : "parse failure",
     version: version ? version.substring(9) : "parse failure",
     date: date ? date.substring(18) : "parse failure",
     urls: [...new Set(urlarray.map(x => x.replace(/\/issues$/, "")))]
@@ -130,17 +132,17 @@ function get_cran_url(path){
   });
 }
 
-function get_cran_desc(package){
-  return get_cran_url(`/web/packages/${package}/DESCRIPTION`).then(function(response){
+export function get_cran_desc(pkg){
+  return get_cran_url(`/web/packages/${pkg}/DESCRIPTION`).then(function(response){
     if (response.ok) {
       return response.text().then(parse_description);
     } else if(response.status == 404) {
-      return get_cran_url(`/src/contrib/Archive/${package}/`).then(function(res2){
+      return get_cran_url(`/src/contrib/Archive/${pkg}/`).then(function(res2){
         if(res2.ok){
-          return {package:package, version: "archived"};
+          return {package:pkg, version: "archived"};
         }
         if(res2.status == 404){
-          return {package:package, version: null};
+          return {package:pkg, version: null};
         }
       });
     }
@@ -175,7 +177,7 @@ function pipe_everything_to(stream, output) {
   });
 }
 
-function send_extracted_file(query, filename, req, res){
+export function send_extracted_file(query, filename, req, res){
   return find_by_query(query).then(function(hash){
     var etag = etagify(hash);
     if(etag === req.header('If-None-Match')){
@@ -223,7 +225,7 @@ function send_file_from_tar(input, res, filename){
   });
 }
 
-function extract_multi_files(input, files){
+export function extract_multi_files(input, files){
   var output = Array(files.length);
   return new Promise(function(resolve, reject) {
     function process_entry(header, filestream, next_entry) {
@@ -249,7 +251,7 @@ function extract_multi_files(input, files){
   });
 }
 
-function get_extracted_file_multi(query, files){
+export function get_extracted_file_multi(query, files){
   return find_by_query(query).then(function(hash){
     return extract_multi_files(bucket.openDownloadStream(hash), files).then(function(buffers){
       files.forEach(function(x, i){
@@ -262,11 +264,11 @@ function get_extracted_file_multi(query, files){
   });
 }
 
-function get_extracted_file(query, filename){
+export function get_extracted_file(query, filename){
   return get_extracted_file_multi(query, [filename]).then(x => x[0]);
 }
 
-function tar_index_files(input){
+export function tar_index_files(input){
   let files = [];
   let extract = tar.extract({allowUnknownFormat: true});
   return new Promise(function(resolve, reject) {
@@ -350,7 +352,7 @@ function unpack_deps(x){
   return x;
 }
 
-function doc_to_dcf(doc){
+export function doc_to_dcf(doc){
   var x = unpack_deps(doc);
   delete x['_id'];
   delete x['_type'];
@@ -366,7 +368,7 @@ function doc_to_dcf(doc){
   }).join("\n") + "\n\n";
 }
 
-function group_package_data(docs){
+export function group_package_data(docs){
   var src = docs.find(x => x['_type'] == 'src');
   var failure = docs.find(x => x['_type'] == 'failure');
   if(!src){
@@ -405,7 +407,7 @@ function group_package_data(docs){
 }
 
 /* Use negative match, because on packages without compiled code Built.Platform is empty */
-function match_macos_arch(platform){
+export function match_macos_arch(platform){
   if(platform.match("arm64|aarch64")){
     return {$not : /x86_64/};
   }
@@ -415,24 +417,6 @@ function match_macos_arch(platform){
   throw `Unknown platform: ${platform}`;
 }
 
-module.exports = {
-  qf: qf,
-  group_package_data: group_package_data,
-  pkgfields: pkgfields,
-  send_extracted_file : send_extracted_file,
-  extract_multi_files: extract_multi_files,
-  get_extracted_file: get_extracted_file,
-  get_extracted_file_multi: get_extracted_file_multi,
-  tar_index_files : tar_index_files,
-  test_if_universe_exists : test_if_universe_exists,
-  get_registry_info : get_registry_info,
-  get_submodule_hash : get_submodule_hash,
-  trigger_rebuild : trigger_rebuild,
-  trigger_recheck : trigger_recheck,
-  get_cran_desc : get_cran_desc,
-  doc_to_dcf : doc_to_dcf,
-  match_macos_arch : match_macos_arch
-};
 
 /* Tests
 get_cran_desc("curl").then(console.log)

@@ -1,12 +1,12 @@
-const express = require('express');
-const createError = require('http-errors');
-const zlib = require('zlib');
+import express from 'express';
+import createError from 'http-errors';
+import zlib from 'node:zlib';
+import archiver from 'archiver';
+import path from 'node:path';
+import {pkgfields, doc_to_dcf, get_extracted_file} from '../src/tools.js';
+import {packages, bucket} from '../src/db.js';
+
 const router = express.Router();
-const archiver = require('archiver');
-const path = require('node:path');
-const tools = require("../src/tools.js");
-const pkgfields = tools.pkgfields;
-const doc_to_dcf = tools.doc_to_dcf;
 
 function error_cb(status, next) {
   return function(err){
@@ -60,7 +60,6 @@ function packages_snapshot(files, archive, types){
   var indexes = {};
   var promises = [];
   files.forEach(function(x){
-    var package = x.Package;
     var date = x._created;
     if(types.includes(x._type)){
       var hash = x.MD5sum;
@@ -81,10 +80,10 @@ function packages_snapshot(files, archive, types){
   /* Extract html manual pages. This is a bit slower so doing this last */
   if(types.includes('docs')){
     files.filter(x => x._type == 'src').forEach(function(x){
-      var package = x.Package;
+      var pkgname = x.Package;
       var date = x._created;
-      promises.push(tools.get_extracted_file({_id: x._id}, `${package}/extra/${package}.html`).then(function(buf){
-        return archive.append(buf, { name: `docs/${package}.html`, date: date });
+      promises.push(get_extracted_file({_id: x._id}, `${pkgname}/extra/${pkgname}.html`).then(function(buf){
+        return archive.append(buf, { name: `docs/${pkgname}.html`, date: date });
       }).catch(err => console.log(err)));
     });
   }
@@ -132,4 +131,4 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
   }).catch(error_cb(400, next));
 });
 
-module.exports = router;
+export default router;

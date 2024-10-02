@@ -1,8 +1,10 @@
-const express = require('express');
-const createError = require('http-errors');
-const badgen = require('badgen');
+import express from 'express';
+import createError from 'http-errors';
+import badgen from 'badgen';
+import {test_if_universe_exists, get_registry_info} from '../src/tools.js';
+import {packages} from '../src/db.js';
+
 const router = express.Router();
-const tools = require("../src/tools.js");
 
 function error_cb(status, next) {
   return function(err){
@@ -28,7 +30,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
     style: req.query.style,
     scale: req.query.scale
   };
-  tools.test_if_universe_exists(user).then(function(x){
+  test_if_universe_exists(user).then(function(x){
     var meta = req.params.meta;
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
     if(meta == 'name'){
@@ -51,7 +53,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
       });
     } else if(meta == 'registry'){
       /* This badge mimics https://github.com/r-universe/jeroen/actions/workflows/sync.yml/badge.svg (which is super slow) */
-        return tools.get_registry_info(user).then(function(data){
+        return get_registry_info(user).then(function(data){
           if(data && data.workflow_runs && data.workflow_runs.length){
             const success = data.workflow_runs[0].conclusion == 'success';
             const linkto = 'https://github.com/r-universe/' + user + '/actions/workflows/sync.yml';
@@ -71,7 +73,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
 
 router.get('/:user/badges/:package', function(req, res, next) {
   var user = req.params.user;
-  var package = req.params.package;
+  var pkg = req.params.package;
   var color = req.query.color;
   var badge = {
     label: 'r-universe',
@@ -81,13 +83,13 @@ router.get('/:user/badges/:package', function(req, res, next) {
     scale: req.query.scale
   };
   //badge.icon = 'data:image/svg+xml;base64,...';
-  packages.distinct('Version', {_user : user, Package : package, _type: 'src', '_registered' : true}).then(function(x){
+  packages.distinct('Version', {_user : user, Package : pkg, _type: 'src', '_registered' : true}).then(function(x){
     if(x.length){
       badge.status = x.join("|");
       badge.color = color || 'green';
     }
-    send_badge(badge, user, res, `https://${user}.r-universe.dev/${package}`);
+    send_badge(badge, user, res, `https://${user}.r-universe.dev/${pkg}`);
   }).catch(error_cb(400, next));
 });
 
-module.exports = router;
+export default router;
