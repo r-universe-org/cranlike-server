@@ -1,5 +1,6 @@
 /* Database */
 import {MongoClient, GridFSBucket} from 'mongodb';
+import process from "node:process";
 
 const HOST = process.env.CRANLIKE_MONGODB_SERVER || '127.0.0.1';
 const PORT = process.env.CRANLIKE_MONGODB_PORT || 27017;
