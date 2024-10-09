@@ -107,7 +107,7 @@ function parse_description(desc){
   var urls = fields.find(x => x.match(/^URL:/i));
   var bugreports = fields.find(x => x.match(/^BugReports:/i));
   var strings = `${urls} ${bugreports}`.trim().split(/[,\s]+/);
-  var urlarray = strings.filter(x => x.match("https?://.*(github|gitlab|bitbucket)"))
+  var urlarray = strings.filter(x => x.match("https?://.*(github|gitlab|bitbucket|codeberg)"))
     .map(x => x.replace('http://', 'https://'))
     .map(x => x.replace(/#.*/, ''));
   return {
