@@ -131,10 +131,10 @@ function count_by_built(user, type){
 }
 
 function query_stream_info(query){
-  return packages.findOne(query, {project: {MD5sum: 1, Redirect: 1}}).then(function(docs){
+  return packages.findOne(query, {project: {_fileid: 1, Redirect: 1}}).then(function(docs){
     if(!docs)
       throw 'Package not found for query: ' + JSON.stringify(query);
-    var hash = docs.MD5sum;
+    var hash = docs._fileid;
     return bucket.find({_id: hash}, {limit:1}).next().then(function(x){
       if (!x)
         throw `Failed to locate file in gridFS: ${hash}`;

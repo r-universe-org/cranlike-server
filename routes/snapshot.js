@@ -62,7 +62,7 @@ function packages_snapshot(files, archive, types){
   files.forEach(function(x){
     var date = x._created;
     if(types.includes(x._type)){
-      var hash = x.MD5sum;
+      var hash = x._fileid;
       var filename = make_filename(x);
       var dirname = path.dirname(filename);
       if(!indexes[dirname])

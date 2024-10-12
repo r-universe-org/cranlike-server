@@ -27,7 +27,7 @@ if(process.env.REBUILD_INDEXES){
 async function rebuild_indexes(){
   //print (or drop) indexes
   var indexes = await packages.indexes();
-  for (x of indexes) {
+  for (let x of indexes) {
     if (x.name == '_id_') continue;
     console.log("Dropping index: " + x.name);
     await packages.dropIndex(x.name).catch(console.log);
@@ -35,8 +35,8 @@ async function rebuild_indexes(){
 
   /* Speed up common query fields */
   /* NB: Dont use indexes with low cardinality (few unique values) */
-  await packages.createIndex("MD5sum");
   await packages.createIndex("Package");
+  await packages.createIndex("_fileid");
   await packages.createIndex("_user");
   await packages.createIndex("_published");
   await packages.createIndex("_nocasepkg");
@@ -89,4 +89,5 @@ async function rebuild_indexes(){
   });
   var indexes = await packages.indexes();
   console.log(indexes.map(x => x.name));
+  console.log("rebuild_indexes complete!")
 }

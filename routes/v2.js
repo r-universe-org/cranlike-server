@@ -190,7 +190,7 @@ router.get('/:user/:package/doc', function(req, res, next){
   return packages.find(query, {limit:1}).sort({"_created" : -1}).next().then(function(x){
     if(!x)
       throw `Package ${query.Package} not found in ${query['_user']}`;
-    return tar_index_files(bucket.openDownloadStream(x.MD5sum));
+    return tar_index_files(bucket.openDownloadStream(x._fileid));
   }).then(function(index){
     var output = [];
     index.files.forEach(function(x){

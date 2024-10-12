@@ -7,8 +7,8 @@ import {Buffer} from "node:buffer";
 import process from "node:process";
 
 /* Fields included in PACKAGES indices */
-export const pkgfields = {_id: 1, _type:1, _dependencies: 1, Filesize: '$_filesize', Distro: '$_distro',
-  Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
+export const pkgfields = {_id: 1, _type:1, _fileid:1, _dependencies: 1, Filesize: '$_filesize', Distro: '$_distro',
+  SHA256: '$_sha256', Package: 1, Version: 1, Depends: 1, Suggests: 1, License: 1,
   NeedsCompilation: 1, Imports: 1, LinkingTo: 1, Enhances: 1, License_restricts_use: 1,
   OS_type: 1, Priority: 1, License_is_FOSS: 1, Archs: 1, Path: 1, MD5sum: 1, Built: 1};
 
@@ -56,7 +56,7 @@ function find_by_query(query){
   return packages.findOne(query, {sort: {'_id': -1}}).then(function(x){
     if(!x)
       throw `Package ${query.Package} not found in ${query['_user']}`;
-    return x.MD5sum;
+    return x._fileid;
   });
 }
 
@@ -355,6 +355,7 @@ function unpack_deps(x){
 export function doc_to_dcf(doc){
   var x = unpack_deps(doc);
   delete x['_id'];
+  delete x['_fileid'];
   delete x['_type'];
   delete x['Distro'];
   let keys = Object.keys(x);

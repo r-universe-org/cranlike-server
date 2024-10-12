@@ -26,28 +26,29 @@ function error_cb(status, next) {
 }
 
 //Remove file from bucket if there are no more references to it
-function delete_file(MD5sum){
-  return packages.findOne({MD5sum : MD5sum}).then(function(doc){
+function delete_file(key){
+  return packages.findOne({_fileid : key}).then(function(doc){
     if(doc){
-      console.log("Found other references, not deleting file: " + MD5sum);
+      console.log("Found other references, not deleting file: " + key);
     } else {
-      return bucket.delete(MD5sum).then(function(){
-        console.log("Deleted file " + MD5sum);
+      return bucket.delete(key).then(function(){
+        console.log("Deleted file " + key);
       });
     }
   });
 }
 
-function delete_doc(doc, keep_file_md5){
+function delete_doc(doc, keep_file_id){
+  if(!doc._fileid) throw "Calling delete_doc without doc._fileid";
   return packages.deleteOne({_id: doc['_id']}).then(function(){
-    if(doc.MD5sum !== keep_file_md5){
-      return delete_file(doc.MD5sum).then(()=>doc);
+    if(doc._fileid !== keep_file_id){
+      return delete_file(doc._fileid).then(()=>doc);
     }
   });
 }
 
 function delete_by_query(query){
-  return packages.find(query).project({_id:1, MD5sum:1, Package:1, Version:1}).toArray().then(function(docs){
+  return packages.find(query).project({_id:1, _fileid:1, Package:1, Version:1}).toArray().then(function(docs){
     return Promise.all(docs.map(delete_doc));
   });
 }
@@ -121,6 +122,7 @@ function store_stream_file(stream, key, filename){
       });
     });
     pipe.on('finish', function(){
+      /* Right now we still assume the uploader uses md5 keys */
       db.command({filemd5: key, root: "files"}).then(function(check){
         if(check.md5 != key) {
           bucket.delete(key).finally(function(){
@@ -128,7 +130,7 @@ function store_stream_file(stream, key, filename){
             reject("md5 did not match key");
           });
         } else {
-          resolve({_id: key, length: upload.length, sha256: hash.digest('hex')});
+          resolve({_id: key, length: upload.length, md5: check.md5, sha256: hash.digest('hex')});
         }
       });
     });
@@ -337,19 +339,19 @@ function add_meta_fields(description, meta){
   }
 }
 
-router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, next){
+router.put('/:user/packages/:package/:version/:type/:key', function(req, res, next){
   var user = req.params.user;
   var pkgname = req.params.package;
   var version = req.params.version;
   var type = req.params.type;
-  var md5 = req.params.md5;
+  var key = req.params.key;
   var query = {_user : user, _type : type, Package : pkgname};
   var builder = parse_builder_fields(req.headers) || {};
   var filename = get_filename(pkgname, version, type, builder.distro);
-  crandb_store_file(req, md5, filename).then(function(filedata){
+  crandb_store_file(req, key, filename).then(function(filedata){
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
-      var p2 = extract_json_metadata(bucket.openDownloadStream(md5), pkgname);
+      var p2 = extract_json_metadata(bucket.openDownloadStream(key), pkgname);
       var p3 = packages.find({_type: 'src', Package: pkgname, _indexed: true}).project({_user:1}).next();
       return Promise.all([filedata, p1, p2, p3]);
     } else {
@@ -357,8 +359,8 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
     }
   }).then(function([filedata, usedby, headerdata, canonical]){
     //console.log(`Successfully stored file ${filename} with ${runrevdeps} runreveps`);
-    return read_description(bucket.openDownloadStream(md5)).then(function(description){
-      description['MD5sum'] = md5;
+    return read_description(bucket.openDownloadStream(key)).then(function(description){
+      description['MD5sum'] = filedata.md5;
       description['_user'] = user;
       description['_type'] = type;
       description['_file'] = filename;
@@ -388,7 +390,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
       if(type == 'mac' && description.Built.Platform){
         query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
-      return packages.find(query).project({_id:1, MD5sum:1, Version: 1}).toArray().then(function(docs){
+      return packages.find(query).project({_id:1, _fileid:1, Version: 1}).toArray().then(function(docs){
         if(docs.length > 1)
           console.log(`WARNING: deleting duplicates for ${JSON.stringify(query)}`);
         if(docs.length > 3)
@@ -396,7 +398,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
         var previous = docs[0];
         if(previous && (previous.Version !== description.Version))
           description._previous = previous.Version;
-        return Promise.all(docs.map(x => delete_doc(x, md5)));
+        return Promise.all(docs.map(x => delete_doc(x, key)));
       }).then(function(x){
         return packages.insertOne(description);
       }).then(function(){
@@ -405,7 +407,7 @@ router.put('/:user/packages/:package/:version/:type/:md5', function(req, res, ne
         }
       }).then(() => res.send(description));  
     }).catch(function(e){
-      return delete_file(md5).then(()=>{throw e});
+      return delete_file(key).then(()=>{throw e});
     });
   }).catch(error_cb(400, next));
 });
@@ -453,20 +455,20 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
   var query = {_user : user, _type : type, Package : pkgname};
   var filepath = req.files.file[0].path;
   var filename = req.files.file[0].originalname;
-  var md5 = md5file.sync(filepath);
+  var key = md5file.sync(filepath);
   var builder = parse_builder_fields(req.body);
   var stream = fs.createReadStream(filepath);
-  crandb_store_file(stream, md5, filename).then(function(filedata){
+  crandb_store_file(stream, key, filename).then(function(filedata){
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
-      var p2 = extract_json_metadata(bucket.openDownloadStream(md5), pkgname);
+      var p2 = extract_json_metadata(bucket.openDownloadStream(key), pkgname);
       return Promise.all([filedata, p1, p2]);
     } else {
       return [filedata];
     }
   }).then(function([filedata, usedby, headerdata]){
-    return read_description(bucket.openDownloadStream(md5)).then(function(description){
-      description['MD5sum'] = md5;
+    return read_description(bucket.openDownloadStream(key)).then(function(description){
+      description['MD5sum'] = filedata.md5;
       description['_user'] = user;
       description['_type'] = type;
       description['_file'] = filename;
@@ -493,7 +495,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
       if(type == 'mac' && description.Built.Platform){
         query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
-      return packages.find(query).project({_id:1, MD5sum:1, Version: 1}).toArray().then(function(docs){
+      return packages.find(query).project({_id:1, _fileid:1, Version: 1}).toArray().then(function(docs){
         if(docs.length > 1)
           console.log(`WARNING: deleting duplicates for ${JSON.stringify(query)}`);
         if(docs.length > 3)
@@ -501,7 +503,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
         var previous = docs[0];
         if(previous && (previous.Version !== description.Version))
           description._previous = previous.Version;
-        return Promise.all(docs.map(x => delete_doc(x, md5)));
+        return Promise.all(docs.map(x => delete_doc(x, key)));
       }).then(function(x){
         return packages.insertOne(description);
       }).then(function(){
@@ -510,7 +512,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
         }
       }).then(() => res.send(description));
     }).catch(function(e){
-      return delete_file(md5).then(()=>{throw e});
+      return delete_file(key).then(()=>{throw e});
     });
   }).catch(error_cb(400, next)).then(function(){
     fs.unlink(filepath, () => console.log("Deleted tempfile: " + filepath));
