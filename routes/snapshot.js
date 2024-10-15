@@ -42,7 +42,7 @@ function make_filename(doc){
   }
   if(type == 'mac'){
     //TODO: copy universal binaries to arm64 dir too?
-    var arch = doc.Built.Platform.match("arm64|aarch64") ? 'arm64' : 'x86_64';
+    var arch = doc.Built.Platform.match("x86_64") ? 'x86_64' : 'arm64';
     var distro = built == '4.2' ? 'macosx' : `macosx/big-sur-${arch}`;
     return `bin/${distro}/contrib/${built}/${doc.Package}_${doc.Version}.tgz`;
   }
@@ -56,46 +56,41 @@ function make_filename(doc){
   throw `Unsupported type: ${type}`;
 }
 
-function packages_snapshot(files, archive, types){
+async function packages_snapshot(files, archive, types){
   var indexes = {};
-  var promises = [];
-  files.forEach(function(x){
-    var date = x._created;
+  for (var x of files){
     if(types.includes(x._type)){
+      var date = x._created;
       var hash = x._fileid;
       var filename = make_filename(x);
       var dirname = path.dirname(filename);
       if(!indexes[dirname])
         indexes[dirname] = [];
       indexes[dirname].push(x);
-      promises.push(bucket.find({_id: hash}, {limit:1}).next().then(function(x){
-        if (!x)
-          throw `Failed to locate file in gridFS: ${hash}`;
-        var input = bucket.openDownloadStream(x['_id']);
-        return archive.append(input, { name: filename, date: date });
-      }));
+      var x = await bucket.find({_id: hash}, {limit:1}).next();
+      if (!x)
+        throw `Failed to locate file in gridFS: ${hash}`;
+      var input = bucket.openDownloadStream(x['_id']);
+      archive.append(input, { name: filename, date: date });
     }
-  });
+  };
 
   /* Extract html manual pages. This is a bit slower so doing this last */
   if(types.includes('docs')){
-    files.filter(x => x._type == 'src').forEach(function(x){
+    for (var x of files.filter(x => x._type == 'src')){
       var pkgname = x.Package;
       var date = x._created;
-      promises.push(get_extracted_file({_id: x._id}, `${pkgname}/extra/${pkgname}.html`).then(function(buf){
-        return archive.append(buf, { name: `docs/${pkgname}.html`, date: date });
-      }).catch(err => console.log(err)));
-    });
+      var buf = await get_extracted_file({_id: x._id}, `${pkgname}/extra/${pkgname}.html`);
+      archive.append(buf, { name: `docs/${pkgname}.html`, date: date });
+    };
   }
 
   /* Generate index files */
   for (const [path, files] of Object.entries(indexes)) {
     var packages = files.map(doc_to_dcf).join('');
-    promises.push(archive.append(packages, { name: `${path}/PACKAGES` }));
-    promises.push(archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz` }));
+    archive.append(packages, { name: `${path}/PACKAGES` });
+    archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz`});
   }
-
-  return Promise.allSettled(promises);
 }
 
 router.get('/:user/api/snapshot/:format?', function(req, res, next) {
@@ -115,7 +110,7 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
         return doc._type == 'src' || allowed.find(ver => binver.startsWith(ver));
       });
     }
-    var format = req.query.format || "zip";
+    var format = req.params.format || "zip";
     var archive = new_zipfile(format);
     if(format == 'zip'){
       res.type('application/zip').attachment(`${user}-snapshot.zip`)
@@ -127,7 +122,10 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
     archive.pipe(res);
     packages_snapshot(files, archive, types).then(function(){
       archive.finalize();
-    });
+    }).catch(function(err){
+      archive.abort();
+      throw err;
+    })
   }).catch(error_cb(400, next));
 });
 

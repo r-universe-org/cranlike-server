@@ -4,7 +4,7 @@ RUN apk add --no-cache bash tini
 
 EXPOSE 3000
 
-RUN mkdir /app && cd /app && npm install cranlike@0.22.10
+RUN mkdir /app && cd /app && npm install cranlike@0.22.11
 
 WORKDIR /app/node_modules/cranlike
 
