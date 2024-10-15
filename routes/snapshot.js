@@ -20,6 +20,12 @@ function new_zipfile(format){
   const archive = archiver(format, {
     store: true, gzip: true, gzipOptions: {level: 1},
   });
+  archive.append_stream = function(source, data){
+    return new Promise((resolve, reject) => {
+      source.on('end', resolve).on('error', reject);
+      archive.append(source, data).on('error', reject);
+    });
+  }
   return archive.on('warning', function(err) {
     if (err.code === 'ENOENT') {
       console.log(err)
@@ -71,7 +77,7 @@ async function packages_snapshot(files, archive, types){
       if (!x)
         throw `Failed to locate file in gridFS: ${hash}`;
       var input = bucket.openDownloadStream(x['_id']);
-      archive.append(input, { name: filename, date: date });
+      await archive.append_stream(input, { name: filename, date: date });
     }
   };
 
