@@ -124,13 +124,14 @@ function store_stream_file(stream, key, filename){
     pipe.on('finish', function(){
       /* Right now we still assume the uploader uses md5 keys */
       db.command({filemd5: key, root: "files"}).then(function(check){
-        if(check.md5 != key) {
+        var shasum = hash.digest('hex');
+        if(key == shasum || key == check.md5) {
+          resolve({_id: key, length: upload.length, md5: check.md5, sha256: shasum});
+        } else {
           bucket.delete(key).finally(function(){
             console.log("md5 did not match key");
             reject("md5 did not match key");
           });
-        } else {
-          resolve({_id: key, length: upload.length, md5: check.md5, sha256: hash.digest('hex')});
         }
       });
     });
