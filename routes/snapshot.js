@@ -22,8 +22,10 @@ function new_zipfile(format){
   });
   archive.append_stream = function(source, data){
     return new Promise((resolve, reject) => {
-      source.on('end', resolve).on('error', reject);
-      archive.append(source, data).on('error', reject);
+      source.on('end', resolve);
+      source.on('error', reject);
+      //archive.on('entry', resolve);
+      archive.append(source, data);
     });
   }
   return archive.on('warning', function(err) {
