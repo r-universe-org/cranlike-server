@@ -353,11 +353,8 @@ function unpack_deps(x){
 }
 
 export function doc_to_dcf(doc){
-  var x = unpack_deps(doc);
-  delete x['_id'];
-  delete x['_fileid'];
-  delete x['_type'];
-  delete x['Distro'];
+  //this clones 'doc' and then deletes some fields
+  const { _id, _fileid, _type, Distro, ...x } = unpack_deps(doc); 
   let keys = Object.keys(x);
   return keys.map(function(key){
     let val = x[key];

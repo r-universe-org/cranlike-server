@@ -39,27 +39,30 @@ function new_zipfile(format){
   })
 }
 
-function make_filename(doc){
+function make_storepaths(doc){
   var type = doc._type;
   if(type == 'src'){
-    return `src/contrib/${doc.Package}_${doc.Version}.tar.gz`;
+    return [`src/contrib/${doc.Package}_${doc.Version}.tar.gz`];
   }
   var built = doc.Built && doc.Built.R && doc.Built.R.substring(0,3);
   if(type == 'win'){
-    return `bin/windows/contrib/${built}/${doc.Package}_${doc.Version}.zip`;
+    return [`bin/windows/contrib/${built}/${doc.Package}_${doc.Version}.zip`];
   }
   if(type == 'mac'){
-    //TODO: copy universal binaries to arm64 dir too?
-    var arch = doc.Built.Platform.match("x86_64") ? 'x86_64' : 'arm64';
-    var distro = built == '4.2' ? 'macosx' : `macosx/big-sur-${arch}`;
-    return `bin/${distro}/contrib/${built}/${doc.Package}_${doc.Version}.tgz`;
+    var intel = `bin/macosx/big-sur-x86_64/contrib/${built}/${doc.Package}_${doc.Version}.tgz`;
+    var arm = `bin/macosx/big-sur-arm64/contrib/${built}/${doc.Package}_${doc.Version}.tgz`;
+    if(doc.Built.Platform){
+      return [doc.Built.Platform.match("x86_64") ? intel : arm];
+    } else {
+      return [intel, arm];
+    }
   }
   if(type == 'linux'){
     var distro = doc.Distro || 'linux';
-    return `bin/linux/${distro}/${built}/src/contrib/${doc.Package}_${doc.Version}.tar.gz`;
+    return [`bin/linux/${distro}/${built}/src/contrib/${doc.Package}_${doc.Version}.tar.gz`];
   }
   if(type == 'wasm'){
-    return `bin/emscripten/contrib/${built}/${doc.Package}_${doc.Version}.tgz`;
+    return [`bin/emscripten/contrib/${built}/${doc.Package}_${doc.Version}.tgz`];
   }
   throw `Unsupported type: ${type}`;
 }
@@ -68,36 +71,31 @@ async function packages_snapshot(files, archive, types){
   var indexes = {};
   for (var x of files){
     if(types.includes(x._type)){
-      var date = x._created;
-      var hash = x._fileid;
-      var filename = make_filename(x);
-      var dirname = path.dirname(filename);
-      if(!indexes[dirname])
-        indexes[dirname] = [];
-      indexes[dirname].push(x);
-      var x = await bucket.find({_id: hash}, {limit:1}).next();
-      if (!x)
-        throw `Failed to locate file in gridFS: ${hash}`;
-      var input = bucket.openDownloadStream(x['_id']);
-      await archive.append_stream(input, { name: filename, date: date });
+      for (var filename of make_storepaths(x)){
+        var dirname = path.dirname(filename);
+        if(!indexes[dirname])
+          indexes[dirname] = [];
+        indexes[dirname].push(x);
+        var input = bucket.openDownloadStream(x._fileid);
+        await archive.append_stream(input, { name: filename, date: x._created });
+      }
     }
   };
 
-  /* Extract html manual pages. This is a bit slower so doing this last */
-  if(types.includes('docs')){
-    for (var x of files.filter(x => x._type == 'src')){
-      var pkgname = x.Package;
-      var date = x._created;
-      var buf = await get_extracted_file({_id: x._id}, `${pkgname}/extra/${pkgname}.html`);
-      archive.append(buf, { name: `docs/${pkgname}.html`, date: date });
-    };
-  }
-
-  /* Generate index files */
+  /* Generate PACKAGES indexes */
   for (const [path, files] of Object.entries(indexes)) {
     var packages = files.map(doc_to_dcf).join('');
     archive.append(packages, { name: `${path}/PACKAGES` });
     archive.append(zlib.gzipSync(packages), { name: `${path}/PACKAGES.gz`});
+  }
+
+  /* Extract html manual pages. This is a bit slower so doing this last */
+  if(types.includes('docs')) {
+    for (var x of files.filter(x => x._type == 'src')){
+      var pkgname = x.Package;
+      var buf = await get_extracted_file({_id: x._id}, `${pkgname}/extra/${pkgname}.html`);
+      archive.append(buf, { name: `docs/${pkgname}.html`, date: x._created });
+    };
   }
 }
 
