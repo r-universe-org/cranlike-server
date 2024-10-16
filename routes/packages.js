@@ -128,8 +128,8 @@ function store_stream_file(stream, key, filename){
           resolve({_id: key, length: upload.length, md5: check.md5, sha256: shasum});
         } else {
           bucket.delete(key).finally(function(){
-            console.log("md5 did not match key");
-            reject("md5 did not match key");
+            console.log(`Checksum for ${filename} did not match`);
+            reject(`Checksum for ${filename} did not match`);
           });
         }
       });
