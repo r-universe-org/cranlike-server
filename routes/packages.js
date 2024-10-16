@@ -2,7 +2,6 @@
 import express from 'express';
 import createError from 'http-errors';
 import multer from 'multer';
-import md5file from 'md5-file';
 import rdesc from 'rdesc-parser';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
@@ -456,7 +455,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
   var query = {_user : user, _type : type, Package : pkgname};
   var filepath = req.files.file[0].path;
   var filename = req.files.file[0].originalname;
-  var key = md5file.sync(filepath);
+  var key = req.body.key;
   var builder = parse_builder_fields(req.body);
   var stream = fs.createReadStream(filepath);
   crandb_store_file(stream, key, filename).then(function(filedata){
