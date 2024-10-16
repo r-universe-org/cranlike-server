@@ -143,7 +143,7 @@ function query_stream_info(query){
   });
 }
 
-function send_binary(query, req, res, next, filename){
+function send_binary(query, req, res, next, postfix){
   return query_stream_info(query).then(function(x){
     var hash = x['_id'];
     var etag = etagify(hash);
@@ -153,10 +153,11 @@ function send_binary(query, req, res, next, filename){
       const host = req.headers.host || "";
       const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
       res.set("ETag", etag).set('Cache-Control', 'public, max-age=10, must-revalidate');
-      res.redirect(`${cdn}/${hash}/${filename || x.filename}`);
+      res.redirect(`${cdn}/${hash}${postfix || ""}`);
     }
   }).catch(function(err){
     // Workaround for race conditions: redirect to new version if just updated
+    // This does not help if pak would use the DownloadURL from the PACKAGES file
     return packages.findOne({...query, _previous: query.Version, Version:{ $exists: true }}).then(function(doc){
       if(doc){
         res.redirect(req.path.replace(`_${query.Version}.`, `_${doc.Version}.`));
@@ -278,52 +279,52 @@ router.get('/:user/bin/emscripten/contrib', function(req, res, next) {
 
 /* Download package files */
 router.get('/:user/src/contrib/:pkg.tar.gz', function(req, res, next) {
-  var pkg = req.params.pkg.split("_");
-  var query = qf({_user: req.params.user, _type: 'src', Package: pkg[0], Version: pkg[1]});
+  var [pkg, version] = req.params.pkg.split("_");
+  var query = qf({_user: req.params.user, _type: 'src', Package: pkg, Version: version});
   send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/windows/contrib/:built/:pkg.zip', function(req, res, next) {
-  var pkg = req.params.pkg.split("_");
+  var [pkg, version] = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built},
-    Package: pkg[0], Version: pkg[1]});
+    Package: pkg, Version: version});
   send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, res, next) {
-  var pkg = req.params.pkg.split("_");
+  var [pkg, version] = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built},
-    Package: pkg[0], Version: pkg[1]});
+    Package: pkg, Version: version});
   query['Built.Platform'] = match_macos_arch(req.params.xcode || "legacy-x86_64");
   send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(req, res, next) {
-  var pkg = req.params.pkg.split("_");
+  var [pkg, version] = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'linux', 'Built.R' : {$regex: '^' + req.params.built},
-    '_distro' : req.params.distro, Package: pkg[0], Version: pkg[1]});
+    '_distro' : req.params.distro, Package: pkg, Version: version});
   send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/emscripten/contrib/:built/:pkg.(tgz|data.gz)', function(req, res, next) {
-  var pkg = req.params.pkg.split("_");
+  var [pkg, version] = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
-    Package: pkg[0], Version: pkg[1]});
-  send_binary(query, req, res, next, `${req.params.pkg}.tgz`);
+    Package: pkg, Version: version});
+  send_binary(query, req, res, next);
 });
 
 router.get('/:user/bin/emscripten/contrib/:built/:pkg.data', function(req, res, next) {
-  var pkg = req.params.pkg.split("_");
+  var [pkg, version] = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
-    Package: pkg[0], Version: pkg[1]});
-  send_binary(query, req, res, next, `${req.params.pkg}.tar`);
+    Package: pkg, Version: version});
+  send_binary(query, req, res, next, `/decompress`);
 });
 
 router.get('/:user/bin/emscripten/contrib/:built/:pkg.js.metadata', function(req, res, next) {
-  var pkg = req.params.pkg.split("_");
+  var [pkg, version] = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built},
-    Package: pkg[0], Version: pkg[1]});
-  send_binary(query, req, res, next, `${req.params.pkg}.tgz.index`);
+    Package: pkg, Version: version});
+  send_binary(query, req, res, next, `/index`);
 });
 
 router.get('/:user/api', function(req, res, next) {
