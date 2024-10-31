@@ -38,6 +38,9 @@ function delete_file(key){
 }
 
 function delete_doc(doc, keep_file_id){
+  if(doc._type === 'failure'){
+    return packages.deleteOne({_id: doc['_id']}); // no file to delete
+  }
   if(!doc._fileid) throw "Calling delete_doc without doc._fileid";
   return packages.deleteOne({_id: doc['_id']}).then(function(){
     if(doc._fileid !== keep_file_id){
@@ -47,7 +50,7 @@ function delete_doc(doc, keep_file_id){
 }
 
 function delete_by_query(query){
-  return packages.find(query).project({_id:1, _fileid:1, Package:1, Version:1}).toArray().then(function(docs){
+  return packages.find(query).project({_type: 1, _id:1, _fileid:1, Package:1, Version:1}).toArray().then(function(docs){
     return Promise.all(docs.map(delete_doc));
   });
 }
