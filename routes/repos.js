@@ -762,7 +762,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
 });
 
 router.get("/:user/stats/universes", function(req, res, next) {
-  var query = {_user: req.params.user, _type: 'src', '_registered' : true};
+  var query = {_user: req.params.user, _type: {$in: ['src', 'failure']}, '_registered' : true};
   if(req.query.organization){
     query['_userbio.type'] = 'organization';
   }
@@ -1177,7 +1177,7 @@ router.get('/:user/stats/summary', function(req, res, next){
 });
 
 router.get('/:user/stats/everyone', function(req, res, next){
-  var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
+  var query = qf({_user: req.params.user, _type: {$in: ['src', 'failure']}, _registered : true}, req.query.all);
   var p1 = packages.distinct('_user', query);
   var p2 = packages.distinct('_maintainer.login', query);
   Promise.all([p1, p2]).then((values) => {
