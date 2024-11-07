@@ -352,21 +352,12 @@ function unpack_deps(x){
   return x;
 }
 
-// pak always wants the x86_64-pc-linux-gnu prefix even for packages
-// without compiled code.
-function add_platform_for_pak(Distro, x){
-  if(Distro == 'noble'){
-    x.Platform = 'x86_64-pc-linux-gnu-ubuntu-24.04'
-  }
-  if(Distro == 'jammy'){
-    x.Platform = 'x86_64-pc-linux-gnu-ubuntu-22.04'
-  }
-}
-
 export function doc_to_dcf(doc){
   //this clones 'doc' and then deletes some fields
   const { _id, _fileid, _type, Distro, ...x } = unpack_deps(doc);
-  add_platform_for_pak(Distro, x);
+  if(_type == 'linux'){
+    x.Platform = 'x86_64-pc-linux-gnu' //pak likes this to identify binaries
+  }
   let keys = Object.keys(x);
   return keys.map(function(key){
     let val = x[key];
