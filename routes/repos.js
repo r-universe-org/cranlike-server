@@ -32,7 +32,7 @@ function etagify(x){
   return 'W/"' +  x + '"';
 }
 
-function packages_index(query, format, req, res, next){
+function stream_to_dcf(cursor, format, req, res, next){
   if(format == 'rds'){
     return res.status(404).send("PACKAGES.rds format not supported for now");
   }
@@ -47,45 +47,57 @@ function packages_index(query, format, req, res, next){
     });
   }
 
-  // Preflight to revalidate cache.
+  // Get actual package data
+  var cursor = cursor.project(projection).sort({"Package" : 1});
+  if(!format){
+    cursor
+      .stream({transform: doc_to_dcf})
+      .pipe(res.type('text/plain'));
+  } else if(format == 'gz'){
+    cursor
+      .stream({transform: doc_to_dcf})
+      .pipe(zlib.createGzip())
+      .pipe(res.type('application/x-gzip'));
+  } else if(format == 'json'){
+    cursor
+      .stream({transform: doc_to_ndjson})
+      .pipe(res.type('text/plain'));
+  } else {
+    cursor.close();
+    next(createError(404, 'Unknown PACKAGES format: ' + format));
+  }
+}
+
+function packages_index(query, format, req, res, next){
+  // Try mitigate hammering. Cache for at least 10 sec, after that revalidate.
+  // This requires nginx to use proxy_cache_revalidate;
   packages.find(query).sort({"_id" : -1}).limit(1).project({"_id": 1}).next().then(function(doc){
     if(!doc){
       res.status(200).send();
-      return; //DONE!
+      return;
     }
-
-    // Try mitigate hammering. Cache for at least 10 sec, after that revalidate.
-    // This requires nginx to use proxy_cache_revalidate;
     var etag = etagify(doc['_id']);
     res.set('ETag', etag);
     res.set('Cache-Control', 'public, max-age=10, must-revalidate');
-
-    // Revalidate:
     if(etag === req.header('If-None-Match')){
       res.status(304).send();
-      return; //DONE!
+      return;
     }
+    return stream_to_dcf(packages.find(query), format, req, res, next);
+  });
+}
 
-    // Get actual package data
-    var cursor = packages.find(query).project(projection).sort({"Package" : 1});
-    if(!format){
-      cursor
-        .stream({transform: doc_to_dcf})
-        .pipe(res.type('text/plain'));
-    } else if(format == 'gz'){
-      cursor
-        .stream({transform: doc_to_dcf})
-        .pipe(zlib.createGzip())
-        .pipe(res.type('application/x-gzip'));
-    } else if(format == 'json'){
-      cursor
-        .stream({transform: doc_to_ndjson})
-        .pipe(res.type('text/plain'));
-    } else {
-      cursor.close();
-      next(createError(404, 'Unknown PACKAGES format: ' + format));
-    }
-  }).catch(error_cb(400, next));
+function packages_index_aggregate(query, format, req, res, next){
+  var cursor = packages.aggregate([
+    {$match: query},
+    {$sort: {_type: 1}},
+    {$group : {
+      _id : {'Package': '$Package'},
+      doc: { '$first': '$$ROOT' }
+    }},
+    {$replaceRoot: { newRoot: '$doc' }}
+  ]);
+  return stream_to_dcf(cursor, req.params.ext, req, res, next);
 }
 
 function html_index(query, res){
@@ -130,8 +142,13 @@ function count_by_built(user, type){
   .stream({transform: doc_to_ndjson});
 }
 
+//sort by type to get linux binary before src
 function query_stream_info(query){
-  return packages.findOne(query, {project: {_fileid: 1, Redirect: 1}}).then(function(docs){
+  var options = {project: {_fileid: 1, Redirect: 1}};
+  if(query['$or']){
+    options.sort = {_type: 1}; //prefer linux binary over src packages
+  }
+  return packages.findOne(query, options).then(function(docs){
     if(!docs)
       throw 'Package not found for query: ' + JSON.stringify(query);
     var hash = docs._fileid;
@@ -249,6 +266,23 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/', function(req, res, ne
   packages_index(query, 'json', req, res, next);
 });
 
+/* Linux binaries with fallback on source packages */
+router.get('/:user/bin/mixed/:distro/:built/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
+  var query = {_user: req.params.user, '$or': [
+    {_type: 'src'},
+    {_type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}},
+  ]};
+  packages_index_aggregate(query, req.params.ext, req, res, next);
+});
+
+router.get('/:user/bin/mixed/:distro/:built/src/contrib/', function(req, res, next) {
+  var query = {_user: req.params.user, '$or': [
+    {_type: 'src'},
+    {_type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}},
+  ]};
+  packages_index_aggregate(query, 'json', req, res, next);
+});
+
 router.get('/:user/bin/linux/:distro/:built', function(req, res, next) {
   res.redirect(req.path + '/src/contrib');
 });
@@ -303,6 +337,15 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(r
   var [pkg, version] = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'linux', 'Built.R' : {$regex: '^' + req.params.built},
     '_distro' : req.params.distro, Package: pkg, Version: version});
+  send_binary(query, req, res, next);
+});
+
+router.get('/:user/bin/mixed/:distro/:built/src/contrib/:pkg.tar.gz', function(req, res, next) {
+  var [pkg, version] = req.params.pkg.split("_");
+  var query = {_user: req.params.user, Package: pkg, Version: version, '$or': [
+    {_type: 'src'},
+    {_type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}},
+  ]};
   send_binary(query, req, res, next);
 });
 
