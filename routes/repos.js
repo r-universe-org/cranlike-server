@@ -255,7 +255,7 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/', function(req, res, next)
   packages_index(query, 'json', req, res, next);
 });
 
-/* CRAN-like index for Linux binaries (fake src pkg structure) */
+/* CRAN-like index for Linux binaries (fake src pkg structure)
 router.get('/:user/bin/linux/:distro/:built/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}});
   packages_index(query, req.params.ext, req, res, next);
@@ -265,9 +265,10 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/', function(req, res, ne
   var query = qf({_user: req.params.user, _type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}});
   packages_index(query, 'json', req, res, next);
 });
+*/
 
 /* Linux binaries with fallback on source packages */
-router.get('/:user/bin/mixed/:distro/:built/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
+router.get('/:user/bin/linux/:distro/:built/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
   var query = {_user: req.params.user, '$or': [
     {_type: 'src'},
     {_type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}},
@@ -275,7 +276,7 @@ router.get('/:user/bin/mixed/:distro/:built/src/contrib/PACKAGES\.:ext?', functi
   packages_index_aggregate(query, req.params.ext, req, res, next);
 });
 
-router.get('/:user/bin/mixed/:distro/:built/src/contrib/', function(req, res, next) {
+router.get('/:user/bin/linux/:distro/:built/src/contrib/', function(req, res, next) {
   var query = {_user: req.params.user, '$or': [
     {_type: 'src'},
     {_type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}},
@@ -333,14 +334,16 @@ router.get('/:user/bin/macosx/:xcode?/contrib/:built/:pkg.tgz', function(req, re
   send_binary(query, req, res, next);
 });
 
+/*
 router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(req, res, next) {
   var [pkg, version] = req.params.pkg.split("_");
   var query = qf({_user: req.params.user, _type: 'linux', 'Built.R' : {$regex: '^' + req.params.built},
     '_distro' : req.params.distro, Package: pkg, Version: version});
   send_binary(query, req, res, next);
 });
+*/
 
-router.get('/:user/bin/mixed/:distro/:built/src/contrib/:pkg.tar.gz', function(req, res, next) {
+router.get('/:user/bin/linux/:distro/:built/src/contrib/:pkg.tar.gz', function(req, res, next) {
   var [pkg, version] = req.params.pkg.split("_");
   var query = {_user: req.params.user, Package: pkg, Version: version, '$or': [
     {_type: 'src'},
