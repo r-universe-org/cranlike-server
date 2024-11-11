@@ -42,7 +42,7 @@ router.get("/:user/:package{/*path}", function(req, res, next) {
       res.redirect(req.path.replace(`/${user}/${pkgname}`, `https://${x._user}.r-universe.dev/${x.Package}`));
     } else if(x.Package != pkgname){
       res.redirect(req.path.replace(`/${user}/${pkgname}`, `/${user}/${x.Package}`));
-    } else if(req.params['0'] === "" && user === 'cran' && realowner !== 'cran' ) {
+    } else if(!req.params.path && user === 'cran' && realowner !== 'cran' ) {
       /* req.params['0'] means only redirect the html dasbhoard, not pkg content */
       res.redirect(req.path.replace(`/${user}/${pkgname}`, `https://${realowner}.r-universe.dev/${x.Package}`));
     } else {

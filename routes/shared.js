@@ -8,7 +8,15 @@ const router = express.Router();
 const session = new webr.WebR();
 session.init();
 
-router.get('/shared/redirect/:package{/*splat}', function(req, res, next) {
+function unsplat(x){
+  if(!x || !x.length) return "";
+  if(Array.isArray(x)){
+    return x.map(val => `/${val}`).join("");
+  }
+  return x;
+}
+
+router.get('/shared/redirect/:package{/*path}', function(req, res, next) {
   var pkgname = req.params.package;
   find_cran_package(pkgname).then(function(x){
     if(!x){
@@ -53,7 +61,7 @@ router.get('/shared/redirect/:package{/*splat}', function(req, res, next) {
           res.send(out);
         });
       } else {
-        var path = req.headers.host == 'docs.cran.dev' ? manual : req.params['0'] || "";
+        var path = req.headers.host == 'docs.cran.dev' ? manual : unsplat(req.params.path);
         res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${realowner}.r-universe.dev/${x.Package}${path}`);
       }
     }
