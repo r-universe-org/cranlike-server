@@ -8,17 +8,9 @@ import {packages, bucket} from '../src/db.js';
 
 const router = express.Router();
 
-/* Error generator */
-function error_cb(status, next) {
-  return function(err){
-    console.log("[Debug] HTTP " + status + ": " + err)
-    next(createError(status, err));
-  }
-}
-
 router.get('/:user', function(req, res, next) {
   const user = req.params.user;
-  test_if_universe_exists(user).then(function(exists){
+  return test_if_universe_exists(user).then(function(exists){
     if(exists){
       res.set('Cache-control', 'private'); //html or json
       const accept = req.headers['accept'];
@@ -30,7 +22,7 @@ router.get('/:user', function(req, res, next) {
     } else {
       res.status(404).type('text/plain').send("No universe found for user: " + user);
     }
-  }).catch(error_cb(400, next));
+  });
 });
 
 /* robot.txt is not a package */
@@ -40,10 +32,10 @@ router.get('/:user/robots.txt', function(req, res, next) {
 
 // Pre-middleware for all requests:
 // validate that universe or package exists, possibly fix case mismatch, otherwise 404
-router.get("/:user/:package*", function(req, res, next) {
+router.get("/:user/:package{/*path}", function(req, res, next) {
   var user = req.params.user;
   var pkgname = req.params.package;
-  real_package_home(user, pkgname).then(function(x){
+  return real_package_home(user, pkgname).then(function(x){
     var realowner = x._realowner || x._user;
     if(x._user != user){
       /* nginx does not understand cross-domain redirect with relative path */
@@ -60,8 +52,7 @@ router.get("/:user/:package*", function(req, res, next) {
     return find_package(user, pkgname, 'failure').then(function(y){
       res.status(404).type('text/plain').send(`Package ${user}/${pkgname} exists but failed to build: ${y._buildurl}`);
     });
-  }).catch(error_cb(404, next));
-
+  }).catch(err => {throw createError(404, err)});
 });
 
 /* This endpoint should be masked by new frontend */
@@ -77,17 +68,17 @@ router.get("/:user/:package/files", function(req, res, next) {
   var user = req.params.user;
   var pkgname = req.params.package;
   var query = {_user : user, Package : pkgname};
-  packages.find(query).sort({"Built.R" : -1}).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
+  return packages.find(query).sort({"Built.R" : -1}).toArray().then(docs => res.send(docs));
 });
 
 router.get("/:user/:package/buildlog", function(req, res, next) {
   var user = req.params.user;
   var pkgname = req.params.package;
   var query = {_user : user, Package : pkgname};
-  packages.find(query).sort({"_created" : -1}).limit(1).next().then(function(x){
+  return packages.find(query).sort({"_created" : -1}).limit(1).next().then(function(x){
     console.log(x)
     res.redirect(x['_buildurl'])
-  }).catch(error_cb(400, next));
+  });
 });
 
 /* Match CRAN / R dynamic help */
@@ -95,35 +86,34 @@ router.get("/:user/:package/DESCRIPTION", function(req, res, next) {
   var pkgname = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: pkgname};
   var filename = `${pkgname}/DESCRIPTION`;
-  send_extracted_file(query, filename, req, res).catch(error_cb(400, next));
+  return send_extracted_file(query, filename, req, res);
 });
 
 /* Match CRAN / R dynamic help */
-router.get('/:user/:package/NEWS:ext?', function(req, res, next){
+router.get('/:user/:package/NEWS{:ext}', function(req, res, next){
   var pkgname = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: pkgname};
   var ext = req.params.ext || '.html';
   var filename = `${pkgname}/extra/NEWS${ext}`
-  send_extracted_file(query, filename, req, res).catch(error_cb(400, next));
+  return send_extracted_file(query, filename, req, res);
 });
 
 /* Match CRAN */
 router.get('/:user/:package/:file.pdf', function(req, res, next){
   var pkgname = req.params.package;
-  if(pkgname != req.params.file){
-    return res.status(404).send(`Did you mean ${pkgname}.pdf`)
-  }
+  if(pkgname != req.params.file)
+    throw createError(404, `File not found (did you mean ${pkgname}.pdf?)`);
   var query = {_user: req.params.user, _type: 'src', Package: pkgname};
-  send_extracted_file(query, `${pkgname}/manual.pdf`, req, res).catch(error_cb(400, next));
+  return send_extracted_file(query, `${pkgname}/manual.pdf`, req, res);
 });
 
 /* Match CRAN */
-router.get('/:user/:package/citation:ext?', function(req, res, next){
+router.get('/:user/:package/citation{:ext}', function(req, res, next){
   var pkgname = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: pkgname};
   var ext = req.params.ext || '.html';
   var filename = `${pkgname}/extra/citation${ext}`
-  send_extracted_file(query, filename, req, res).catch(error_cb(400, next));
+  return send_extracted_file(query, filename, req, res);
 });
 
 function doc_path(file, pkgname){
@@ -144,7 +134,7 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
   var user = req.params.user;
   var pkgname = req.params.package;
   var query = {_user: user, _type: 'src', Package: pkgname};
-  get_extracted_file(query, `${pkgname}/extra/readme.html`).then(function(html){
+  return get_extracted_file(query, `${pkgname}/extra/readme.html`).then(function(html){
     if(req.query.highlight === 'hljs'){
       const $ = cheerio_load(html, null, false);
       $('code[class^="language-"]').each(function(i, el){
@@ -160,7 +150,7 @@ router.get('/:user/:package/doc/readme', function(req, res, next){
       html = $.html();
     }
     res.type('text/html; charset=utf-8').send(html);
-  }).catch(error_cb(400, next));
+  });
 });
 
 /* extract single page from manual */
@@ -169,7 +159,7 @@ router.get('/:user/:package/doc/page/:id', function(req, res, next){
   var page = req.params.id;
   var pkgname = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: pkgname};
-  get_extracted_file(query, `${pkgname}/extra/${pkgname}.html`).then(function(html){
+  return get_extracted_file(query, `${pkgname}/extra/${pkgname}.html`).then(function(html){
     const $ = cheerio_load(html, null, false);
     const el = $(`#${page.replace(".", "\\.")}`);
     el.find(".help-page-title").replaceWith(el.find(".help-page-title h2"));
@@ -181,7 +171,7 @@ router.get('/:user/:package/doc/page/:id', function(req, res, next){
     });
     el.find('hr').remove();
     res.send(el.html());
-  }).catch(error_cb(400, next));
+  });
 });
 
 router.get('/:user/:package/doc', function(req, res, next){
@@ -198,17 +188,17 @@ router.get('/:user/:package/doc', function(req, res, next){
       if(m) output.push(m[1]);
     });
     res.send(output);
-  }).catch(error_cb(400, next));
+  });
 });
 
 router.get('/:user/:package/doc/:file', function(req, res, next){
   var pkgname = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: pkgname};
-  send_extracted_file(query, doc_path(req.params.file, pkgname), req, res).catch(error_cb(400, next));
+  return send_extracted_file(query, doc_path(req.params.file, pkgname), req, res);
 });
 
 router.get('/:user/:package/sitemap.xml', function(req, res, next) {
-  real_package_home(req.params.user, req.params.package).then(function(x){
+  return real_package_home(req.params.user, req.params.package).then(function(x){
     var xml = xmlbuilder.create('urlset', {encoding:"UTF-8"});
     xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
     xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}`);
@@ -237,7 +227,7 @@ router.get('/:user/:package/sitemap.xml', function(req, res, next) {
       xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/articles/${x.Package}/${vignette.filename}`);
     });
     res.type('application/xml').send(xml.end({ pretty: true}));
-  }).catch(error_cb(400, next));
+  });
 });
 
 //This redirects cran.r-universe.dev/pkg to the canonical home, if any

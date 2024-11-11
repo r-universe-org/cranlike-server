@@ -185,7 +185,7 @@ export function send_extracted_file(query, filename, req, res){
     } else {
       return send_file_from_tar(bucket.openDownloadStream(hash), res, filename);
     }
-  });
+  })
 }
 
 function send_file_from_tar(input, res, filename){

@@ -44,16 +44,16 @@ app.use('/', webrRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
-  next(createError(404));
+  next(createError(404, `Page not found: ${req.path}`));
 });
 
-// error handler
+// global error handler
 app.use(function(err, req, res, next) {
-  res.locals.message = err.message;
   res.locals.error = err;
+  res.locals.mode = req.app.get('env')
 
   // render the error page
-  res.status(err.status || 500);
+  res.status(err.status || 400);
   res.render('error');
 });
 

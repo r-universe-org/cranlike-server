@@ -6,13 +6,6 @@ import {packages} from '../src/db.js';
 
 const router = express.Router();
 
-function error_cb(status, next) {
-  return function(err){
-    console.log("[Debug] HTTP " + status + ": " + err)
-    next(createError(status, err));
-  }
-}
-
 function send_badge(badge, user, res, linkto){
   var svg = badgen.badgen(badge);
   var url = linkto || 'https://' + user + '.r-universe.dev';
@@ -21,7 +14,7 @@ function send_badge(badge, user, res, linkto){
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60').send(svg);
 }
 
-router.get('/:user/badges/::meta', function(req, res, next) {
+router.get('/:user/badges/\\::meta', function(req, res, next) {
   var user = req.params.user;
   var color = req.query.color;
   var badge = {
@@ -30,7 +23,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
     style: req.query.style,
     scale: req.query.scale
   };
-  test_if_universe_exists(user).then(function(x){
+  return test_if_universe_exists(user).then(function(x){
     var meta = req.params.meta;
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
     if(meta == 'name'){
@@ -68,7 +61,7 @@ router.get('/:user/badges/::meta', function(req, res, next) {
     } else {
       throw "Unsupported badge type :" + meta;
     }
-  }).catch(error_cb(400, next));
+  });
 });
 
 router.get('/:user/badges/:package', function(req, res, next) {
@@ -83,13 +76,13 @@ router.get('/:user/badges/:package', function(req, res, next) {
     scale: req.query.scale
   };
   //badge.icon = 'data:image/svg+xml;base64,...';
-  packages.distinct('Version', {_user : user, Package : pkg, _type: 'src', '_registered' : true}).then(function(x){
+  return packages.distinct('Version', {_user : user, Package : pkg, _type: 'src', '_registered' : true}).then(function(x){
     if(x.length){
       badge.status = x.join("|");
       badge.color = color || 'green';
     }
     send_badge(badge, user, res, `https://${user}.r-universe.dev/${pkg}`);
-  }).catch(error_cb(400, next));
+  });
 });
 
 export default router;

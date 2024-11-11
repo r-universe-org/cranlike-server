@@ -8,14 +8,7 @@ const router = express.Router();
 const session = new webr.WebR();
 session.init();
 
-function error_cb(status, next) {
-  return function(err){
-    console.log("[Debug] HTTP " + status + ": " + err)
-    next(createError(status, err));
-  }
-}
-
-router.get('/shared/redirect/:package*', function(req, res, next) {
+router.get('/shared/redirect/:package{/*splat}', function(req, res, next) {
   var pkgname = req.params.package;
   find_cran_package(pkgname).then(function(x){
     if(!x){
@@ -68,14 +61,14 @@ router.get('/shared/redirect/:package*', function(req, res, next) {
 });
 
 router.get('/shared/cranstatus/:package', function(req, res, next) {
-  get_cran_desc(req.params.package).then(function(info){
-    res.set('Cache-Control', 'max-age=3600, public').send(info);
-  }).catch(error_cb(400, next));
+  return get_cran_desc(req.params.package).then(function(info){
+    return res.set('Cache-Control', 'max-age=3600, public').send(info);
+  });
 });
 
 router.get('/shared/webrstatus', function(req, res, next) {
   const promise = new session.Shelter();
-  promise.then(function(shelter){
+  return promise.then(function(shelter){
     return shelter.captureR(`print(sessionInfo()); cat("\n"); print(installed.packages()[,2:4])`).then(function(out){
       var txt = out.output.map(function(x){
         return x.data;
@@ -84,14 +77,14 @@ router.get('/shared/webrstatus', function(req, res, next) {
     }).finally(function(){
       return shelter.purge();
     });
-  }).catch(error_cb(400, next))
+  });
 });
 
 router.get('/shared/mongostatus', function(req, res, next) {
-  packages.indexes().then(function(indexes){
+  return packages.indexes().then(function(indexes){
     var out = {indexes: indexes}
     res.send(out);
-  }).catch(error_cb(400, next))
+  });
 });
 
 function find_cran_package(pkgname, type = 'src'){

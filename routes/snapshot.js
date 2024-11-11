@@ -8,13 +8,6 @@ import {packages, bucket} from '../src/db.js';
 
 const router = express.Router();
 
-function error_cb(status, next) {
-  return function(err){
-    console.log("[Debug] HTTP " + status + ": " + err)
-    next(createError(status, err));
-  }
-}
-
 function new_zipfile(format){
   /* contents are already compressed */
   const archive = archiver(format, {
@@ -99,14 +92,14 @@ async function packages_snapshot(files, archive, types){
   }
 }
 
-router.get('/:user/api/snapshot/:format?', function(req, res, next) {
+router.get('/:user/api/snapshot{/:format}', function(req, res, next) {
   var user = req.params.user;
   var query = {_user: user, _type: {'$ne' : 'failure'}};
   var types = req.query.types ? req.query.types.split(',') : ['src', 'win', 'mac', 'linux', 'docs']; //skip wasm
   if(req.query.packages)
     query.Package = {'$in' : req.query.packages.split(",")};
   var cursor = packages.find(query).project(pkgfields).sort({"_type" : 1});
-  cursor.toArray().then(function(files){
+  return cursor.toArray().then(function(files){
     if(!files.length)
       throw "Query returned no packages";
     if(req.query.binaries){
@@ -132,7 +125,7 @@ router.get('/:user/api/snapshot/:format?', function(req, res, next) {
       archive.abort();
       throw err;
     })
-  }).catch(error_cb(400, next));
+  });
 });
 
 export default router;

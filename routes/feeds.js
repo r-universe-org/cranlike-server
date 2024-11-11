@@ -7,18 +7,11 @@ import {packages} from '../src/db.js';
 const router = express.Router();
 const opts = { pretty: false, allowEmpty: false };
 
-function error_cb(status, next) {
-  return function(err){
-    console.log("[Debug] HTTP " + status + ": " + err)
-    next(createError(status, err));
-  }
-}
-
 router.get('/:user/feed.xml', function(req, res, next) {
   var user = req.params.user;
   const query = qf({_user: user, _registered: true, _type: {$in: ['src', 'failure']}}, true);
   const limit = parseInt(req.query.limit) || 50;
-  test_if_universe_exists(user).then(function(x){
+  return test_if_universe_exists(user).then(function(x){
     if(!x) return res.type('text/plain').status(404).send('No universe for user: ' + user);
     var cursor = packages.find(query)
       .sort({'_commit.time' : -1})
@@ -106,7 +99,7 @@ router.get('/:user/feed.xml', function(req, res, next) {
         res.end();
       });
      });
-  }).catch(error_cb(400, next));
+  });
 });
 
 function send_sitemap_index(query, res){
@@ -129,11 +122,11 @@ function send_sitemap_index(query, res){
 }
 
 router.get('/shared/sitemap_index.xml', function(req, res, next) {
-  return send_sitemap_index({_type: 'src', _indexed: true}, res).catch(error_cb(400, next));
+  return send_sitemap_index({_type: 'src', _indexed: true}, res);
 });
 
 router.get('/:user/sitemap_index.xml', function(req, res, next) {
-  return send_sitemap_index({_type: 'src', _universes: req.params.user, _registered: true}, res).catch(error_cb(400, next));
+  return send_sitemap_index({_type: 'src', _universes: req.params.user, _registered: true}, res);
 });
 
 router.get('/:user/sitemap.xml', function(req, res, next) {

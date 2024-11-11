@@ -8,7 +8,7 @@ html
       pre #{error.message}
 
     else
-      pre #{error.message}
+      pre #{error.message || error}
       h2 Stack trace
       pre #{error.stack}
 
