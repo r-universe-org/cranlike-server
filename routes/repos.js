@@ -25,13 +25,13 @@ function etagify(x){
   return 'W/"' +  x + '"';
 }
 
-function stream_to_dcf(cursor, format, req, res, next){
+function stream_to_dcf(cursor, format, req, res){
   format = format.replace(/^\./, '');
   if(format == 'rds'){
     return res.status(404).send("PACKAGES.rds format not supported for now");
   }
   if(format && format !== 'gz' && format !== 'json'){
-    return next(createError(404, 'Unsupported PACKAGES format: ' + format));
+    throw createError(404, 'Unsupported PACKAGES format: ' + format);
   }
 
   let projection = {...pkgfields};
@@ -58,14 +58,14 @@ function stream_to_dcf(cursor, format, req, res, next){
       .pipe(res.type('text/plain'));
   } else {
     cursor.close();
-    next(createError(404, 'Unknown PACKAGES format: ' + format));
+    throw createError(404, 'Unknown PACKAGES format: ' + format);
   }
 }
 
-function packages_index(query, format, req, res, next){
+function packages_index(query, format, req, res){
   // Try mitigate hammering. Cache for at least 10 sec, after that revalidate.
   // This requires nginx to use proxy_cache_revalidate;
-  packages.find(query).sort({"_id" : -1}).limit(1).project({"_id": 1}).next().then(function(doc){
+  return packages.find(query).sort({"_id" : -1}).limit(1).project({"_id": 1}).next().then(function(doc){
     if(!doc){
       res.status(200).send();
       return;
@@ -77,11 +77,11 @@ function packages_index(query, format, req, res, next){
       res.status(304).send();
       return;
     }
-    return stream_to_dcf(packages.find(query), format, req, res, next);
+    return stream_to_dcf(packages.find(query), format, req, res);
   });
 }
 
-function packages_index_aggregate(query, format, req, res, next){
+function packages_index_aggregate(query, format, req, res){
   var cursor = packages.aggregate([
     {$match: query},
     {$sort: {_type: 1}},
@@ -91,7 +91,7 @@ function packages_index_aggregate(query, format, req, res, next){
     }},
     {$replaceRoot: { newRoot: '$doc' }}
   ]);
-  return stream_to_dcf(cursor, req.params.ext, req, res, next);
+  return stream_to_dcf(cursor, req.params.ext, req, res);
 }
 
 function html_index(query, res){
@@ -175,7 +175,7 @@ function send_binary(query, req, res, next, postfix){
       } else {
         throw err;
       }
-    }).catch(err => createError(400, err));
+    }).catch(err => {throw createError(404, err)});
   });
 }
 
@@ -218,46 +218,46 @@ router.get('/:user/bin/macosx', function(req, res, next) {
 
 /* CRAN-like index for source packages */
 router.get('/:user/src/contrib/PACKAGES{:ext}', function(req, res, next) {
-  packages_index(qf({_user: req.params.user, _type: 'src'}), req.params.ext, req, res, next);
+  return packages_index(qf({_user: req.params.user, _type: 'src'}), req.params.ext, req, res);
 });
 
 router.get('/:user/src/contrib/', function(req, res, next) {
-  packages_index(qf({_user: req.params.user, _type: 'src'}), 'json', req, res, next);
+  return packages_index(qf({_user: req.params.user, _type: 'src'}), 'json', req, res);
 });
 
 /* CRAN-like index for Windows packages */
 router.get('/:user/bin/windows/contrib/:built/PACKAGES{:ext}', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}});
-  packages_index(query, req.params.ext, req, res, next);
+  return packages_index(query, req.params.ext, req, res);
 });
 
 router.get('/:user/bin/windows/contrib/:built/', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'win', 'Built.R' : {$regex: '^' + req.params.built}});
-  packages_index(query, 'json', req, res, next);
+  return packages_index(query, 'json', req, res);
 });
 
 /* CRAN-like index for MacOS packages */
 router.get('/:user/bin/macosx/:xcode/contrib/:built/PACKAGES{:ext}', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
   query['Built.Platform'] = match_macos_arch(req.params.xcode || "legacy-x86_64");
-  packages_index(query, req.params.ext, req, res, next);
+  return packages_index(query, req.params.ext, req, res);
 });
 
 router.get('/:user/bin/macosx/:xcode/contrib/:built/', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'mac', 'Built.R' : {$regex: '^' + req.params.built}});
   query['Built.Platform'] = match_macos_arch(req.params.xcode || "legacy-x86_64");
-  packages_index(query, 'json', req, res, next);
+  return packages_index(query, 'json', req, res);
 });
 
 /* CRAN-like index for Linux binaries (fake src pkg structure)
 router.get('/:user/bin/linux/:distro/:built/src/contrib/PACKAGES\.:ext?', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}});
-  packages_index(query, req.params.ext, req, res, next);
+  packages_index(query, req.params.ext, req, res);
 });
 
 router.get('/:user/bin/linux/:distro/:built/src/contrib/', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}});
-  packages_index(query, 'json', req, res, next);
+  packages_index(query, 'json', req, res);
 });
 */
 
@@ -267,7 +267,7 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/PACKAGES{:ext}', functio
     {_type: 'src'},
     {_type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}},
   ]};
-  packages_index_aggregate(query, req.params.ext, req, res, next);
+  return packages_index_aggregate(query, req.params.ext, req, res);
 });
 
 router.get('/:user/bin/linux/:distro/:built/src/contrib/', function(req, res, next) {
@@ -275,7 +275,7 @@ router.get('/:user/bin/linux/:distro/:built/src/contrib/', function(req, res, ne
     {_type: 'src'},
     {_type: 'linux', '_distro': req.params.distro, 'Built.R' : {$regex: '^' + req.params.built}},
   ]};
-  packages_index_aggregate(query, 'json', req, res, next);
+  return packages_index_aggregate(query, 'json', req, res);
 });
 
 router.get('/:user/bin/linux/:distro/:built', function(req, res, next) {
@@ -285,25 +285,25 @@ router.get('/:user/bin/linux/:distro/:built', function(req, res, next) {
 /* CRAN-like index for WASM packages */
 router.get('/:user/bin/emscripten/contrib/:built/PACKAGES{:ext}', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built}});
-  packages_index(query, req.params.ext, req, res, next);
+  return packages_index(query, req.params.ext, req, res);
 });
 
 router.get('/:user/bin/emscripten/contrib/:built/', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'wasm', 'Built.R' : {$regex: '^' + req.params.built}});
-  packages_index(query, 'json', req, res, next);
+  return packages_index(query, 'json', req, res);
 });
 
 /* Index available R builds for binary pkgs */
 router.get('/:user/bin/windows/contrib', function(req, res, next) {
-  count_by_built(req.params.user, 'win').pipe(res);
+  return count_by_built(req.params.user, 'win').pipe(res);
 });
 
 router.get('/:user/bin/macosx/:xcode/contrib', function(req, res, next) {
-  count_by_built(req.params.user, 'mac').pipe(res);
+  return count_by_built(req.params.user, 'mac').pipe(res);
 });
 
 router.get('/:user/bin/emscripten/contrib', function(req, res, next) {
-  count_by_built(req.params.user, 'wasm').pipe(res);
+  return count_by_built(req.params.user, 'wasm').pipe(res);
 });
 
 /* Download package files */

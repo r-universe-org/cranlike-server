@@ -439,7 +439,7 @@ router.post('/:user/packages/:package/:version/failure', multerstore.none(), fun
 
 router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
   if(!req.files.file || !req.files.file[0]){
-    return next(createError(400, "Missing parameter 'file' in upload"));
+    throw createError(400, "Missing parameter 'file' in upload");
   }
   var user = req.params.user;
   var pkgname = req.params.package;

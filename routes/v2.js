@@ -52,7 +52,7 @@ router.get("/:user/:package{/*path}", function(req, res, next) {
     return find_package(user, pkgname, 'failure').then(function(y){
       res.status(404).type('text/plain').send(`Package ${user}/${pkgname} exists but failed to build: ${y._buildurl}`);
     });
-  }).catch(err => createError(400, err));
+  }).catch(err => {throw createError(404, err)});
 });
 
 /* This endpoint should be masked by new frontend */
