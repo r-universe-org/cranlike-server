@@ -16,14 +16,6 @@ import {Buffer} from "node:buffer";
 const multerstore = multer({ dest: '/tmp/' });
 const router = express.Router();
 
-/* Error generator */
-function error_cb(status, next) {
-  return function(err){
-    console.log("[Debug] HTTP " + status + ": " + err)
-    next(createError(status, err));
-  }
-}
-
 //Remove file from bucket if there are no more references to it
 function delete_file(key){
   return packages.findOne({_fileid : key}).then(function(doc){
@@ -65,7 +57,7 @@ router.get('/:user/packages/:package', function(req, res, next) {
 });
 */
 
-router.get('/:user/packages/:package/:version?/:type?/:built?', function(req, res, next) {
+router.get('/:user/packages/:package{/:version}{/:type}{/:built}', function(req, res, next) {
   var user = req.params.user;
   var query = {_user : user, Package : req.params.package};
   if(req.params.version && req.params.version != "any")
@@ -74,10 +66,10 @@ router.get('/:user/packages/:package/:version?/:type?/:built?', function(req, re
     query._type = req.params.type;
   if(req.params.built)
     query['Built.R'] = {$regex: '^' + req.params.built};
-  packages.find(query).sort({"Built.R" : -1}).toArray().then(docs => res.send(docs)).catch(error_cb(400, next));
+  return packages.find(query).sort({"Built.R" : -1}).toArray().then(docs => res.send(docs));
 });
 
-router.delete('/:user/packages/:package/:version?/:type?/:built?', function(req, res, next){
+router.delete('/:user/packages/:package{/:version}{/:type}{/:built}', function(req, res, next){
   var user = req.params.user;
   var query = {_user: req.params.user, Package: req.params.package};
   if(req.params.version && req.params.version != "any")
@@ -86,7 +78,7 @@ router.delete('/:user/packages/:package/:version?/:type?/:built?', function(req,
     query._type = req.params.type;
   if(req.params.built)
     query['Built.R'] = {$regex: '^' + req.params.built};
-  delete_by_query(query).then(docs=>res.send(docs)).catch(error_cb(400, next));
+  return delete_by_query(query).then(docs=>res.send(docs));
 });
 
 // Some packages have X-schema.org fields in description, which mongo does not accept.
@@ -351,7 +343,7 @@ router.put('/:user/packages/:package/:version/:type/:key', function(req, res, ne
   var query = {_user : user, _type : type, Package : pkgname};
   var builder = parse_builder_fields(req.headers) || {};
   var filename = get_filename(pkgname, version, type, builder.distro);
-  crandb_store_file(req, key, filename).then(function(filedata){
+  return crandb_store_file(req, key, filename).then(function(filedata){
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
       var p2 = extract_json_metadata(bucket.openDownloadStream(key), pkgname);
@@ -412,7 +404,7 @@ router.put('/:user/packages/:package/:version/:type/:key', function(req, res, ne
     }).catch(function(e){
       return delete_file(key).then(()=>{throw e});
     });
-  }).catch(error_cb(400, next));
+  });
 });
 
 router.post('/:user/packages/:package/:version/update', multerstore.none(), function(req, res, next) {
@@ -420,12 +412,12 @@ router.post('/:user/packages/:package/:version/update', multerstore.none(), func
   var version = req.params.version;
   var query = {_type : 'src', _user : user, Package : req.params.package, Version: version};
   var payload = req.body;
-  Promise.resolve().then(function(){
+  return Promise.resolve().then(function(){
     var fields = Object.keys(payload);
     if(!fields.includes("$set") && !fields.includes("$unset"))
       throw "Object must contain either $set or $unset operation";
     return packages.findOneAndUpdate(query, payload).then(doc => res.send(doc.value));
-  }).catch(error_cb(400, next));
+  });
 });
 
 router.post('/:user/packages/:package/:version/failure', multerstore.none(), function(req, res, next) {
@@ -442,9 +434,7 @@ router.post('/:user/packages/:package/:version/failure', multerstore.none(), fun
   description['_selfowned'] = description._owner === user;
   description['_universes'] = [user]; //show failures in dashboard
   description['_nocasepkg'] = pkgname.toLowerCase();
-  packages.findOneAndReplace(query, description, {upsert: true})
-    .then(() => res.send(description))
-    .catch(error_cb(400, next))
+  return packages.findOneAndReplace(query, description, {upsert: true}).then(() => res.send(description));
 });
 
 router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
@@ -461,7 +451,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
   var key = req.body.key;
   var builder = parse_builder_fields(req.body);
   var stream = fs.createReadStream(filepath);
-  crandb_store_file(stream, key, filename).then(function(filedata){
+  return crandb_store_file(stream, key, filename).then(function(filedata){
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
       var p2 = extract_json_metadata(bucket.openDownloadStream(key), pkgname);
@@ -517,7 +507,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
     }).catch(function(e){
       return delete_file(key).then(()=>{throw e});
     });
-  }).catch(error_cb(400, next)).then(function(){
+  }).finally(function(){
     fs.unlink(filepath, () => console.log("Deleted tempfile: " + filepath));
   });
 });
@@ -529,7 +519,7 @@ router.patch('/:user/packages/:package/:version/:type', function(req, res, next)
   var version = req.params.version;
   var type = req.params.type || 'src'
   var query = {_user : user, _type : type, Package : pkgname, Version: version};
-  packages.find(query).next().then(function(doc){
+  return packages.find(query).next().then(function(doc){
     if(!doc) {
       throw `Failed to find package ${pkgname} ${version} in ${user}`;
     }
@@ -594,7 +584,7 @@ router.patch("/:user/api/recheck/:target",function(req, res, next) {
         res.send("Success");
       });
     });
-  }).catch(error_cb(400, next));
+  });
 });
 
 /* This API is called by the CI to update the status */
@@ -608,7 +598,7 @@ router.post("/:user/api/recheck/:package",function(req, res, next) {
     ).then(function(){
       res.send("Update OK");
     });
-  }).catch(error_cb(400, next));
+  });
 });
 
 router.post('/:user/api/reindex', function(req, res, next) {

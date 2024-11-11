@@ -53,7 +53,7 @@ app.use(function(err, req, res, next) {
   res.locals.error = err;
 
   // render the error page
-  res.status(err.status || 500);
+  res.status(err.status || 400);
   res.render('error');
 });
 

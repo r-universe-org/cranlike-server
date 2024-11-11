@@ -88,10 +88,10 @@ router.get('/:user/:package/data', function(req, res, next){
   var query = {'_user': req.params.user, 'Package': req.params.package, '_type': 'src'};
   return packages.findOne(query).then(function(x){
     return res.send(x._datasets || []);
-  }).catch(err => next(createError(400, err)));
+  });
 });
 
-router.get('/:user/:package/data/:name/:format?', function(req, res, next){
+router.get('/:user/:package/data/:name{/:format}', function(req, res, next){
   var user =  req.params.user;
   var pkgname = req.params.package;
   var name = req.params.name;

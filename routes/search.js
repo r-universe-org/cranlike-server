@@ -5,13 +5,6 @@ import {packages} from '../src/db.js';
 
 const router = express.Router();
 
-function error_cb(status, next) {
-  return function(err) {
-    console.log("[Debug] HTTP " + status + ": " + err)
-    next(createError(status, err));
-  }
-}
-
 /* NB: regex queries are slow because not indexable! */
 function build_query(query, str){
   function substitute(name, field, insensitive, partial){
@@ -106,7 +99,7 @@ router.get("/:user/api/search", function(req, res, next) {
       }
     }
   ]);
-  cursor.next().then(function(out){
+  return cursor.next().then(function(out){
     out.query = query;
     out.skip = skip;
     out.limit = limit;
@@ -119,7 +112,7 @@ router.get("/:user/api/search", function(req, res, next) {
     delete out.query._indexed;
     delete out.stat;
     return res.send(out);
-  }).catch(error_cb(400, next));
+  });
 });
 
 router.get("/:user/stats/powersearch", function(req, res, next) {
