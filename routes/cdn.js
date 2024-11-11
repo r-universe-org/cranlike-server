@@ -10,9 +10,8 @@ function stream_file(x){
 
 function send_from_bucket(hash, operation, res){
   return bucket.find({_id: hash}, {limit:1}).next().then(function(pkg){
-    if(!pkg){
-      return res.status(410).type("text/plain").send(`File ${hash} not available (anymore)`);
-    }
+    if(!pkg)
+      throw createError(410, `File ${hash} not available (anymore)`);
     let name = pkg.filename;
     if(operation == 'send'){
       let type = name.endsWith('.zip') ? 'application/zip' : 'application/x-gzip';
@@ -37,7 +36,7 @@ router.get("/cdn/:hash{/:file}", function(req, res, next) {
   let hash = req.params.hash || "";
   let file = req.params.file || "send";
   if(hash.length != 32 && hash.length != 64) //can be md5 or sha256
-    return next(createError(400, "Invalid hash length"));
+    throw createError(400, "Invalid hash length");
   return send_from_bucket(hash, file, res);
 });
 

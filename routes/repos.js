@@ -26,7 +26,7 @@ function etagify(x){
 }
 
 function stream_to_dcf(cursor, format, req, res){
-  format = format.replace(/^\./, '');
+  format = format && format.replace(/^\./, '');
   if(format == 'rds'){
     return res.status(404).send("PACKAGES.rds format not supported for now");
   }
