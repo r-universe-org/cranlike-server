@@ -194,7 +194,7 @@ function send_results(cursor, req, res, next, transform = (x) => x){
       return cursor.stream({transform: x => doc_to_ndjson(transform(x))}).pipe(res.type('text/plain'));
     } else {
       return cursor.toArray().then(function(out){
-        return res.send(out.filter(x => x).map(transform))
+        return res.send(out.filter(x => x).map(transform));
       });
     }
   });
@@ -404,11 +404,12 @@ router.get('/:user/api/packages{/:package}', function(req, res, next) {
       }
     });
   }
+
+  /* return data for a given package only */
   if(pkgname){
     return packages.find({_user : user, Package : pkgname}).project(projection).toArray().then(function(docs){
-      if(!docs.length){
-        return res.status(404).send(`No package '${pkgname}' found in https://${user}.r-universe.dev`);
-      }
+      if(!docs.length)
+        throw createError(404, `No package '${pkgname}' found in https://${user}.r-universe.dev`);
       res.send(group_package_data(docs));
     });
   }

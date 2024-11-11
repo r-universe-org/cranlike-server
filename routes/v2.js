@@ -101,9 +101,8 @@ router.get('/:user/:package/NEWS{:ext}', function(req, res, next){
 /* Match CRAN */
 router.get('/:user/:package/:file.pdf', function(req, res, next){
   var pkgname = req.params.package;
-  if(pkgname != req.params.file){
-    return res.status(404).send(`Did you mean ${pkgname}.pdf`)
-  }
+  if(pkgname != req.params.file)
+    throw createError(404, `File not found (did you mean ${pkgname}.pdf?)`);
   var query = {_user: req.params.user, _type: 'src', Package: pkgname};
   return send_extracted_file(query, `${pkgname}/manual.pdf`, req, res);
 });
