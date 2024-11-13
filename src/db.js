@@ -33,24 +33,29 @@ async function rebuild_indexes(){
     await packages.dropIndex(x.name).catch(console.log);
   };
 
+  function make_index(query){
+    return packages.createIndex(query).then(() => console.log(`Created index: ${JSON.stringify(query)}`));
+  }
+
   /* Speed up common query fields */
   /* NB: Dont use indexes with low cardinality (few unique values) */
-  await packages.createIndex("Package");
-  await packages.createIndex("_fileid");
-  await packages.createIndex("_user");
-  await packages.createIndex("_published");
-  await packages.createIndex("_nocasepkg");
-  await packages.createIndex("_commit.time");
-  await packages.createIndex("_universes");
-  await packages.createIndex("_topics");
-  await packages.createIndex("_exports");
-  await packages.createIndex({"_universes":1, "_commit.time":1});
-  await packages.createIndex({"_user":1, "_type":1, "Package":1});
-  await packages.createIndex({"_user":1, "_commit.id":1, "Package":1});
-  await packages.createIndex({"_user":1, "_type":1, "_commit.time":1});
-  await packages.createIndex({"_user":1, "_type":1, "_registered":1, "_commit.time":1});
-  await packages.createIndex({"_type":1, "_rundeps":1});
-  await packages.createIndex({"_type":1, "_dependencies.package":1});
+  await make_index("Package");
+  await make_index("_fileid");
+  await make_index("_user");
+  await make_index("_published");
+  await make_index("_nocasepkg");
+  await make_index("_commit.time");
+  await make_index("_universes");
+  await make_index("_topics");
+  await make_index("_exports");
+  await make_index({"_universes":1, "_commit.time":1});
+  await make_index({"_universes":1, "Package":1});
+  await make_index({"_user":1, "_type":1, "Package":1});
+  await make_index({"_user":1, "_commit.id":1, "Package":1});
+  await make_index({"_user":1, "_type":1, "_commit.time":1});
+  await make_index({"_user":1, "_type":1, "_registered":1, "_commit.time":1});
+  await make_index({"_type":1, "_rundeps":1});
+  await make_index({"_type":1, "_dependencies.package":1});
 
   /* The text search index (only one is allowed) */
   //await packages.dropIndex("textsearch").catch(console.log);
@@ -86,11 +91,12 @@ async function rebuild_indexes(){
       '_datasets.title' : 3
     },
     name: "textsearch"
-  });
+  }).then(() => console.log(`Created index: text-search`));
   var indexes = await packages.indexes();
   console.log(indexes.map(x => x.name));
   console.log("rebuild_indexes complete!")
 }
+
 
 export function get_latest(q){
   return packages.findOne(q, {sort:{_id: -1}, project: {_id: 1, _published: 1, _user: 1, Package: 1}});
