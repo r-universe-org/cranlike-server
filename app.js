@@ -4,6 +4,9 @@ import logger from 'morgan';
 import express from 'express';
 import cors from 'cors';
 
+/* Import database */
+import {get_latest} from './src/db.js';
+
 /* Routers */
 import cdnRouter from './routes/cdn.js';
 import packagesRouter from './routes/packages.js';
@@ -17,7 +20,8 @@ import v2Router from './routes/v2.js';
 import webrRouter from './routes/webr.js';
 
 /* Start App */
-var app = express();
+const production = process.env.NODE_ENV == 'production';
+const app = express();
 
 /* Prettify all JSON responses */
 app.set('json spaces', 2)
@@ -25,6 +29,53 @@ app.set('json spaces', 2)
 // view engine setup
 app.set('views', 'views');
 app.set('view engine', 'pug');
+
+// adapted from front-end stack
+// we can remove some stuff when we port :pkg apis to frontend
+app.use('/:user/:package', function(req, res, next){
+  const universe = req.params.user;
+  const pkg = req.params.package;
+  const reserved = ["packages", "src", "bin", "api", "stats", "badges", "docs", "citation",
+    "manual", "readme", "articles", "feed.xml", "sitemap.xml", "sitemap_index.xml"];
+  const metapage = reserved.includes(pkg);
+  if(universe == ':any' || universe == 'shared' || universe == 'cdn') {
+    var query = {};
+  } else if (metapage){
+    var query = {_user: universe};
+  } else {
+    var query = {_user: universe, Package: pkg};
+  }
+  return get_latest(query).then(function(doc){
+    //also cache 404 errors below
+    res.set('Cache-Control', 'public, max-age=60');
+    if(doc){
+      const etag = `W/"${doc._id}"`;
+      const date = doc._published.toUTCString();
+      res.set('ETag', etag);
+      res.set('Last-Modified', date);
+      //clients may cache front-end pages for 60s before revalidating.
+      //revalidation can either be done by comparing Etag or Last-Modified.
+      //do not set 'must-revalidate' as this will disallow using stale cache when server is offline.
+      if(etag === req.header('If-None-Match') || date === req.header('If-Modified-Since')){
+        //todo: also invalidate for updates in frontend itself?
+        res.status(304).send();
+      } else {
+        next(); //proceed to routing
+      }
+    } else if(metapage) {
+      //throw createError(404, `Universe not found: ${universe}`);
+      next();
+    } else {
+      // Try to find case insensitive or in other universe
+      var altquery = {_type: 'src', _nocasepkg: pkg.toLowerCase(), _universes: universe, _registered: true};
+      return get_latest(altquery).then(function(alt){
+        if(!alt)
+          throw createError(404, `Package ${pkg} not found in ${universe}`);
+        res.redirect(`https://${alt._user}.r-universe.dev/${alt.Package}${req.path.replace(/\/$/, '')}`);
+      });
+    };
+  });
+});
 
 app.use(cors())
 app.use(logger('dev'));

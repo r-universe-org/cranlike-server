@@ -36,7 +36,6 @@ router.get('/:user/feed.xml', function(req, res, next) {
         return cursor.next(); //promise to read 1 record
       }
     }).then(function(latest){
-      res.set('Cache-Control', 'public, max-age=60');
       res.type('application/xml');
       if(user == ':any'){
         var repo = 'https://r-universe.dev';
@@ -110,7 +109,7 @@ function send_sitemap_index(query, res){
   }).toArray().then(function(data){
     if(!data.length)
       throw createError(404, "No data found this universe");
-    res.set('Cache-Control', 'max-age=3600, public').type('application/xml');
+    res.type('application/xml');
     res.write('<?xml version="1.0" encoding="UTF-8"?>\n');
     res.write('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n');
     data.forEach(function(x){

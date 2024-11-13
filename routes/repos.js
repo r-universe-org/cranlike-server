@@ -21,10 +21,6 @@ function doc_to_filename(x){
   return x.Package + "_" + x.Version + ext[x['_type']] + '\n';
 }
 
-function etagify(x){
-  return 'W/"' +  x + '"';
-}
-
 function stream_to_dcf(cursor, format, req, res){
   format = format && format.replace(/^\./, '');
   if(format == 'rds'){
@@ -63,22 +59,7 @@ function stream_to_dcf(cursor, format, req, res){
 }
 
 function packages_index(query, format, req, res){
-  // Try mitigate hammering. Cache for at least 10 sec, after that revalidate.
-  // This requires nginx to use proxy_cache_revalidate;
-  return packages.find(query).sort({"_id" : -1}).limit(1).project({"_id": 1}).next().then(function(doc){
-    if(!doc){
-      res.status(200).send();
-      return;
-    }
-    var etag = etagify(doc['_id']);
-    res.set('ETag', etag);
-    res.set('Cache-Control', 'public, max-age=10, must-revalidate');
-    if(etag === req.header('If-None-Match')){
-      res.status(304).send();
-      return;
-    }
-    return stream_to_dcf(packages.find(query), format, req, res);
-  });
+  return stream_to_dcf(packages.find(query), format, req, res);
 }
 
 function packages_index_aggregate(query, format, req, res){
@@ -156,16 +137,10 @@ function query_stream_info(query){
 
 function send_binary(query, req, res, next, postfix){
   return query_stream_info(query).then(function(x){
-    var hash = x['_id'];
-    var etag = etagify(hash);
-    if(etag === req.header('If-None-Match')){
-      res.status(304).send();
-    } else {
-      const host = req.headers.host || "";
-      const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
-      res.set("ETag", etag).set('Cache-Control', 'public, max-age=10, must-revalidate');
-      res.redirect(`${cdn}/${hash}${postfix || ""}`);
-    }
+    const hash = x['_id'];
+    const host = req.headers.host || "";
+    const cdn = host === 'localhost:3000' ? '/cdn' : 'https://cdn.r-universe.dev';
+    res.redirect(`${cdn}/${hash}${postfix || ""}`);
   }).catch(function(err){
     // Workaround for race conditions: redirect to new version if just updated
     // This does not help if pak would use the DownloadURL from the PACKAGES file

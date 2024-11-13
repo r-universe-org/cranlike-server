@@ -11,7 +11,7 @@ function send_badge(badge, user, res, linkto){
   var url = linkto || 'https://' + user + '.r-universe.dev';
   svg = svg.replace('<title>', '<a href="' + url + '" alt="r-universe">\n  <title>');
   svg = svg.replace('</svg>', '  </a>\n</svg>');
-  res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60').send(svg);
+  res.type('image/svg+xml').send(svg);
 }
 
 router.get('/:user/badges/\\::meta', function(req, res, next) {

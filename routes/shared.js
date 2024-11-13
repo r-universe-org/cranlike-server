@@ -62,7 +62,7 @@ router.get('/shared/redirect/:package{/*path}', function(req, res, next) {
         });
       } else {
         var path = req.headers.host == 'docs.cran.dev' ? manual : unsplat(req.params.path);
-        res.set('Cache-Control', 'max-age=3600, public').redirect(`https://${realowner}.r-universe.dev/${x.Package}${path}`);
+        res.redirect(`https://${realowner}.r-universe.dev/${x.Package}${path}`);
       }
     }
   });

@@ -91,3 +91,7 @@ async function rebuild_indexes(){
   console.log(indexes.map(x => x.name));
   console.log("rebuild_indexes complete!")
 }
+
+export function get_latest(q){
+  return packages.findOne(q, {sort:{_id: -1}, project: {_id: 1, _published: 1, _user: 1, Package: 1}});
+}

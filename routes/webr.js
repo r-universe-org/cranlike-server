@@ -7,10 +7,6 @@ import {Buffer} from "node:buffer";
 
 const router = express.Router();
 
-function etagify(x){
-  return 'W/"' +  x + '"';
-}
-
 function new_rsession(preload){
   var session;
 
@@ -101,11 +97,6 @@ router.get('/:user/:package/data/:name{/:format}', function(req, res, next){
   var session = get_session(format);
   var supported = ['csv', 'csv.gz', 'xlsx', 'json', 'ndjson', 'rda', 'rds'];
   return packages.findOne(query).then(async function(x){
-    var etag = etagify(x['_id']);
-    if(etag === req.header('If-None-Match')){
-      res.status(304).send();
-      return;
-    }
     var lazydata = ['yes', 'true'].includes((x['LazyData'] || "").toLowerCase());
     var datasets = x._datasets || [];
     if(!format){
@@ -157,7 +148,7 @@ router.get('/:user/:package/data/:name{/:format}', function(req, res, next){
       default:
         throw "Only csv, json, xlsx, rda format is supported";
     }
-    return res.set('ETag', etag).set('Cache-Control', 'public, max-age=3600').send(Buffer.from(outbuf, 'binary'));
+    return res.set('Cache-Control', 'public, max-age=3600').send(Buffer.from(outbuf, 'binary'));
   }).catch(function(err){
     next(createError(400, err));
     if (err instanceof webr.WebRError){

@@ -150,10 +150,6 @@ export function get_cran_desc(pkg){
   });
 }
 
-function etagify(x){
-  return 'W/"' +  x + '"';
-}
-
 function stream2buffer(stream) {
     return new Promise((resolve, reject) => {
         const _buf = [];
@@ -179,13 +175,8 @@ function pipe_everything_to(stream, output) {
 
 export function send_extracted_file(query, filename, req, res){
   return find_by_query(query).then(function(hash){
-    var etag = etagify(hash);
-    if(etag === req.header('If-None-Match')){
-      return res.status(304).send();
-    } else {
-      return send_file_from_tar(bucket.openDownloadStream(hash), res, filename);
-    }
-  })
+    return send_file_from_tar(bucket.openDownloadStream(hash), res, filename);
+  });
 }
 
 function send_file_from_tar(input, res, filename){

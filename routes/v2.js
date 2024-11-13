@@ -12,7 +12,7 @@ router.get('/:user', function(req, res, next) {
   const user = req.params.user;
   return test_if_universe_exists(user).then(function(exists){
     if(exists){
-      res.set('Cache-control', 'private'); //html or json
+      res.vary('Accept'); //html or json
       const accept = req.headers['accept'];
       if(accept && accept.includes('html')){
         res.redirect(`/${user}/builds`);
