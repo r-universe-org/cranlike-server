@@ -40,14 +40,21 @@ app.use('/:user/:package', function(req, res, next){
   const metapage = reserved.includes(pkg);
   if(universe == ':any' || universe == 'shared' || universe == 'cdn') {
     var query = {};
+    var cdn_cache = 3600;
   } else if (metapage){
     var query = {_user: universe};
+    var cdn_cache = 60;
   } else {
     var query = {_user: universe, Package: pkg};
+    var cdn_cache = 30;
   }
   return get_latest(query).then(function(doc){
-    //also cache 404 errors below
-    res.set('Cache-Control', 'public, max-age=60');
+    //same as front-end, see comment there
+    res.set('Cache-Control', `public, max-age=60, stale-while-revalidate=${cdn_cache}`);
+
+    //Using 'CDN-Cache-Control' would make nginx also do this and we'd need to refresh twice?
+    //res.set('Cloudflare-CDN-Cache-Control', `public, max-age=60, stale-while-revalidate=${cdn_cache}`);
+
     if(doc){
       const etag = `W/"${doc._id}"`;
       const date = doc._published.toUTCString();
