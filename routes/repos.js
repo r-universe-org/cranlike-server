@@ -1174,18 +1174,26 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
 /* NB distinct() has memory limits, we may need to switch to aggregate everywhere */
 router.get('/:user/stats/summary', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
-  var p1 = packages.distinct('Package', query);
-  var p2 = packages.distinct('_maintainer.email', query);
-  var p3 = packages.distinct('_vignettes.title', query);
-  var p4 = packages.distinct('_datasets.title', query);
-  var p5 = packages.distinct('_user', {'_userbio.type': 'organization', ...query});
+  var start = new Date();
+  function unique(x, y) {
+    return packages.distinct(x,y).then(function(res){
+      return {length: res.length, time: (new Date()) - start};
+    });
+  }
+  var p1 = unique('Package', query);
+  var p2 = unique('_maintainer.email', query);
+  var p3 = unique('_vignettes.title', query);
+  var p4 = unique('_datasets.title', query);
+  var p5 = unique('_user', {'_userbio.type': 'organization', ...query});
   var p6 = packages.aggregate([
     {$match:query},
     {$project: {contrib: {$objectToArray:"$_contributions"}}},
     {$unwind: "$contrib"},
     {$group: {_id: "$contrib.k"}},
     {$count: "total"}
-  ]).next();
+  ]).next().then(function(res){
+    return {length: res.total, time: (new Date()) - start};
+  });
   return Promise.all([p1, p2, p3, p4, p5, p6]).then((values) => {
     const out = {
       packages: values[0].length,
@@ -1193,7 +1201,8 @@ router.get('/:user/stats/summary', function(req, res, next){
       articles: values[2].length,
       datasets: values[3].length,
       organizations: values[4].length,
-      contributors: values[5] && values[5].total
+      contributors: values[5].length,
+      timings: values
     };
     res.send(out);
   });
