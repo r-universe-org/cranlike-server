@@ -1175,9 +1175,13 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
 router.get('/:user/stats/summary', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
   var start = new Date();
-  function unique(x, y) {
-    return packages.distinct(x,y).then(function(res){
-      return {length: res.length, time: (new Date()) - start};
+  function unique(k, q) {
+    return packages.aggregate([
+      {$match:q},
+      {$group: {_id: `$${k}`}},
+      {$count: "total"}
+    ]).next().then(function(res){
+      return {length: res.total, time: (new Date()) - start};
     });
   }
   var p1 = unique('Package', query);
@@ -1192,7 +1196,7 @@ router.get('/:user/stats/summary', function(req, res, next){
     {$group: {_id: "$contrib.k"}},
     {$count: "total"}
   ]).next().then(function(res){
-    return {length: res.total, time: (new Date()) - start};
+    return {length: (res ? res.total : 0), time: (new Date()) - start};
   });
   return Promise.all([p1, p2, p3, p4, p5, p6]).then((values) => {
     const out = {

@@ -1,6 +1,6 @@
 {
   "name": "cranlike",
-  "version": "0.22.38",
+  "version": "0.22.44",
   "type": "module",
   "description": "High-performance R package server",
   "author": "Jeroen Ooms <jeroen@berkeley.edu>",
@@ -25,7 +25,7 @@
     "highlight.js": "^11.10.0",
     "http-errors": "^2.0.0",
     "mime": "^2.5.0",
-    "mongodb": "^6.9.0",
+    "mongodb": "^6.10.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pug": "^3.0.3",
