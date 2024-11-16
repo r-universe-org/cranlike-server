@@ -1178,7 +1178,7 @@ router.get('/:user/stats/summary', function(req, res, next){
   function unique(k, q) {
     return packages.aggregate([
       {$match:q},
-      {$group: {_id: `$${k}`}},
+      {$group: {_id: { $toHashedIndexKey: `$${k}`}}},
       {$count: "total"}
     ]).next().then(function(res){
       return {length: (res ? res.total : 0), time: (new Date()) - start};

@@ -4,9 +4,10 @@ RUN apk add --no-cache bash tini
 
 EXPOSE 3000
 
-RUN mkdir /app && cd /app && npm install cranlike@0.22.58
+COPY . /cranlike
 
-WORKDIR /app/node_modules/cranlike
+WORKDIR /cranlike
 
-ENTRYPOINT [ "tini", "--", "/app/node_modules/cranlike/docker-entrypoint.sh"]
-CMD ["cranlike"]
+RUN npm install .
+
+ENTRYPOINT [ "tini", "--", "/cranlike/docker-entrypoint.sh"]

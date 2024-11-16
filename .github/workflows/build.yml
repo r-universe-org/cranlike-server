@@ -16,8 +16,8 @@ jobs:
         name: find version
         shell: bash
         run: |
-          version=$(jq -r '.version' package.json)
-          echo "Found version: $version"
+          version=$(date +'%Y-%m-%d')
+          echo "Using version: $version"
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
