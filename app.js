@@ -112,13 +112,7 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 400);
-  res.vary("Accept").set('Cache-Control', 'public, max-age=30');
-  const accept = req.headers['accept'] || "";
-  if(accept.includes('html')){
-    res.render('error');
-  } else {
-    res.type('text/plain').send(err.message || err);
-  }
+  res.render('error');
 });
 
 export default app;

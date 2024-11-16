@@ -13,6 +13,7 @@ router.get('/:user', function(req, res, next) {
   return test_if_universe_exists(user).then(function(exists){
     if(exists){
       res.vary('Accept'); //html or json
+      res.set('Cache-control', 'private') // Vary does not work in cloudflare currently
       const accept = req.headers['accept'];
 
       //req.accepts("html") does not help because it also matches */*

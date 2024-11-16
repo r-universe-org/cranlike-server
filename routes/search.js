@@ -121,8 +121,11 @@ router.get("/:user/api/search", function(req, res, next) {
       delete out.query._indexed;
       delete out.stat;
       return res.send(out);
-    });
-  })
+    })
+  }).catch(function(err){
+    // Send API response errors in text instead of html
+    res.status(400).type('text/plain').send(err.message || err);
+  });
 });
 
 router.get("/:user/stats/powersearch", function(req, res, next) {
