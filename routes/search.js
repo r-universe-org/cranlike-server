@@ -52,6 +52,7 @@ function build_query(query, str){
   match_exact('exports', '_exports');
   match_exact('owner', '_owner');
   match_exact('user', '_user');
+  match_exact('fileid', '_fileid')
   match_exact('universe', '_universes');
   match_partial('data', '_datasets.title');
   str = str.trim();
