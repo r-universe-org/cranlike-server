@@ -8,8 +8,11 @@ const router = express.Router();
 /* NB: regex queries are slow because not indexable! */
 function build_query(query, str){
   function substitute(name, field, insensitive, partial){
-    var re = new RegExp(`${name}:(\\S+)`, "i"); //the name is insensitive e.g.: "Package:jsonlite"
+    var re = new RegExp(`${name}:(\\S*)`, "i"); //the name is insensitive e.g.: "Package:jsonlite"
     var found = str.match(re);
+    if(found && !found[1]){
+      throw createError(400, `Invalid search query: "${name}:" is followed by whitespace`);
+    }
     if(found && found[1]){
       var search = found[1];
       if(insensitive || partial){
@@ -56,64 +59,70 @@ function build_query(query, str){
   match_exact('universe', '_universes');
   match_partial('data', '_datasets.title');
   str = str.trim();
+  var unknown = str.match("(\\S+):(\\S+)");
+  if(unknown && unknown[1]){
+    throw createError(400, `Invalid search query: "${unknown[1]}:" is not a supported field.`);
+  }
   if(str){
     query['$text'] = { $search: str, $caseSensitive: false};
   }
 }
 
 router.get("/:user/api/search", function(req, res, next) {
-  var query = req.params.user == ":any" ?
-    {_type: 'src', _indexed : true} :
-    {_type: 'src', _registered : true, _universes: req.params.user};
-  build_query(query, req.query.q || "");
-  var project = {
-    Package: 1,
-    Title: 1,
-    Description:1,
-    _user:1,
-    _owner: 1,
-    _score: 1,
-    _usedby: 1,
-    _uuid: '$_userbio.uuid',
-    maintainer: '$_maintainer',
-    updated: '$_commit.time',
-    stars: '$_stars',
-    topics: '$_topics',
-    sysdeps: '$_sysdeps.name',
-    rundeps: '$_rundeps'
-  };
-  if(query['$text']){
-    project.match = {$meta: "textScore"};
-    project.rank = {$multiply:[{$meta: "textScore"}, '$_score']};
-  } else {
-    project.rank = '$_score';
-  }
-  var limit =  parseInt(req.query.limit) || 100;
-  var skip =  parseInt(req.query.skip) || 0;
-  var cursor = packages.aggregate([
-    { $match: query},
-    { $project: project},
-    { $sort: {rank: -1}},
-    { $facet: {
-        results: [{ $skip: skip }, { $limit: limit }],
-        stat: [{$count: 'total'}]
+  return Promise.resolve().then(() => {
+    var query = req.params.user == ":any" ?
+      {_type: 'src', _indexed : true} :
+      {_type: 'src', _registered : true, _universes: req.params.user};
+    build_query(query, req.query.q || "");
+    var project = {
+      Package: 1,
+      Title: 1,
+      Description:1,
+      _user:1,
+      _owner: 1,
+      _score: 1,
+      _usedby: 1,
+      _uuid: '$_userbio.uuid',
+      maintainer: '$_maintainer',
+      updated: '$_commit.time',
+      stars: '$_stars',
+      topics: '$_topics',
+      sysdeps: '$_sysdeps.name',
+      rundeps: '$_rundeps'
+    };
+    if(query['$text']){
+      project.match = {$meta: "textScore"};
+      project.rank = {$multiply:[{$meta: "textScore"}, '$_score']};
+    } else {
+      project.rank = '$_score';
+    }
+    var limit =  parseInt(req.query.limit) || 100;
+    var skip =  parseInt(req.query.skip) || 0;
+    var cursor = packages.aggregate([
+      { $match: query},
+      { $project: project},
+      { $sort: {rank: -1}},
+      { $facet: {
+          results: [{ $skip: skip }, { $limit: limit }],
+          stat: [{$count: 'total'}]
+        }
       }
-    }
-  ]);
-  return cursor.next().then(function(out){
-    out.query = query;
-    out.skip = skip;
-    out.limit = limit;
-    if(out.stat && out.stat.length){
-      out.total = out.stat[0].total;
-    }
-    //remove fields unrelated to the search
-    delete out.query._type;
-    delete out.query._registered;
-    delete out.query._indexed;
-    delete out.stat;
-    return res.send(out);
-  });
+    ]);
+    return cursor.next().then(function(out){
+      out.query = query;
+      out.skip = skip;
+      out.limit = limit;
+      if(out.stat && out.stat.length){
+        out.total = out.stat[0].total;
+      }
+      //remove fields unrelated to the search
+      delete out.query._type;
+      delete out.query._registered;
+      delete out.query._indexed;
+      delete out.stat;
+      return res.send(out);
+    });
+  })
 });
 
 router.get("/:user/stats/powersearch", function(req, res, next) {
