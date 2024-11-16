@@ -14,6 +14,8 @@ router.get('/:user', function(req, res, next) {
     if(exists){
       res.vary('Accept'); //html or json
       const accept = req.headers['accept'];
+
+      //req.accepts("html") does not help because it also matches */*
       if(accept && accept.includes('html')){
         res.redirect(`/${user}/builds`);
       } else {
