@@ -1181,7 +1181,7 @@ router.get('/:user/stats/summary', function(req, res, next){
       {$group: {_id: `$${k}`}},
       {$count: "total"}
     ]).next().then(function(res){
-      return {length: res.total, time: (new Date()) - start};
+      return {length: (res ? res.total : 0), time: (new Date()) - start};
     });
   }
   var p1 = unique('Package', query);
