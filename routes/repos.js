@@ -1171,44 +1171,54 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
   });
 });
 
-/* NB distinct() has memory limits, we may need to switch to aggregate everywhere */
+function summary_count(k, q) {
+  return packages.aggregate([
+    {$match:q},
+    {$project: {x: `$${k}`}},
+    {$unwind: "$x"},
+    {$count: "total"}
+  ]);
+}
+
+function summary_unique(k, q) {
+  return packages.aggregate([
+    {$match:q},
+    {$project: {x: `$${k}`}},
+    {$unwind: "$x"},
+    {$group: {_id: { $toHashedIndexKey: "$x"}}},
+    {$count: "total"}
+  ]);
+}
+
+function summary_object(k, q) {
+  return packages.aggregate([
+    {$match:q},
+    {$project: {x: {$objectToArray:`$${k}`}}},
+    {$unwind: "$x"},
+    {$group: {_id: "$x.k"}},
+    {$count: "total"}
+  ]);
+}
+
 router.get('/:user/stats/summary', function(req, res, next){
   var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
-  var start = new Date();
-  function unique(k, q) {
-    return packages.aggregate([
-      {$match:q},
-      {$project: {x: `$${k}`}},
-      {$unwind: "$x"},
-      {$group: {_id: { $toHashedIndexKey: '$x'}}},
-      {$count: "total"}
-    ]).next().then(function(res){
-      return {length: (res ? res.total : 0), time: (new Date()) - start};
-    });
-  }
-  var p1 = unique('Package', query);
-  var p2 = unique('_maintainer.email', query);
-  var p3 = unique('_vignettes.title', query);
-  var p4 = unique('_datasets.title', query);
-  var p5 = unique('_user', {'_userbio.type': 'organization', ...query});
-  var p6 = packages.aggregate([
-    {$match:query},
-    {$project: {contrib: {$objectToArray:"$_contributions"}}},
-    {$unwind: "$contrib"},
-    {$group: {_id: "$contrib.k"}},
-    {$count: "total"}
-  ]).next().then(function(res){
-    return {length: (res ? res.total : 0), time: (new Date()) - start};
-  });
-  return Promise.all([p1, p2, p3, p4, p5, p6]).then((values) => {
+  var p1 = summary_unique('Package', query);
+  var p2 = summary_unique('_maintainer.email', query);
+  var p3 = summary_count('_vignettes.source', query);
+  var p4 = summary_count('_datasets.name', query);
+  var p5 = summary_unique('_user', {'_userbio.type': 'organization', ...query});
+  var p6 = summary_object('_contributions', query);
+  var promises = [p1, p2, p3, p4, p5, p6].map(function(p){
+    return p.next().then(res => res ? res.total : 0);
+  })
+  return Promise.all(promises).then(function(values){
     const out = {
-      packages: values[0].length,
-      maintainers: values[1].length,
-      articles: values[2].length,
-      datasets: values[3].length,
-      organizations: values[4].length,
-      contributors: values[5].length,
-      timings: values
+      packages: values[0],
+      maintainers: values[1],
+      articles: values[2],
+      datasets: values[3],
+      organizations: values[4],
+      contributors: values[5]
     };
     res.send(out);
   });
