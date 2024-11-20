@@ -79,16 +79,14 @@ router.get("/:user/api/search", function(req, res, next) {
       Title: 1,
       Description:1,
       _user:1,
-      _owner: 1,
       _score: 1,
       _usedby: 1,
+      _searchresults: 1,
       _uuid: '$_userbio.uuid',
       maintainer: '$_maintainer',
       updated: '$_commit.time',
       stars: '$_stars',
-      topics: '$_topics',
-      sysdeps: '$_sysdeps.name',
-      rundeps: '$_rundeps'
+      topics: '$_topics'
     };
     if(query['$text']){
       project.match = {$meta: "textScore"};
