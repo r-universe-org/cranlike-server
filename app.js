@@ -42,7 +42,7 @@ app.use('/:user/:package', function(req, res, next){
     var query = {};
     var cdn_cache = 3600;
   } else if (metapage){
-    var query = {_user: universe};
+    var query = {_universes: universe};
     var cdn_cache = 60;
   } else {
     var query = {_user: universe, Package: pkg};
