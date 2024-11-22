@@ -748,10 +748,11 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       orcid : { $addToSet: '$_maintainer.orcid'}, //can be null
       mastodon : { $addToSet: '$_maintainer.mastodon'}, //can be null
       bluesky : { $addToSet: '$_maintainer.bluesky'}, //can be null
+      linkedin : { $addToSet: '$_maintainer.linkedin'}, //can be null
       orgs: { $push:  { "k": "$_user", "v": true}},
       count : { $sum: 1 }
     }},
-    {$set: {orgs: {$arrayToObject: '$orgs'}, orcid: {$first: '$orcid'}, mastodon: {$first: '$mastodon'}, bluesky: {$first: '$bluesky'}, uuid: {$first: '$uuid'}, login: {$first: '$login'}}},
+    {$set: {orgs: {$arrayToObject: '$orgs'}, orcid: {$first: '$orcid'}, mastodon: {$first: '$mastodon'}, bluesky: {$first: '$bluesky'}, linkedin: {$first: '$linkedin'}, uuid: {$first: '$uuid'}, login: {$first: '$login'}}},
     {$group: {
       _id : { $ifNull: [ "$login", "$_id" ]},
       uuid: { $first: '$uuid'},
@@ -761,6 +762,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       name : { $first: '$name'},
       orcid : { $addToSet: "$orcid"},
       bluesky : { $addToSet: "$bluesky"},
+      linkedin : { $addToSet: "$linkedin"},
       mastodon : { $addToSet: "$mastodon"},
       count : { $sum: '$count'},
       orgs: {$mergeObjects: '$orgs'}
@@ -775,6 +777,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       count : 1,
       orcid: {$first: '$orcid'},
       bluesky: {$first: '$bluesky'},
+      linkedin: {$first: '$linkedin'},
       mastodon: {$first: '$mastodon'},
       orgs: {$objectToArray: "$orgs"}
     }},
