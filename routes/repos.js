@@ -21,6 +21,14 @@ function doc_to_filename(x){
   return x.Package + "_" + x.Version + ext[x['_type']] + '\n';
 }
 
+function array_size(key){
+  return {$cond: [{ $isArray: key }, {$size: key}, 0 ]};
+}
+
+function array_first(key){
+  return {$cond: [{ $isArray: key }, {$first: key}, null ]};
+}
+
 function stream_to_dcf(cursor, format, req, res){
   format = format && format.replace(/^\./, '');
   if(format == 'rds'){
@@ -445,9 +453,6 @@ router.get("/:user/api/universes", function(req, res, next) {
 });
 
 router.get("/:user/api/scores", function(req, res, next) {
-  function array_size(key){
-    return {$cond: [{ $isArray: key }, {$size: key}, 0 ]};
-  }
   var query = {_type: 'src', _indexed: true};
   var projection = {
     _id: 0,
@@ -510,9 +515,9 @@ router.get("/:user/api/datasets", function(req, res, next) {
       package: 1,
       name: '$dataset.name',
       title: '$dataset.title',
-      class: {$first: '$dataset.class'},
+      class: array_first('$dataset.class'),
       rows: '$dataset.rows',
-      fields: {$size: '$dataset.fields'}
+      fields: array_size('$dataset.fields')
     }}
   ]);
   return send_results(cursor, req, res, next);
