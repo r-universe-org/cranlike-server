@@ -1,6 +1,5 @@
 import express from 'express';
 import createError from 'http-errors';
-import xmlbuilder from 'xmlbuilder';
 import hljs from 'highlight.js';
 import {load as cheerio_load} from 'cheerio';
 import {send_extracted_file, tar_index_files, test_if_universe_exists, get_extracted_file} from '../src/tools.js';
@@ -198,39 +197,6 @@ router.get('/:user/:package/doc/:file', function(req, res, next){
   var pkgname = req.params.package;
   var query = {_user: req.params.user, _type: 'src', Package: pkgname};
   return send_extracted_file(query, doc_path(req.params.file, pkgname), req, res);
-});
-
-router.get('/:user/:package/sitemap.xml', function(req, res, next) {
-  return real_package_home(req.params.user, req.params.package).then(function(x){
-    var xml = xmlbuilder.create('urlset', {encoding:"UTF-8"});
-    xml.att('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9')
-    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}`);
-    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/api/packages/${x.Package}`);
-    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/${x.Package}.pdf`);
-    xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/manual.html`);
-    var assets = x._assets || [];
-    if(assets.includes('extra/NEWS.html')){
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/NEWS`);
-    }
-    if(assets.includes('extra/NEWS.txt')){
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/NEWS.txt`);
-    }
-    if(assets.includes('extra/citation.html')){
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/citation`);
-    }
-    if(assets.includes('extra/citation.txt')){
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/citation.txt`);
-    }
-    if(assets.includes('extra/citation.cff')){
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/citation.cff`);
-    }
-    var vignettes = x._vignettes || [];
-    vignettes.map(function(vignette){
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/${x.Package}/doc/${vignette.source}`);
-      xml.ele('url').ele('loc', `https://${x['_user']}.r-universe.dev/articles/${x.Package}/${vignette.filename}`);
-    });
-    res.type('application/xml').send(xml.end({ pretty: true}));
-  });
 });
 
 //This redirects cran.r-universe.dev/pkg to the canonical home, if any

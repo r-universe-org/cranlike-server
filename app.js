@@ -13,7 +13,6 @@ import packagesRouter from './routes/packages.js';
 import reposRouter from './routes/repos.js';
 import searchRouter from './routes/search.js';
 import badgesRouter from './routes/badges.js';
-import feedsRouter from './routes/feeds.js';
 import sharedRouter from './routes/shared.js';
 import snapshotRouter from './routes/snapshot.js';
 import v2Router from './routes/v2.js';
@@ -36,7 +35,7 @@ app.use('/:user/:package', function(req, res, next){
   const universe = req.params.user;
   const pkg = req.params.package;
   const reserved = ["packages", "src", "bin", "api", "stats", "badges", "docs", "citation",
-    "manual", "readme", "articles", "feed.xml", "sitemap.xml", "sitemap_index.xml"];
+    "manual", "readme", "articles"];
   const metapage = reserved.includes(pkg);
   if(universe == ':any' || universe == 'shared' || universe == 'cdn') {
     var query = {};
@@ -94,7 +93,6 @@ app.use('/', packagesRouter);
 app.use('/', reposRouter);
 app.use('/', searchRouter);
 app.use('/', badgesRouter);
-app.use('/', feedsRouter);
 app.use('/', sharedRouter);
 app.use('/', snapshotRouter);
 app.use('/', v2Router);
