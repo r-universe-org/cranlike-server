@@ -297,8 +297,11 @@ function is_indexed(description){
   var universe = description._user;
   if(description['_registered'] === false)
     return false; // never index remotes
-  if((description.URL || "").toLowerCase().includes(`${universe}.r-universe.dev`))
-    return true; // package names this universe in description
+  var re = new RegExp("\\S+\\.r-universe\\.dev", "i");
+  var match = (description.URL || "").toLowerCase().match(re);
+  if(match && match[0]){ //description specififes a specific universe
+    return match[0].includes(`${universe}.r-universe.dev`);
+  }
   var owner = description._realowner || description._owner;
   return universe == owner;
 }
