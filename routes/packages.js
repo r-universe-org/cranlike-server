@@ -299,7 +299,7 @@ function is_indexed(description){
     return false; // never index remotes
   var re = new RegExp("\\S+\\.r-universe\\.dev", "i");
   var match = (description.URL || "").toLowerCase().match(re);
-  if(match && match[0]){ //description specififes a specific universe
+  if(match && match[0]){ //description names a specific universe
     return match[0].includes(`${universe}.r-universe.dev`);
   }
   var owner = description._realowner || description._owner;
@@ -350,7 +350,7 @@ router.put('/:user/packages/:package/:version/:type/:key', function(req, res, ne
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
       var p2 = extract_json_metadata(bucket.openDownloadStream(key), pkgname);
-      var p3 = packages.find({_type: 'src', Package: pkgname, _indexed: true}).project({_user:1}).next();
+      var p3 = packages.find({_type: 'src', Package: pkgname, _indexed: true}).project({_user:1, _id:1}).next();
       return Promise.all([filedata, p1, p2, p3]);
     } else {
       return [filedata];
@@ -379,8 +379,15 @@ router.put('/:user/packages/:package/:version/:type/:key', function(req, res, ne
         description['_indexed'] = is_indexed(description);
         description['_nocasepkg'] = pkgname.toLowerCase();
         set_universes(description);
-        if(description['_indexed'] === false && canonical){
-          description['_indexurl'] = `https://${canonical['_user']}.r-universe.dev/${pkgname}`;
+        if(canonical){
+          if(description['_indexed'] === false){
+            description['_indexurl'] = `https://${canonical['_user']}.r-universe.dev/${pkgname}`;
+          } else if(canonical['_user'] == 'cran') {
+            //un-index prev canonical if this was a cran mirror copy only.
+            //See https://github.com/r-universe-org/help/issues/535
+            var payload = {"$set" : {_indexed: false, _indexurl: `https://${user}.r-universe.dev/${pkgname}`}};
+            packages.findOneAndUpdate({_id: canonical['_id']}, payload).catch(console.log); //ignore result
+          }
         }
       } else {
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
