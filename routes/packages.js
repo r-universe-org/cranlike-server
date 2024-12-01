@@ -111,13 +111,18 @@ function store_stream_file(stream, key, filename){
     pipe.on('error', function(err){
       console.log("Error in openUploadStreamWithId()" + err);
       /* Clear possible orphaned chunks, then reject */
-      chunks.deleteMany({files_id: key}).finally(function(e){
+      var p1 = chunks.deleteMany({files_id: key});
+      var p2 = bucket.delete(key);
+      promise.allSettled([p1, p2]).then(function(e){
         reject("Error in openUploadStreamWithId(): " + err);
       });
     });
     pipe.on('finish', function(){
       /* Right now we still assume the uploader uses md5 keys */
-      db.command({filemd5: key, root: "files"}).then(function(check){
+      db.command({filemd5: key, root: "files"}).catch(function(err){
+        console.log(err); //if mongodb command fails (should never happen)
+        return {};
+      }).then(function(check){
         var shasum = hash.digest('hex');
         if(key == shasum || key == check.md5) {
           resolve({_id: key, length: upload.length, md5: check.md5, sha256: shasum});
