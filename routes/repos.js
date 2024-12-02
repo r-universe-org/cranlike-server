@@ -524,7 +524,13 @@ router.get("/:user/api/datasets", function(req, res, next) {
 });
 
 router.get("/:user/api/dbdump", function(req, res, next) {
-  var query =  qf({_user: req.params.user}, req.query.all);
+  var query = {};
+  if(req.params.user != ":any"){
+    query._user = req.params.user;
+  }
+  if(!req.query.everything){
+    query._type = 'src'
+  }
   var cursor = packages.find(query, {raw: true});
   return cursor.stream().pipe(res.type("application/bson"));
 });
