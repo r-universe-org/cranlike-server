@@ -523,6 +523,12 @@ router.get("/:user/api/datasets", function(req, res, next) {
   return send_results(cursor, req, res, next);
 });
 
+router.get("/:user/api/dbdump", function(req, res, next) {
+  var query =  qf({_user: req.params.user}, req.query.all);
+  var cursor = packages.find(query, {raw: true});
+  return cursor.stream().pipe(res.type("application/bson"));
+});
+
 router.get("/:user/stats/vignettes", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 200;
   var cursor = packages.aggregate([
@@ -574,6 +580,8 @@ router.get("/:user/stats/datasets", function(req, res, next) {
     return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
   });
 });
+
+
 
 /* Public aggregated data (these support :any users)*/
 router.get('/:user/stats/descriptions', function(req, res, next) {
