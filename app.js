@@ -110,7 +110,7 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 400);
-  res.render('error');
+  res.type('text/html').render('error');
 });
 
 export default app;

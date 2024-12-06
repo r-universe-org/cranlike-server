@@ -8,6 +8,31 @@ import {packages, bucket} from '../src/db.js';
 
 const router = express.Router();
 
+// Somehow node:stream/promises does not catch input on-error callbacks properly
+// so we promisify ourselves. See https://github.com/r-universe-org/help/issues/540
+function cursor_stream(cursor, output, transform, gzip){
+  return new Promise(function(resolve, reject) {
+    var input = cursor.stream({transform: transform}).on('error', reject);
+    if(gzip){
+      input = input.pipe(zlib.createGzip()).on('error', reject);
+    }
+    input.pipe(output).on('finish', resolve).on('error', reject);
+  });
+}
+
+function send_results(cursor, res, stream = false, transform = (x) => x){
+  //We only use hasNext() to catch broken queries and promisify response
+  return cursor.hasNext().then(function(has_next){
+    if(stream){
+      return cursor_stream(cursor, res.type('text/plain'), doc => doc_to_ndjson(transform(doc)));
+    } else {
+      return cursor.toArray().then(function(out){
+        return res.send(out.filter(x => x).map(transform));
+      });
+    }
+  });
+}
+
 function doc_to_ndjson(x){
   return JSON.stringify(x) + '\n';
 }
@@ -48,18 +73,11 @@ function stream_to_dcf(cursor, format, req, res){
   // Get actual package data
   var cursor = cursor.project(projection).sort({"Package" : 1});
   if(!format){
-    cursor
-      .stream({transform: doc_to_dcf})
-      .pipe(res.type('text/plain'));
+    return cursor_stream(cursor, res.type('text/plain'), doc_to_dcf);
   } else if(format == 'gz'){
-    cursor
-      .stream({transform: doc_to_dcf})
-      .pipe(zlib.createGzip())
-      .pipe(res.type('application/x-gzip'));
+    return cursor_stream(cursor, res.type('application/x-gzip'), doc_to_dcf, true);
   } else if(format == 'json'){
-    cursor
-      .stream({transform: doc_to_ndjson})
-      .pipe(res.type('text/plain'));
+    return cursor_stream(cursor, res.type('text/plain'), doc_to_ndjson);
   } else {
     cursor.close();
     throw createError(404, 'Unknown PACKAGES format: ' + format);
@@ -83,46 +101,11 @@ function packages_index_aggregate(query, format, req, res){
   return stream_to_dcf(cursor, req.params.ext, req, res);
 }
 
-function html_index(query, res){
-  packages
-    .find(query)
-    .project({_id:0, Package:1, Version:1, _type:1})
-    .stream({transform: doc_to_filename})
-    .pipe(res.type('text/plain'));
-}
-
-function count_by_user(){
-  return packages.aggregate([
-    {$group:{_id: "$_user", count: { $sum: 1 }}}
-  ])
-  .project({_id: 0, user: "$_id", count: 1})
-  .stream({transform: doc_to_ndjson});
-}
-
-function count_by_type(user){
-  return packages.aggregate([
-    {$match: qf({_user: user})},
-    {$group:{_id: "$_type", count: { $sum: 1 }}}
-  ])
-  .project({_id: 0, type: "$_id", count: 1})
-  .stream({transform: function(x){
-    const dirname = {
-      src : 'src/contrib',
-      win : 'bin/windows/contrib',
-      mac : 'bin/macosx/contrib/'
-    };
-    x.path = dirname[x.type];
-    return doc_to_ndjson(x);
-  }});
-}
-
 function count_by_built(user, type){
   return packages.aggregate([
     {$match: {_user: user, _type : type}},
     {$group:{_id: {R: "$Built.R", Platform: "$Built.Platform"}, count: { $sum: 1 }}}
-  ])
-  .project({_id: 0, R: "$_id.R", Platform:"$_id.Platform", count: 1})
-  .stream({transform: doc_to_ndjson});
+  ]).project({_id: 0, R: "$_id.R", Platform:"$_id.Platform", count: 1}).toArray();
 }
 
 //sort by type to get linux binary before src
@@ -171,24 +154,17 @@ function find_by_user(_user, _type){
   return out;
 }
 
-function send_results(cursor, req, res, next, transform = (x) => x){
-  return Promise.resolve().then(function(){
-    if(req.query.stream){
-      return cursor.stream({transform: x => doc_to_ndjson(transform(x))}).pipe(res.type('text/plain'));
-    } else {
-      return cursor.toArray().then(function(out){
-        return res.send(out.filter(x => x).map(transform));
-      });
-    }
-  });
-}
-
 router.get('/:user/src', function(req, res, next) {
   res.redirect('/' + req.params.user + '/src/contrib');
 });
 
 router.get('/:user/bin', function(req, res, next) {
-  count_by_type(req.params.user).pipe(res);
+  return packages.aggregate([
+    {$match: qf({_user: req.params.user})},
+    {$group:{_id: "$_type", count: { $sum: 1 }}}
+  ]).project({_id: 0, type: "$_id", count: 1}).toArray().then(function(x){
+    res.send(x)
+  });
 });
 
 router.get('/:user/bin/windows', function(req, res, next) {
@@ -278,15 +254,15 @@ router.get('/:user/bin/emscripten/contrib/:built/', function(req, res, next) {
 
 /* Index available R builds for binary pkgs */
 router.get('/:user/bin/windows/contrib', function(req, res, next) {
-  return count_by_built(req.params.user, 'win').pipe(res);
+  return count_by_built(req.params.user, 'win').then(out => res.send(out));
 });
 
 router.get('/:user/bin/macosx/:xcode/contrib', function(req, res, next) {
-  return count_by_built(req.params.user, 'mac').pipe(res);
+  return count_by_built(req.params.user, 'mac').then(out => res.send(out));
 });
 
 router.get('/:user/bin/emscripten/contrib', function(req, res, next) {
-  return count_by_built(req.params.user, 'wasm').pipe(res);
+  return count_by_built(req.params.user, 'wasm').then(out => res.send(out));
 });
 
 /* Download package files */
@@ -417,7 +393,7 @@ router.get('/:user/api/packages{/:package}', function(req, res, next) {
     {$sort : {timestamp : -1}},
     {$limit : limit}
   ]);
-  return send_results(cursor, req, res, next, (x) => group_package_data(x.files));
+  return send_results(cursor, res, req.query.stream, (x) => group_package_data(x.files));
 });
 
 router.get("/:user/api/universes", function(req, res, next) {
@@ -449,7 +425,7 @@ router.get("/:user/api/universes", function(req, res, next) {
     {$sort:{ indexed: -1}},
     {$limit : limit},
   ]);
-  return send_results(cursor, req, res, next);
+  return send_results(cursor, res, req.query.stream)
 });
 
 router.get("/:user/api/scores", function(req, res, next) {
@@ -470,7 +446,7 @@ router.get("/:user/api/scores", function(req, res, next) {
     releases: array_size('$_releases')
   }
   var cursor = packages.find(query).sort({_score: -1}).project(projection);
-  return send_results(cursor, req, res, next);
+  return send_results(cursor, res, req.query.stream)
 });
 
 router.get("/:user/api/articles", function(req, res, next) {
@@ -495,7 +471,7 @@ router.get("/:user/api/articles", function(req, res, next) {
     }},
     {$sort:{ updated: -1}},
   ]);
-  return send_results(cursor, req, res, next);
+  return send_results(cursor, res, req.query.stream);
 });
 
 router.get("/:user/api/datasets", function(req, res, next) {
@@ -520,7 +496,7 @@ router.get("/:user/api/datasets", function(req, res, next) {
       fields: array_size('$dataset.fields')
     }}
   ]);
-  return send_results(cursor, req, res, next);
+  return send_results(cursor, res, req.query.stream);
 });
 
 router.get("/:user/api/dbdump", function(req, res, next) {
@@ -532,7 +508,7 @@ router.get("/:user/api/dbdump", function(req, res, next) {
     query._type = 'src'
   }
   var cursor = packages.find(query, {raw: true});
-  return cursor.stream().pipe(res.type("application/bson"));
+  return cursor_stream(cursor, res.type("application/bson"));
 });
 
 router.get("/:user/stats/vignettes", function(req, res, next) {
@@ -556,9 +532,7 @@ router.get("/:user/stats/vignettes", function(req, res, next) {
     }},
     {$unwind: '$vignette'}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/datasets", function(req, res, next) {
@@ -582,11 +556,8 @@ router.get("/:user/stats/datasets", function(req, res, next) {
     }},
     {$unwind: '$dataset'}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
-
 
 
 /* Public aggregated data (these support :any users)*/
@@ -598,18 +569,14 @@ router.get('/:user/stats/descriptions', function(req, res, next) {
     query['_commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
   }
   var cursor = packages.find(query, {limit:limit}).sort({"_commit.time" : -1}).project({_id:0, _type:0});
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 /* Failures(these support :any users)*/
 router.get('/:user/stats/failures', function(req, res, next) {
   var query = qf({_user: req.params.user, _type: 'failure'}, req.query.all);
   var cursor = packages.find(query).sort({"_id" : -1}).project({_id:0, _type:0});
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 /* Public aggregated data (these support :any users)*/
@@ -643,9 +610,7 @@ router.get('/:user/stats/checks', function(req, res, next) {
       runs: 1
     }}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 function days_ago(n){
@@ -700,9 +665,7 @@ router.get('/:user/stats/builds', function(req, res, next) {
     }},
     {$limit: limit}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 /* This API is mostly superseded by /stats/maintainers below */
@@ -742,9 +705,7 @@ router.get("/:user/stats/pkgsbymaintainer", function(req, res, next) {
     }},
     {$sort:{ updated: -1}}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 /* Double group: first by email, and then by login, such that
@@ -804,9 +765,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
     {$sort:{ updated: -1}},
     {$limit: limit}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/universes", function(req, res, next) {
@@ -833,9 +792,7 @@ router.get("/:user/stats/universes", function(req, res, next) {
     {$project: {_id: 0, universe: '$_id', packages: 1, maintainers: 1, updated: 1}},
     {$sort:{ updated: -1}}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/contributions", function(req, res, next) {
@@ -861,9 +818,7 @@ router.get("/:user/stats/contributions", function(req, res, next) {
     {$sort:{ contributions: -1}},
     {$limit: limit}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 /* Group by upstream instead of package to avoid duplicate counting of contributions in
@@ -888,9 +843,7 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$sort:{ total: -1}},
     {$limit: limit}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/updates", function(req, res, next) {
@@ -907,9 +860,7 @@ router.get("/:user/stats/updates", function(req, res, next) {
     {$project: {_id:0, week: '$_id', total: '$total', packages: {$arrayToObject:{$sortArray: { input: "$packages", sortBy: { v: -1 } }}}}},
     {$sort:{ week: 1}}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/pkgdeps", function(req,res,next){
@@ -927,9 +878,7 @@ router.get("/:user/stats/pkgdeps", function(req,res,next){
     {$set: {total: { $size: "$revdeps" }}},
     {$sort:{total: -1}}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/pkgrevdeps", function(req,res,next){
@@ -954,9 +903,7 @@ router.get("/:user/stats/pkgrevdeps", function(req,res,next){
       {$set: {total: { $size: "$revdeps" }}},
       {$sort:{total: -1}}
     ]);
-    return cursor.hasNext().then(function(){
-      return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-    })
+    return send_results(cursor, res.type('text/plain'), true);
   });
 });
 
@@ -992,9 +939,7 @@ router.get("/:user/stats/revdeps", function(req, res, next) {
     {$set: {count: { $size: "$revdeps" }}},
     {$sort:{count: -1}}
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 
@@ -1019,10 +964,8 @@ router.get("/:user/stats/sysdeps{/:distro}", function(req, res, next) {
     {$project: {_id: 0, library: '$_id', packages: 1, headers: 1, version: 1, usedby: 1,
       homepage: { '$first' : '$homepage'}, description: { '$first' : '$description'}, distro:{ '$first' : '$distro'}}},
     {$sort:{ library: 1}}
-  ])
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  ]);
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/topics", function(req, res, next) {
@@ -1040,9 +983,7 @@ router.get("/:user/stats/topics", function(req, res, next) {
     {$sort:{count: -1}},
     {$limit: limit}
   ])
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/files", function(req, res, next) {
@@ -1068,9 +1009,7 @@ router.get("/:user/stats/files", function(req, res, next) {
     });
   }
   var cursor = packages.find(query).project(projection);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get("/:user/stats/search", function(req, res, next) {
@@ -1078,93 +1017,7 @@ router.get("/:user/stats/search", function(req, res, next) {
   query['$text'] = { $search: req.query.q || "", $caseSensitive: false};
   var limit =  parseInt(req.query.limit) || 100;
   var cursor = packages.find(query, {limit:limit}).project({match:{$meta: "textScore"}}).sort({match:{$meta:"textScore"}});
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
-});
-
-function build_query(query, str){
-  function substitute(name, field, insensitive, partial){
-    var re = new RegExp(`${name}:(\\S+)`, "i"); //the name is insensitive e.g.: "Package:jsonlite"
-    var found = str.match(re);
-    if(found && found[1]){
-      var search = found[1].replace("+", " "); //search for: "author:van+buuren"
-      if(insensitive || partial){
-        var regex = partial ? search : `^${search}$`;
-        var opt = insensitive ? 'i' : '';
-        query[field] = {$regex: regex, $options: opt}
-      } else {
-        query[field] = search;
-      }
-      str = str.replace(re, "");
-    }
-  }
-  function match_exact(name, field){
-    substitute(name, field)
-  }
-  function match_insensitive(name, field){
-    substitute(name, field, true)
-  }
-  function match_partial(name, field){
-    substitute(name, field, true, true)
-  }
-  function match_exists(name, field){
-    var re = new RegExp(`${name}:(\\S+)`, "i");
-    var found = str.match(re);
-    if(found && found[1]){
-      var findfield = found[1].toLowerCase(); //GH logins are normalized to lowercase
-      query[`${field}.${findfield}`] = { $exists: true };
-      str = str.replace(re, "");
-    }
-  }
-  match_partial('author', 'Author');
-  match_partial('maintainer', 'Maintainer');
-  match_exact('needs', '_rundeps');
-  match_exists('contributor', '_contributions');
-  match_insensitive('topic', '_topics');
-  match_insensitive('exports', '_exports');
-  match_insensitive('package', 'Package');
-  str = str.trim();
-  if(str){
-    query['$text'] = { $search: str, $caseSensitive: false};
-  }
-  return query;
-}
-
-router.get("/:user/stats/ranksearch", function(req, res, next) {
-  var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
-  var query = build_query(query, req.query.q || "");
-  var project = {
-    Package: 1,
-    Title: 1,
-    Description:1,
-    _user:1,
-    _owner: 1,
-    _score: 1,
-    _usedby: 1,
-    maintainer: '$_maintainer',
-    updated: '$_commit.time',
-    stars: '$_stars',
-    topics: '$_topics',
-    sysdeps: '$_sysdeps.name',
-    rundeps: '$_rundeps'
-  };
-  if(query['$text']){
-    project.match = {$meta: "textScore"};
-    project.rank = {$multiply:[{$meta: "textScore"}, '$_score']};
-  } else {
-    project.rank = '$_score';
-  }
-  var limit =  parseInt(req.query.limit) || 100;
-  var cursor = packages.aggregate([
-    { $match: query},
-    { $project: project},
-    { $sort: {rank: -1}},
-    { $limit: limit }
-  ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 /* Simple 1 package revdep cases; see above for aggregates */
@@ -1172,9 +1025,7 @@ router.get('/:user/stats/usedby', function(req, res, next) {
   var pkgname = req.query.package;
   var query = qf({_user: req.params.user, _type: 'src', '_dependencies.package': pkgname, '_indexed': true}, req.query.all);
   var cursor = packages.find(query).project({_id: 0, owner: '$_owner', package: "$Package"}).sort({'_stars': -1});
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 router.get('/:user/stats/usedbyorg', function(req, res, next) {
@@ -1191,9 +1042,7 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
     {$project:{_id: 0, owner: "$_id", packages: 1, allstars:1}},
     {$sort : {allstars : -1}},
   ]);
-  return cursor.hasNext().then(function(){
-    return cursor.stream({transform: doc_to_ndjson}).pipe(res.type('text/plain'));
-  });
+  return send_results(cursor, res.type('text/plain'), true);
 });
 
 function summary_count(k, q) {
