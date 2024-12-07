@@ -103,9 +103,9 @@ function read_description(stream){
   });
 }
 
-function store_stream_file(stream, key, filename){
+function store_stream_file(stream, key, filename, metadata){
   return new Promise(function(resolve, reject) {
-    var upload = bucket.openUploadStreamWithId(key, filename);
+    var upload = bucket.openUploadStreamWithId(key, filename, {metadata: metadata});
     var hash = crypto.createHash('sha256');
     var pipe = stream.on('data', data => hash.update(data)).pipe(upload);
     pipe.on('error', function(err){
@@ -137,7 +137,7 @@ function store_stream_file(stream, key, filename){
   });
 }
 
-function crandb_store_file(stream, key, filename){
+function crandb_store_file(stream, key, filename, metadata){
   return bucket.find({_id : key}, {limit:1}).next().then(function(x){
     if(x){
       /* Replace blob just in case the old one is corrupt */
@@ -145,7 +145,7 @@ function crandb_store_file(stream, key, filename){
       return bucket.delete(key);
     }
   }).then(function(){
-    return store_stream_file(stream, key, filename);
+    return store_stream_file(stream, key, filename, metadata);
   });
 }
 
@@ -351,7 +351,8 @@ router.put('/:user/packages/:package/:version/:type/:key', function(req, res, ne
   var query = {_user : user, _type : type, Package : pkgname};
   var builder = parse_builder_fields(req.headers) || {};
   var filename = get_filename(pkgname, version, type, builder.distro);
-  return crandb_store_file(req, key, filename).then(function(filedata){
+  var metadata = {user: user, commit: builder.commit.id};
+  return crandb_store_file(req, key, filename, metadata).then(function(filedata){
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
       var p2 = extract_json_metadata(bucket.openDownloadStream(key), pkgname);
@@ -466,7 +467,8 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
   var key = req.body.key;
   var builder = parse_builder_fields(req.body);
   var stream = fs.createReadStream(filepath);
-  return crandb_store_file(stream, key, filename).then(function(filedata){
+  var metadata = {user: user, commit: builder.commit.id};
+  return crandb_store_file(stream, key, filename, metadata).then(function(filedata){
     if(type == 'src'){
       var p1 = packages.countDocuments({_type: 'src', _indexed: true, '_rundeps': pkgname});
       var p2 = extract_json_metadata(bucket.openDownloadStream(key), pkgname);
