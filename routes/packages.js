@@ -93,6 +93,7 @@ function sanitize_keys(data){
 
 function read_description(stream){
   return new Promise(function(resolve, reject) {
+    stream.on('error', reject);
     rdesc.parse_stream(stream, function(err, data){
       if(err) {
         reject(err);

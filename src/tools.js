@@ -212,7 +212,7 @@ function send_file_from_tar(input, res, filename){
           reject(`File ${filename} not found in tarball`);
         }
       });
-    input.pipe(gunzip()).pipe(extract);
+    input.on('error', reject).pipe(gunzip()).pipe(extract);
   });
 }
 
@@ -238,7 +238,7 @@ export function extract_multi_files(input, files){
       .on('entry', process_entry)
       .on('finish', finish_stream)
       .on('error', reject);
-    input.pipe(gunzip()).pipe(extract);
+    input.on('error', reject).pipe(gunzip()).pipe(extract);
   });
 }
 
@@ -290,7 +290,7 @@ export function tar_index_files(input){
           reject(err);
         }
       });
-    input.pipe(gunzip()).pipe(extract);
+    input.on('error', reject).pipe(gunzip()).pipe(extract);
   });
 }
 
