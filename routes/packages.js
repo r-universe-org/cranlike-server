@@ -114,7 +114,7 @@ function store_stream_file(stream, key, filename, metadata){
       /* Clear possible orphaned chunks, then reject */
       var p1 = chunks.deleteMany({files_id: key});
       var p2 = bucket.delete(key);
-      promise.allSettled([p1, p2]).then(function(e){
+      Promise.allSettled([p1, p2]).then(function(e){
         reject("Error in openUploadStreamWithId(): " + err);
       });
     });
