@@ -57,7 +57,8 @@ router.get('/:user/packages/:package', function(req, res, next) {
 });
 */
 
-router.get('/:user/packages/:package{/:version}{/:type}{/:built}', function(req, res, next) {
+/*
+router.get('/:user/api/packages/:package{/:version}{/:type}{/:built}', function(req, res, next) {
   var user = req.params.user;
   var query = {_user : user, Package : req.params.package};
   if(req.params.version && req.params.version != "any")
@@ -68,8 +69,9 @@ router.get('/:user/packages/:package{/:version}{/:type}{/:built}', function(req,
     query['Built.R'] = {$regex: '^' + req.params.built};
   return packages.find(query).sort({"Built.R" : -1}).toArray().then(docs => res.send(docs));
 });
+*/
 
-router.delete('/:user/packages/:package{/:version}{/:type}{/:built}', function(req, res, next){
+router.delete('/:user/api/packages/:package{/:version}{/:type}{/:built}', function(req, res, next){
   var user = req.params.user;
   var query = {_user: req.params.user, Package: req.params.package};
   if(req.params.version && req.params.version != "any")
@@ -343,7 +345,7 @@ function add_meta_fields(description, meta){
   }
 }
 
-router.put('/:user/packages/:package/:version/:type/:key', function(req, res, next){
+router.put('/:user/api/packages/:package/:version/:type/:key', function(req, res, next){
   var user = req.params.user;
   var pkgname = req.params.package;
   var version = req.params.version;
@@ -424,7 +426,7 @@ router.put('/:user/packages/:package/:version/:type/:key', function(req, res, ne
   });
 });
 
-router.post('/:user/packages/:package/:version/update', multerstore.none(), function(req, res, next) {
+router.post('/:user/api/packages/:package/:version/update', multerstore.none(), function(req, res, next) {
   var user = req.params.user;
   var version = req.params.version;
   var query = {_type : 'src', _user : user, Package : req.params.package, Version: version};
@@ -437,7 +439,7 @@ router.post('/:user/packages/:package/:version/update', multerstore.none(), func
   });
 });
 
-router.post('/:user/packages/:package/:version/failure', multerstore.none(), function(req, res, next) {
+router.post('/:user/api/packages/:package/:version/failure', multerstore.none(), function(req, res, next) {
   var user = req.params.user;
   var pkgname = req.params.package;
   var version = req.params.version;
@@ -454,7 +456,7 @@ router.post('/:user/packages/:package/:version/failure', multerstore.none(), fun
   return packages.findOneAndReplace(query, description, {upsert: true}).then(() => res.send(description));
 });
 
-router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
+router.post('/:user/api/packages/:package/:version/:type', multerstore.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
   if(!req.files.file || !req.files.file[0]){
     return next(createError(400, "Missing parameter 'file' in upload"));
   }
@@ -531,7 +533,7 @@ router.post('/:user/packages/:package/:version/:type', multerstore.fields([{ nam
 });
 
 /* HTTP PATCH does not require authentication, so this API is public */
-router.patch('/:user/packages/:package/:version/:type', function(req, res, next) {
+router.patch('/:user/api/packages/:package/:version/:type', function(req, res, next) {
   var user = req.params.user;
   var pkgname = req.params.package;
   var version = req.params.version;
