@@ -379,7 +379,7 @@ router.get('/:user/api/packages{/:package}', function(req, res, next) {
   if(user == ":any" || user == 'cran'){
     query['_commit.time'] = {'$gt': days_ago(parseInt(req.query.days) || 7)};
   }
-  var limit = parseInt(req.query.limit) || 500;
+  var limit = parseInt(req.query.limit) || 2500;
   var cursor = packages.aggregate([
     {$match: query},
     {$project: projection},
