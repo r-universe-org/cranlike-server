@@ -15,7 +15,6 @@
   "dependencies": {
     "@r-universe/webr": "2024.8.5",
     "archiver": "^7.0.1",
-    "badgen": "^3.2.3",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
     "debug": "^4.1.1",
