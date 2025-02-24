@@ -288,8 +288,8 @@ function calculate_score(description){
     add_score(description._datasets.length);
   if(Array.isArray(description._updates))
     add_score(description._updates.length);
-  if(typeof description._contributions === 'object')
-    add_score(Object.keys(description._contributions).length - 1)
+  if(Array.isArray(description._contributors))
+    add_score(description._contributors.length - 1)
   if(description._cranurl || description._bioc)
     add_score(10); //on cran/bioc ~ 10 stars
   if(description._readme)

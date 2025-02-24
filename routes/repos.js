@@ -440,7 +440,7 @@ router.get("/:user/api/scores", function(req, res, next) {
     scripts: "$_searchresults",
     dependents: '$_usedby',
     commits: {$sum: '$_updates.n'},
-    contributors: array_size({$objectToArray: '$_contributions'}),
+    contributors: array_size('$_contributors'),
     datasets: array_size('$_datasets'),
     vignettes: array_size('$_vignettes'),
     releases: array_size('$_releases')
@@ -797,22 +797,20 @@ router.get("/:user/stats/universes", function(req, res, next) {
 
 router.get("/:user/stats/contributions", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 100000;
-  var cutoff = parseInt(req.query.cutoff) || 0;
   var user = req.params.user;
-  var query = {_type: 'src', '_indexed' : true};
-  var contribfield = `_contributions.${user}`;
-  query[contribfield] = { $gt: cutoff };
+  var query = {_type: 'src', '_contributors.user': user, '_indexed' : true};
   if(req.query.skipself){
     query['_maintainer.login'] = {$ne: user};
   }
   var cursor = packages.aggregate([
     {$match: query},
+    {$addFields: {contrib: {$arrayElemAt:['$_contributors', { $indexOfArray: [ "$_contributors.user", user ]}]}}},
     {$group: {
       _id: "$_upstream",
       owner: {$first: '$_user'}, //equals upstream org
       packages: {$addToSet: '$Package'},
       maintainers: {$addToSet: '$_maintainer.login'}, //upstreams can have multiple pkgs and maintainers
-      contributions: {$max: '$' + contribfield}
+      contributions: {$max: '$contrib.count'}
     }},
     {$project: {_id:0, contributions:'$contributions', upstream: '$_id', owner: '$owner', packages: '$packages', maintainers: '$maintainers'}},
     {$sort:{ contributions: -1}},
@@ -833,18 +831,18 @@ router.get("/:user/stats/contributors", function(req, res, next) {
     {$match: qf(query, req.query.all)},
     {$project: {
       _id: 0,
-      contributions: '$_contributions',
+      contributors: '$_contributors',
       upstream: '$_upstream'
     }},
-    {$addFields: {contributions: {$objectToArray:"$contributions"}}},
-    {$unwind: "$contributions"},
-    {$group: {_id: "$contributions.k", repos: {$addToSet: {upstream: '$upstream', count: '$contributions.v'}}}},
+    {$unwind: "$contributors"},
+    {$group: {_id: "$contributors.user", repos: {$addToSet: {upstream: '$upstream', count: '$contributors.count'}}}},
     {$project: {_id:0, login: '$_id', total: {$sum: '$repos.count'}, repos: 1}},
     {$sort:{ total: -1}},
     {$limit: limit}
   ]);
   return send_results(cursor, res.type('text/plain'), true);
 });
+
 
 router.get("/:user/stats/updates", function(req, res, next) {
   var query = {_user: req.params.user, _type: 'src', '_registered' : true};
@@ -1081,7 +1079,7 @@ router.get('/:user/stats/summary', function(req, res, next){
   var p3 = summary_count('_vignettes.source', query);
   var p4 = summary_count('_datasets.name', query);
   var p5 = summary_unique('_user', {'_userbio.type': 'organization', ...query});
-  var p6 = summary_object('_contributions', query);
+  var p6 = summary_unique('_contributors.user', query);
   var promises = [p1, p2, p3, p4, p5, p6].map(function(p){
     return p.next().then(res => res ? res.total : 0);
   })

@@ -57,6 +57,7 @@ async function rebuild_indexes(){
   await make_index({"_user":1, "_type":1, "_registered":1, "_commit.time":1});
   await make_index({"_type":1, "_rundeps":1});
   await make_index({"_type":1, "_dependencies.package":1});
+  await make_index({"_type":1, "_contributors.user":1});
 
   /* The text search index (only one is allowed) */
   //await packages.dropIndex("textsearch").catch(console.log);

@@ -50,7 +50,7 @@ function build_query(query, str){
   match_partial('maintainer', 'Maintainer');
   match_exact('needs', '_rundeps');
   match_exact('package', '_nocasepkg'); //always case insenstive
-  match_exists('contributor', '_contributions');
+  match_exact('contributor', '_contributors.user');
   match_exact('topic', '_topics');
   match_exact('exports', '_exports');
   match_exact('owner', '_owner');
