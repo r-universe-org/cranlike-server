@@ -343,6 +343,9 @@ function add_meta_fields(description, meta){
   for (const [key, value] of Object.entries(meta)) {
     description[`_${key}`] = value;
   }
+  if(description['Config/runiverse/noindex']){
+    description['_registered'] = false; //hides all pages
+  }
 }
 
 router.put('/:user/api/packages/:package/:version/:type/:key', function(req, res, next){
