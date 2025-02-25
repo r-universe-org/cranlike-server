@@ -660,6 +660,7 @@ function extract_json_metadata(input, pkgname){
     if(!metadata.userbio || !metadata.userbio.type){
       throw "userbio is missing from contents.json";
     }
+    delete metadata._contributions; //temp fix, remove soon
     return metadata;
   });
 }
