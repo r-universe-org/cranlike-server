@@ -98,6 +98,9 @@ router.get('/:user/api/snapshot{/:format}', function(req, res, next) {
   var types = req.query.types ? req.query.types.split(',') : ['src', 'win', 'mac', 'linux', 'docs']; //skip wasm
   if(req.query.packages)
     query.Package = {'$in' : req.query.packages.split(",")};
+  if(req.query.skip_packages){
+    query.Package = {'$nin' : req.query.skip_packages.split(",")};
+  }
   var cursor = packages.find(query).project(pkgfields).sort({"_type" : 1});
   return cursor.toArray().then(function(files){
     if(!files.length)
