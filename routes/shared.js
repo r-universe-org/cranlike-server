@@ -74,6 +74,19 @@ router.get('/shared/cranstatus/:package', function(req, res, next) {
   });
 });
 
+router.get('/shared/condastatus/:package', function(req, res, next) {
+  return fetch(`https://api.anaconda.org/package/conda-forge/r-${req.params.package}`).then(function(response){
+    if (!response.ok) {
+      throw "Failed to find package metadata on conda-forge";
+    }
+    return response.json().then(function(conda){
+      return res.set('Cache-Control', 'max-age=3600, public').send({
+        name: conda.full_name, url: conda.html_url, version: conda.latest_version
+      });
+    });
+  });
+});
+
 router.get('/shared/webrstatus', function(req, res, next) {
   const promise = new session.Shelter();
   return promise.then(function(shelter){
