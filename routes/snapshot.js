@@ -122,8 +122,8 @@ router.get('/:user/api/snapshot{/:format}', function(req, res, next) {
       throw "Unsupported snapshot format: " + format;
     }
     archive.pipe(res);
-    packages_snapshot(files, archive, types).then(function(){
-      archive.finalize();
+    return packages_snapshot(files, archive, types).then(function(){
+      return archive.finalize();
     }).catch(function(err){
       archive.abort();
       throw err;
