@@ -227,6 +227,9 @@ function from_base64_gzip(str){
 
 function parse_builder_fields(x){
   var builder = filter_keys(x, /^builder-/gi);
+  if(builder.jobs){
+    builder.jobs = from_base64_gzip(builder.jobs) || [];
+  }
   builder.commit = from_base64_gzip(builder.commit) || {};
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
   builder.registered = builder.registered !== "false";
