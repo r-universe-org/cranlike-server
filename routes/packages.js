@@ -172,7 +172,17 @@ function validate_description(data, pkgname, version, type){
   }
   if(type == 'src' && data.Built) {
     throw 'Source package has a "built" field (binary pkg?)';
-  } 
+  }
+  if(type == 'src'){
+    if(!Array.isArray(data._jobs) || !data._jobs.length){
+      throw 'Source package missing _jobs data';
+    }
+    data._jobs.forEach(function(job){
+      if(!job.config || !job.check){
+        throw 'Each entry in _jobs array must have config and check field';
+      }
+    });
+  }
   if((type == 'win' || type == 'mac' || type == 'linux' || type == 'wasm') && !data.Built) {
     throw 'Binary package does not have valid Built field';
   } 
