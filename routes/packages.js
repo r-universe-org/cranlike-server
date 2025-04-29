@@ -258,13 +258,17 @@ function merge_dependencies(x){
   return x;
 }
 
+function parse_architecture(built){
+  return built.Platform.split("-")[0];
+}
+
 function parse_major_version(built){
   if(!built || !built.R)
     throw "Package is missing Built.R field. Cannot determine binary version";
   var r_major_version = built.R.match(/^\d\.\d+/);
   if(!r_major_version)
     throw "Failed to find R version from Built.R field: " + str;
-  return r_major_version;
+  return r_major_version[0];
 }
 
 function get_repo_owner(url){
@@ -415,6 +419,15 @@ router.put('/:user/api/packages/:package/:version/:type/:key', function(req, res
           }
         }
       } else {
+        description['_major'] = parse_major_version(description.Built);
+        //query['_major'] = description['_major'];
+        if(description.Built.Platform){
+          description['_arch'] = [parse_architecture(description.Built)];
+          //query['_arch'] = description._arch[0]
+        } else {
+          description['_arch'] = ['all', 'x86_64', 'aarch64'];
+        }
+
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
       if(type == 'mac' && description.Built.Platform){
@@ -519,6 +532,14 @@ router.post('/:user/api/packages/:package/:version/:type', multerstore.fields([{
         description['_nocasepkg'] = pkgname.toLowerCase();
         set_universes(description);
       } else {
+        description['_major'] = parse_major_version(description.Built);
+        //query['_major'] = description['_major'];
+        if(description.Built.Platform){
+          description['_arch'] = [parse_architecture(description.Built)];
+          //query['_arch'] = description._arch[0]
+        } else {
+          description['_arch'] = ['all', 'x86_64', 'aarch64'];
+        }
         query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
       }
       if(type == 'mac' && description.Built.Platform){
