@@ -8,7 +8,7 @@ import zlib from 'node:zlib';
 import tar from 'tar-stream';
 import crypto from 'node:crypto';
 import rconstants from 'r-constants';
-import {match_macos_arch, trigger_rebuild, trigger_recheck, get_submodule_hash, extract_multi_files} from '../src/tools.js';
+import {trigger_rebuild, trigger_recheck, get_submodule_hash, extract_multi_files} from '../src/tools.js';
 import {packages, bucket, chunks, db} from '../src/db.js';
 import {Buffer} from "node:buffer";
 
@@ -419,19 +419,16 @@ router.put('/:user/api/packages/:package/:version/:type/:key', function(req, res
           }
         }
       } else {
-        description['_major'] = parse_major_version(description.Built);
-        //query['_major'] = description['_major'];
+        var major = parse_major_version(description.Built);
+        description['_major'] = major;
+        query['_major'] = major;
         if(description.Built.Platform){
-          description['_arch'] = [parse_architecture(description.Built)];
-          //query['_arch'] = description._arch[0]
+          var arch = parse_architecture(description.Built);
+          description['_arch'] = [arch];
+          query['_arch'] = arch;
         } else {
           description['_arch'] = ['all', 'x86_64', 'aarch64'];
         }
-
-        query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
-      }
-      if(type == 'mac' && description.Built.Platform){
-        query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
       return packages.find(query).project({_id:1, _fileid:1, Version: 1}).toArray().then(function(docs){
         if(docs.length > 1)
@@ -532,18 +529,16 @@ router.post('/:user/api/packages/:package/:version/:type', multerstore.fields([{
         description['_nocasepkg'] = pkgname.toLowerCase();
         set_universes(description);
       } else {
-        description['_major'] = parse_major_version(description.Built);
-        //query['_major'] = description['_major'];
+        var major = parse_major_version(description.Built);
+        description['_major'] = major;
+        query['_major'] = major;
         if(description.Built.Platform){
-          description['_arch'] = [parse_architecture(description.Built)];
-          //query['_arch'] = description._arch[0]
+          var arch = parse_architecture(description.Built);
+          description['_arch'] = [arch];
+          query['_arch'] = arch;
         } else {
           description['_arch'] = ['all', 'x86_64', 'aarch64'];
         }
-        query['Built.R'] = {$regex: '^' + parse_major_version(description.Built)};
-      }
-      if(type == 'mac' && description.Built.Platform){
-        query['Built.Platform'] = match_macos_arch(description.Built.Platform);
       }
       return packages.find(query).project({_id:1, _fileid:1, Version: 1}).toArray().then(function(docs){
         if(docs.length > 1)
