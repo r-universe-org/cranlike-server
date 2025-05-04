@@ -195,9 +195,14 @@ function validate_description(data, pkgname, version, type){
   if(type == 'wasm' && data.Built.OStype != 'unix') {
     throw 'WASM Binary package has unexpected OStype:' + data.Built.OStype;
   }
-  if(type == 'linux' && data.Built.Platform && data.Built.Platform != 'x86_64-pc-linux-gnu') {
-    //Built.Platform is missing for binary pkgs without copiled code
-    throw 'Linux Binary package has unexpected Platform:' + data.Built.Platform;
+  if(type == 'linux' && data.Built.Platform){
+    var platform = data.Built.Platform;
+    if(!platform.includes("linux")){
+      throw 'Linux Binary has unexpected OS:' + platform;
+    }
+    if(!platform.includes("x86_64") && !platform.includes("aarch64")){
+      throw 'Linux Binary has unexpected Arch:' + platform;
+    }
   }
   if(type == 'mac' && data.Built.Platform && !data.Built.Platform.match('apple')) {
     //Built.Platform is missing for binary pkgs without copiled code
