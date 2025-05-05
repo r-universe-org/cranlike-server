@@ -24,7 +24,7 @@
     "highlight.js": "^11.10.0",
     "http-errors": "^2.0.0",
     "mime": "^2.5.0",
-    "mongodb": "^6.11.0",
+    "mongodb": "6.15.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pug": "^3.0.3",

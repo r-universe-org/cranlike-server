@@ -8,6 +8,6 @@ COPY . /cranlike
 
 WORKDIR /cranlike
 
-RUN npm install .
+RUN npm --loglevel info install .
 
 ENTRYPOINT [ "tini", "--", "/cranlike/docker-entrypoint.sh"]
