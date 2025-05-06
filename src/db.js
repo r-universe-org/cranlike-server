@@ -52,6 +52,7 @@ async function rebuild_indexes(){
   await make_index({"_universes":1, "_commit.time":1});
   await make_index({"_universes":1, "Package":1});
   await make_index({"_user":1, "_type":1, "Package":1});
+  await make_index({"_user":1, "_type":1, "Package":1, "_arch": 1, "_major": 1});
   await make_index({"_user":1, "_commit.id":1, "Package":1});
   await make_index({"_user":1, "_type":1, "_commit.time":1});
   await make_index({"_user":1, "_type":1, "_registered":1, "_commit.time":1});
