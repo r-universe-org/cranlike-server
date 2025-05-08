@@ -111,15 +111,18 @@ function store_stream_file(stream, key, filename, metadata){
     var upload = bucket.openUploadStreamWithId(key, filename, {metadata: metadata});
     var hash = crypto.createHash('sha256');
     var pipe = stream.on('data', data => hash.update(data)).pipe(upload);
-    pipe.on('error', function(err){
-      console.log("Error in openUploadStreamWithId()" + err);
+    function cleanup_and_reject(err){
       /* Clear possible orphaned chunks, then reject */
+      console.log(`Error uploading ${key} (${err}). Deleting chunks.`);
       var p1 = chunks.deleteMany({files_id: key});
       var p2 = bucket.delete(key);
-      Promise.allSettled([p1, p2]).then(function(e){
+      Promise.allSettled([p1, p2]).then(function(){
+        console.log(`Chunks deleted for ${key}.`);
         reject("Error in openUploadStreamWithId(): " + err);
       });
-    });
+    }
+    stream.on("error", cleanup_and_reject);
+    pipe.on('error', cleanup_and_reject);
     pipe.on('finish', function(){
       /* Right now we still assume the uploader uses md5 keys */
       db.command({filemd5: key, root: "files"}).catch(function(err){
@@ -127,7 +130,7 @@ function store_stream_file(stream, key, filename, metadata){
         return {};
       }).then(function(check){
         var shasum = hash.digest('hex');
-        if(key == shasum || key == check.md5) {
+        if(key == shasum && check.md5) {
           resolve({_id: key, length: upload.length, md5: check.md5, sha256: shasum});
         } else {
           bucket.delete(key).finally(function(){
