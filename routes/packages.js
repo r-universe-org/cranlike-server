@@ -124,13 +124,13 @@ function store_stream_file(stream, key, filename, metadata){
     stream.on("error", cleanup_and_reject);
     pipe.on('error', cleanup_and_reject);
     pipe.on('finish', function(){
-      /* Right now we still assume the uploader uses md5 keys */
       db.command({filemd5: key, root: "files"}).catch(function(err){
         console.log(err); //if mongodb command fails (should never happen)
         return {};
       }).then(function(check){
         var shasum = hash.digest('hex');
         if(key == shasum && check.md5) {
+          /* These days the sha256 is also the key so maybe we can simplify this */
           resolve({_id: key, length: upload.length, md5: check.md5, sha256: shasum});
         } else {
           bucket.delete(key).finally(function(){
@@ -147,11 +147,14 @@ function crandb_store_file(stream, key, filename, metadata){
   return bucket.find({_id : key}, {limit:1}).next().then(function(x){
     if(x){
       /* Replace blob just in case the old one is corrupt */
-      console.log(`Already have file ${key} (${filename}). Deleting old one.`);
-      return bucket.delete(key);
+      console.log(`Already have file ${key} (${filename}). Keeping old one.`);
+      return packages.find({_fileid: key}, {limit:1}).next().then(function(doc){
+        var oldmd5 = doc ? doc.MD5sum : "unknown";
+        return {_id: key, length: x.length, md5: oldmd5, sha256: key};
+      });
+    } else {
+      return store_stream_file(stream, key, filename, metadata);
     }
-  }).then(function(){
-    return store_stream_file(stream, key, filename, metadata);
   });
 }
 
