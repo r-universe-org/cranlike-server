@@ -112,13 +112,12 @@ function store_stream_file(stream, key, filename, metadata){
     var hash = crypto.createHash('sha256');
     var pipe = stream.on('data', data => hash.update(data)).pipe(upload);
     function cleanup_and_reject(err){
-      /* Clear possible orphaned chunks, then reject */
+      /* Reject and clear possible orphaned chunks */
       console.log(`Error uploading ${key} (${err}). Deleting chunks.`);
-      var p1 = chunks.deleteMany({files_id: key});
-      var p2 = bucket.delete(key);
-      Promise.allSettled([p1, p2]).then(function(){
+      bucket.delete(key).finally(function(){
         console.log(`Chunks deleted for ${key}.`);
         reject("Error in openUploadStreamWithId(): " + err);
+        chunks.deleteMany({files_id: key}).catch(console.log);
       });
     }
     stream.on("error", cleanup_and_reject);
@@ -146,7 +145,6 @@ function store_stream_file(stream, key, filename, metadata){
 function crandb_store_file(stream, key, filename, metadata){
   return bucket.find({_id : key}, {limit:1}).next().then(function(x){
     if(x){
-      /* Replace blob just in case the old one is corrupt */
       console.log(`Already have file ${key} (${filename}). Keeping old one.`);
       return packages.find({_fileid: key}, {limit:1}).next().then(function(doc){
         var oldmd5 = doc ? doc.MD5sum : "unknown";
