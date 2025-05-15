@@ -170,7 +170,7 @@ function get_filename(pkgname, version, type, distro){
 function validate_description(data, pkgname, version, type){
   if(['src', 'win', 'mac', 'linux', 'wasm'].indexOf(type) < 0){
     throw "Parameter 'type' must be one of src, win, mac, linux, wasm";
-  } 
+  }
   if(data.Package != pkgname || data.Version != version) {
     throw 'Package name or version does not match upload';
   }
@@ -220,6 +220,9 @@ function validate_description(data, pkgname, version, type){
   }
   if(!data._maintainer || !data._maintainer.email){
     throw 'No maintainer data found in builder metadata';
+  }
+  if(type == 'linux' && !data._distro){
+    throw "No distro data found in Linux package";
   }
   if(data._registered === undefined){
     throw 'No registered field found in builder headers';
@@ -437,6 +440,9 @@ router.put('/:user/api/packages/:package/:version/:type/:key', function(req, res
           query['_arch'] = arch;
         } else {
           description['_arch'] = ['all', 'x86_64', 'aarch64'];
+        }
+        if(type == 'linux'){
+          query['_distro'] = description['_distro'];
         }
       }
       return packages.find(query).project({_id:1, _fileid:1, Version: 1}).toArray().then(function(docs){
