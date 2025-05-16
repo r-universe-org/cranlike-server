@@ -714,11 +714,14 @@ router.get("/:user/stats/pkgsbymaintainer", function(req, res, next) {
    TODO: We convert array to object to array because I can't figure out a better way to get unique
    _user values, or better: aggregate so that we get counts per _user. */
 router.get("/:user/stats/maintainers", function(req, res, next) {
-  var limit = parseInt(req.query.limit) || 100000;
+  var limit = parseInt(req.query.limit) || 100;
   var query = {_user: req.params.user, _type: 'src', _registered : true};
+
+   //most recent builds have most current email-login mapping. However it is slow.
+  var sort =  req.params.user == 'cran' ? [] : [{$sort:{ _published: -1}}];
   var cursor = packages.aggregate([
     {$match: qf(query, req.query.all)},
-    {$sort:{ _published: -1}}, //assume most recent builds have most current email-login mapping
+    ...sort,
     {$group: {
       _id : '$_maintainer.email',
       updated: { $max: '$_commit.time'},
@@ -762,7 +765,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       orgs: {$objectToArray: "$orgs"}
     }},
     {$set: {orgs: '$orgs.k'}},
-    {$sort:{ updated: -1}},
+    {$sort:{ count: -1}},
     {$limit: limit}
   ]);
   return send_results(cursor, res.type('text/plain'), true);
