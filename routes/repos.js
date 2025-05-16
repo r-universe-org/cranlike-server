@@ -1046,8 +1046,7 @@ router.get('/:user/stats/usedbyorg', function(req, res, next) {
 function summary_count(k, q) {
   return packages.aggregate([
     {$match:q},
-    {$project: {x: `$${k}`}},
-    {$unwind: "$x"},
+    {$unwind: `$${k.split('.')[0]}`},
     {$count: "total"}
   ]);
 }
@@ -1055,9 +1054,8 @@ function summary_count(k, q) {
 function summary_unique(k, q) {
   return packages.aggregate([
     {$match:q},
-    {$project: {x: `$${k}`}},
-    {$unwind: "$x"},
-    {$group: {_id: { $toHashedIndexKey: "$x"}}},
+    {$unwind: `$${k.split('.')[0]}`},
+    {$group: {_id: { $toHashedIndexKey: `$${k}`}}},
     {$count: "total"}
   ]);
 }
@@ -1073,7 +1071,10 @@ function summary_object(k, q) {
 }
 
 router.get('/:user/stats/summary', function(req, res, next){
-  var query = qf({_user: req.params.user, _type: 'src', _registered : true}, req.query.all);
+  var query = {_type: 'src'}; // this api is very, only use indexed fields
+  if(req.params.user != ":any"){
+    query._user = req.params.user;
+  }
   var p1 = summary_unique('Package', query);
   var p2 = summary_unique('_maintainer.email', query);
   var p3 = summary_count('_vignettes.source', query);

@@ -42,6 +42,7 @@ async function rebuild_indexes(){
   await make_index("Package");
   await make_index("_fileid");
   await make_index("_user");
+  await make_index("_type");
   await make_index("_published");
   await make_index("_nocasepkg");
   await make_index("_commit.time");
