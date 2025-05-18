@@ -716,12 +716,9 @@ router.get("/:user/stats/pkgsbymaintainer", function(req, res, next) {
 router.get("/:user/stats/maintainers", function(req, res, next) {
   var limit = parseInt(req.query.limit) || 100;
   var query = {_user: req.params.user, _type: 'src', _registered : true};
-
-   //most recent builds have most current email-login mapping. However it is slow.
-  var sort =  req.params.user == 'cran' ? [] : [{$sort:{ _published: -1}}];
+   //We assume $natural sort such that the last matches have most recent email-login mapping.
   var cursor = packages.aggregate([
     {$match: qf(query, req.query.all)},
-    ...sort,
     {$group: {
       _id : '$_maintainer.email',
       updated: { $max: '$_commit.time'},
@@ -735,14 +732,14 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       orgs: { $push:  { "k": "$_user", "v": true}},
       count : { $sum: 1 }
     }},
-    {$set: {orgs: {$arrayToObject: '$orgs'}, orcid: {$first: '$orcid'}, mastodon: {$first: '$mastodon'}, bluesky: {$first: '$bluesky'}, linkedin: {$first: '$linkedin'}, uuid: {$first: '$uuid'}, login: {$first: '$login'}}},
+    {$set: {orgs: {$arrayToObject: '$orgs'}, orcid: {$last: '$orcid'}, mastodon: {$last: '$mastodon'}, bluesky: {$last: '$bluesky'}, linkedin: {$last: '$linkedin'}, uuid: {$last: '$uuid'}, login: {$last: '$login'}}},
     {$group: {
       _id : { $ifNull: [ "$login", "$_id" ]},
-      uuid: { $first: '$uuid'},
-      login: { $first: '$login'},
+      uuid: { $last: '$uuid'},
+      login: { $last: '$login'},
       emails: { $addToSet: '$_id' },
       updated: { $max: '$updated'},
-      name : { $first: '$name'},
+      name : { $last: '$name'},
       orcid : { $addToSet: "$orcid"},
       bluesky : { $addToSet: "$bluesky"},
       linkedin : { $addToSet: "$linkedin"},
@@ -758,10 +755,10 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       updated: 1,
       name: 1,
       count : 1,
-      orcid: {$first: '$orcid'},
-      bluesky: {$first: '$bluesky'},
-      linkedin: {$first: '$linkedin'},
-      mastodon: {$first: '$mastodon'},
+      orcid: {$last: '$orcid'},
+      bluesky: {$last: '$bluesky'},
+      linkedin: {$last: '$linkedin'},
+      mastodon: {$last: '$mastodon'},
       orgs: {$objectToArray: "$orgs"}
     }},
     {$set: {orgs: '$orgs.k'}},
