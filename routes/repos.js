@@ -730,7 +730,8 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       bluesky : { $addToSet: '$_maintainer.bluesky'}, //can be null
       linkedin : { $addToSet: '$_maintainer.linkedin'}, //can be null
       orgs: { $push:  { "k": "$_user", "v": true}},
-      count : { $sum: 1 }
+      scores : { $sum: '$_score' },
+      count : { $sum: 1 },
     }},
     {$set: {orgs: {$arrayToObject: '$orgs'}, orcid: {$last: '$orcid'}, mastodon: {$last: '$mastodon'}, bluesky: {$last: '$bluesky'}, linkedin: {$last: '$linkedin'}, uuid: {$last: '$uuid'}, login: {$last: '$login'}}},
     {$group: {
@@ -744,6 +745,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       bluesky : { $addToSet: "$bluesky"},
       linkedin : { $addToSet: "$linkedin"},
       mastodon : { $addToSet: "$mastodon"},
+      scores : { $sum: '$scores' },
       count : { $sum: '$count'},
       orgs: {$mergeObjects: '$orgs'}
     }},
@@ -755,6 +757,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       updated: 1,
       name: 1,
       count : 1,
+      scores: 1,
       orcid: {$last: '$orcid'},
       bluesky: {$last: '$bluesky'},
       linkedin: {$last: '$linkedin'},
@@ -762,7 +765,7 @@ router.get("/:user/stats/maintainers", function(req, res, next) {
       orgs: {$objectToArray: "$orgs"}
     }},
     {$set: {orgs: '$orgs.k'}},
-    {$sort:{ count: -1}},
+    {$sort:{ scores: -1}},
     {$limit: limit}
   ]);
   return send_results(cursor, res.type('text/plain'), true);
