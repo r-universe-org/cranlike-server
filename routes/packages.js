@@ -442,7 +442,9 @@ router.put('/:user/api/packages/:package/:version/:type/:key', function(req, res
           description['_arch'] = ['all', 'x86_64', 'aarch64'];
         }
         if(type == 'linux'){
-          query['_distro'] = description['_distro'];
+          query['_distro'] = description['_distro']; //delete only if distro matches
+          description['_portable'] = description.Built.Platform ? false : true;
+          //TODO: set portable rhel-8 builds to 'all'
         }
       }
       return packages.find(query).project({_id:1, _fileid:1, Version: 1}).toArray().then(function(docs){
