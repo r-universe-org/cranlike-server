@@ -186,6 +186,9 @@ function validate_description(data, pkgname, version, type){
         throw 'Each entry in _jobs array must have config and check field';
       }
     });
+    if(!data._jobs.find(x => x.config == 'source')){
+      throw 'Jobs array is missing a source entry'
+    }
   }
   if((type == 'win' || type == 'mac' || type == 'linux' || type == 'wasm') && !data.Built) {
     throw 'Binary package does not have valid Built field';
