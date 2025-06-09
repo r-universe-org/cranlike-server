@@ -287,6 +287,7 @@ function parse_major_version(built){
 }
 
 function get_repo_owner(url){
+  url = url.replace("https://git.bioconductor.org/packages", "https://github.com/bioc");
   const re = new RegExp('.*://([a-z]+).*/([^/]*)/.*')
   const match = (url || "").toLowerCase().match(re);
   if(match){
