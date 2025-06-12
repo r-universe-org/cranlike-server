@@ -4,6 +4,7 @@ import webr from '@r-universe/webr';
 import {get_extracted_file_multi} from '../src/tools.js';
 import {packages} from '../src/db.js';
 import {Buffer} from "node:buffer";
+import {isbot} from "isbot";
 
 const router = express.Router();
 
@@ -88,6 +89,9 @@ router.get('/:user/:package/data', function(req, res, next){
 });
 
 router.get('/:user/:package/data/:name{/:format}', function(req, res, next){
+  if(isbot(req.get("user-agent"))){
+    return res.status(401).send("Bad robot! Please respect robots.txt");
+  }
   var user =  req.params.user;
   var pkgname = req.params.package;
   var name = req.params.name;

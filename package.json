@@ -23,6 +23,7 @@
     "gunzip-maybe": "^1.4.2",
     "highlight.js": "^11.10.0",
     "http-errors": "^2.0.0",
+    "isbot": "^5.1.28",
     "mime": "^2.5.0",
     "mongodb": "^6.16.0",
     "morgan": "^1.10.0",
