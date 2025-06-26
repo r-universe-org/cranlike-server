@@ -13,7 +13,7 @@
     "url": "git://github.com/r-universe-org/cranlike-server.git"
   },
   "dependencies": {
-    "@r-universe/webr": "2024.8.5",
+    "@r-universe/webr": "^2025.6.26",
     "archiver": "^7.0.1",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
