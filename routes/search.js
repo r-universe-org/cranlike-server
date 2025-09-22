@@ -90,7 +90,7 @@ router.get("/:user/api/search", function(req, res, next) {
     };
     if(query['$text']){
       project.match = {$meta: "textScore"};
-      project.rank = {$multiply:[{$meta: "textScore"}, '$_score']};
+      project.rank = {$multiply:[{ $min: [{$meta: "textScore"}, 150]}, '$_score']};
     } else {
       project.rank = '$_score';
     }

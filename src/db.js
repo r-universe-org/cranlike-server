@@ -83,7 +83,7 @@ async function rebuild_indexes(){
     '_datasets.title' : "text"
   },{
     weights: {
-      Package: 50,
+      Package: 100,
       _owner: 20,
       Title: 5,
       Author: 3,
