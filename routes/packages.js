@@ -674,6 +674,22 @@ router.post("/:user/api/recheck/:package",function(req, res, next) {
   });
 });
 
+/* This API is called by the CI to update the status */
+router.post("/:user/api/progress/:package", multerstore.none(), function(req, res, next) {
+  var user = req.params.user;
+  var query = {_user : user, _type : 'src', Package: req.params.package};
+  return packages.find(query).next().then(function(doc){
+    if(!doc) return;
+    const now = new Date();
+    return packages.updateOne(
+      { _id: doc['_id'] },
+      { "$set": {"_progress_url": req.body.url, "_published": now }}
+    ).then(function(){
+      res.send("Update OK");
+    });
+  });
+});
+
 router.post('/:user/api/reindex', function(req, res, next) {
   var owners = {};
   fetch('https://r-universe-org.github.io/cran-to-git/universes.csv')

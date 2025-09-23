@@ -106,5 +106,5 @@ async function rebuild_indexes(){
 
 
 export function get_latest(q){
-  return packages.findOne(q, {sort:{_id: -1}, project: {_id: 1, _published: 1, _user: 1, Package: 1}});
+  return packages.findOne(q, {sort:{_published: -1}, project: {_id: 1, _published: 1, _user: 1, Package: 1}});
 }
