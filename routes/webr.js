@@ -90,6 +90,8 @@ router.get('/:user/:package/data', function(req, res, next){
 
 router.get('/:user/:package/data/:name{/:format}', function(req, res, next){
   if(isbot(req.get("user-agent"))){
+    res.vary('User-Agent');
+    res.set('Cache-control', 'private'); // Vary does not work in cloudflare currently
     return res.status(401).send("Bad robot! Please respect robots.txt");
   }
   var user =  req.params.user;
