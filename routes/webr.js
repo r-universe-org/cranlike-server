@@ -63,17 +63,23 @@ function new_pool(){
     'xlsx': 'writexl'
   }
 
+  var servers = 3;
   var workers = {};
   if(process.env.PRELOAD_WEBR){
     Object.values(pkgmap).forEach(pkg => {
-      workers[pkg] = workers[pkg] || new_rsession(pkg);
+      for (var i = 0; i < servers; i++) {
+        var key = pkg + i;
+        workers[key] = workers[key] || new_rsession(pkg);
+      }
     });
   }
 
   return function(format){
+    var i = Math.floor(Math.random() * servers);
     var pkg = pkgmap[format] || 'base';
-    workers[pkg] = workers[pkg] || new_rsession(pkg);
-    var session = workers[pkg].get();
+    var key = pkg + i;
+    workers[key] = workers[key] || new_rsession(pkg);
+    var session = workers[key].get();
     console.log(`Selected R session with ${session.preloaded}`)
     return session;
   }
