@@ -17,7 +17,7 @@ function new_rsession(preload){
     session.reset = reset;
     session.preloaded = preload;
     return session.init().then(function(){
-      return session.evalRVoid(`getNamespace("${preload}")`)
+      return session.evalRVoid(`mem.maxVSize(1000);getNamespace("${preload}")`);
     }).then(function(){
       console.log(`webR with preloaded ${preload} is ready!`);
     }).catch(function(e){
