@@ -75,6 +75,20 @@ export function get_submodule_hash(user, submodule){
   });
 }
 
+export function trigger_sync(user){
+  return test_if_universe_exists(user).then(function(){
+    const rebuild_token = process.env.REBUILD_TOKEN;
+    if(!rebuild_token)
+      throw "No rebuild_token available";
+    const url = `https://api.github.com/repos/r-universe/${user}/actions/workflows/sync.yml/dispatches`;
+    return fetch_github(url, {
+      method: 'POST',
+      body: JSON.stringify({ref: 'master'}),
+      headers: {'Authorization': 'token ' + rebuild_token}
+    });
+  });
+}
+
 export function trigger_rebuild(run_path){
   const rebuild_token = process.env.REBUILD_TOKEN;
   if(!rebuild_token)

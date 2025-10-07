@@ -8,7 +8,7 @@ import zlib from 'node:zlib';
 import tar from 'tar-stream';
 import crypto from 'node:crypto';
 import rconstants from 'r-constants';
-import {trigger_rebuild, trigger_recheck, get_submodule_hash, extract_multi_files} from '../src/tools.js';
+import {trigger_rebuild, trigger_recheck, get_submodule_hash, extract_multi_files, trigger_sync} from '../src/tools.js';
 import {packages, bucket, chunks, db} from '../src/db.js';
 import {Buffer} from "node:buffer";
 
@@ -657,6 +657,14 @@ router.patch("/:user/api/recheck/:target",function(req, res, next) {
         res.send("Success");
       });
     });
+  });
+});
+
+/* This API is called by the dashboard to request a sync */
+router.patch("/:user/api/sync", multerstore.none(), function(req, res, next) {
+  var user = req.params.user;
+  return trigger_sync(user).then(function(){
+    res.set('Cache-Control', 'max-age=60, public').send("Update OK");
   });
 });
 
