@@ -687,14 +687,16 @@ router.post("/:user/api/progress/:package", multerstore.none(), function(req, re
   var user = req.params.user;
   var query = {_user : user, _type : 'src', Package: req.params.package};
   return packages.find(query).next().then(function(doc){
-    if(!doc) return;
-    const now = new Date();
-    return packages.updateOne(
-      { _id: doc['_id'] },
-      { "$set": {"_progress_url": req.body.url, "_published": now }}
-    ).then(function(){
-      res.send("Update OK");
-    });
+    if(doc){
+      return packages.updateOne(
+        { _id: doc['_id'] },
+        { "$set": {"_progress_url": req.body.url, "_published": (new Date()) }}
+      ).then(function(){
+        res.send("Update OK");
+      });
+    } else {
+      return res.status(404).send("no such package");
+    }
   });
 });
 
