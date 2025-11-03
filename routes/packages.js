@@ -500,7 +500,18 @@ router.post('/:user/api/packages/:package/:version/failure', multerstore.none(),
   description['_selfowned'] = description._owner === user;
   description['_universes'] = [user]; //show failures in dashboard
   description['_nocasepkg'] = pkgname.toLowerCase();
-  return packages.findOneAndReplace(query, description, {upsert: true}).then(() => res.send(description));
+  return packages.findOneAndReplace(query, description, {upsert: true}).then(function(){
+    res.send(description);
+    query._type = 'src';
+    return packages.find(query).next().then(function(doc){
+      if(doc){
+        return packages.updateOne(
+          { _id: doc['_id'] },
+          { "$unset": {"_progress_url": "", "_published": ""}}
+        );
+      }
+    });
+  });
 });
 
 router.post('/:user/api/packages/:package/:version/:type', multerstore.fields([{ name: 'file', maxCount: 1 }]), function(req, res, next) {
