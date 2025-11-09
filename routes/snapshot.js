@@ -52,7 +52,13 @@ function make_storepaths(doc){
   }
   if(type == 'linux'){
     var distro = doc.Distro || 'linux';
-    return [`bin/linux/${distro}/${built}/src/contrib/${doc.Package}_${doc.Version}.tar.gz`];
+    var intel = `bin/linux/${distro}-x86_64/${built}/src/contrib/${doc.Package}_${doc.Version}.tar.gz`;
+    var arm = `bin/linux/${distro}-aarch64/${built}/src/contrib/${doc.Package}_${doc.Version}.tar.gz`;
+    if(doc.Built.Platform){
+      return [doc.Built.Platform.match("x86_64") ? intel : arm];
+    } else {
+      return [intel, arm];
+    }
   }
   if(type == 'wasm'){
     return [`bin/emscripten/contrib/${built}/${doc.Package}_${doc.Version}.tgz`];
