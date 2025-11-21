@@ -257,6 +257,9 @@ function parse_builder_fields(x){
   }
   builder.commit = from_base64_gzip(builder.commit) || {};
   builder.maintainer = from_base64_gzip(builder.maintainer) || {};
+  if(builder.bioccheck){
+    builder.bioccheck = from_base64_gzip(builder.bioccheck);
+  }
   builder.registered = builder.registered !== "false";
   return builder;
 }
