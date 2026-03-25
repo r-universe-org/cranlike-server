@@ -12,7 +12,7 @@ const router = express.Router();
 // so we promisify ourselves. See https://github.com/r-universe-org/help/issues/540
 function cursor_stream(cursor, output, transform, gzip){
   return new Promise(function(resolve, reject) {
-    var input = cursor.stream({transform: transform}).on('error', reject);
+    var input = cursor.stream().map(transform).on('error', reject);
     if(gzip){
       input = input.pipe(zlib.createGzip()).on('error', reject);
     }

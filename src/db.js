@@ -11,7 +11,7 @@ const URL = 'mongodb://' + AUTH + HOST + ':' + PORT;
 
 /* Connect to database */
 console.log("Connecting to database....")
-export const client = await MongoClient.connect(URL, { useUnifiedTopology: true });
+export const client = await MongoClient.connect(URL);
 export const db = client.db('cranlike');
 export const bucket = new GridFSBucket(db, {bucketName: 'files'});
 export const packages = db.collection('packages');
