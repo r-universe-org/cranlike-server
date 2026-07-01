@@ -3,6 +3,7 @@ import tar from 'tar-stream';
 import gunzip from 'gunzip-maybe';
 import mime from 'mime';
 import {packages, bucket} from '../src/db.js';
+import {Readable, Writable} from "node:stream";
 import {Buffer} from "node:buffer";
 import process from "node:process";
 
@@ -58,6 +59,25 @@ function find_by_query(query){
       throw `Package ${query.Package} not found in ${query['_user']}`;
     return x._fileid;
   });
+}
+
+function get_download_stream(url){
+  return fetch(url, { signal: AbortSignal.timeout(30000) }).then((res) => {
+    if (res.ok) {
+      return Readable.fromWeb(res.body);
+    }
+    throw `HTTP ${res.status} for: ${url}`;
+  });
+}
+
+function stream_from_query(query){
+  return find_by_query(query).then(function(key){
+    if(key.startsWith("https://")){
+      return get_download_stream(key);
+    } else {
+      return bucket.openDownloadStream(key);
+    }
+  })
 }
 
 export function get_registry_info(user){
@@ -188,8 +208,8 @@ function pipe_everything_to(stream, output) {
 }
 
 export function send_extracted_file(query, filename, req, res){
-  return find_by_query(query).then(function(hash){
-    return send_file_from_tar(bucket.openDownloadStream(hash), res, filename);
+  return stream_from_query(query).then(function(stream){
+    return send_file_from_tar(stream, res, filename);
   });
 }
 
@@ -257,8 +277,8 @@ export function extract_multi_files(input, files){
 }
 
 export function get_extracted_file_multi(query, files){
-  return find_by_query(query).then(function(hash){
-    return extract_multi_files(bucket.openDownloadStream(hash), files).then(function(buffers){
+  return stream_from_query(query).then(function(stream){
+    return extract_multi_files(stream, files).then(function(buffers){
       files.forEach(function(x, i){
         if(buffers[i] === undefined){
           throw `Failed to find file ${x} in tarball`;
