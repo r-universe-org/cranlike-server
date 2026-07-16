@@ -45,7 +45,7 @@ install.packages("curl", repos = "http://myserver.com/repos/jeroen")
 
 ## Running the server
 
-The easiest way to start your a server is to clone the this and run docker compose:
+The easiest way to start your a server is to clone the repo and run docker compose:
 
 ```
 docker-compose up
