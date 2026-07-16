@@ -320,8 +320,8 @@ function calculate_score(description){
   add_score(description._searchresults / 10); //10 scripts ~ one star
   if(Array.isArray(description._vignettes))
     add_score(description._vignettes.length * 10); //one vignette ~ 10 stars
-  if(Array.isArray(description._datasets * 5)) //one dataset ~ 5 stars
-    add_score(description._datasets.length);
+  if(Array.isArray(description._datasets))
+    add_score(description._datasets.length * 5); //one dataset ~ 5 stars
   if(Array.isArray(description._updates))
     add_score(description._updates.length);
   if(Array.isArray(description._contributors))
